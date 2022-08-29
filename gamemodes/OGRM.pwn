@@ -919,7 +919,9 @@ new bool:HangarStatus[6] = {false, ...};
 #define Fraction_Bikers			13
 #define Fraction_FarmOfTruth	14
 #define Fraction_RussiaMafia    15
-#define MAX_FRACTION			16
+#define Fraction_LaCosaNostra   16
+#define Fraction_Yakuza         17
+#define MAX_FRACTION			18
 
 new FractionName[MAX_FRACTION][] = {
 	"",
@@ -937,7 +939,9 @@ new FractionName[MAX_FRACTION][] = {
 	"Street Racers",
 	"Байкеры",
 	"The Farm of Truth",
-    "Russia Mafia"
+    "Russia Mafia",
+    "La Cosa Nostra",
+    "Yakuza"
 };
 
 new FractionColor[MAX_FRACTION];
@@ -1648,7 +1652,11 @@ new Gate[MAX_GATE][GateInfo];
 #define FarmOfTruthExit			102
 #define RussiaMafiaEnter        103
 #define RussiaMafiaExit         104
-#define MAX_PICK 				105
+#define LaCosaNostraEnter       105
+#define LaCosaNostraExit        106
+#define YakuzaEnter             107
+#define YakuzaExit              108
+#define MAX_PICK 				109
 
 enum PickupInfo
 {
@@ -2492,6 +2500,8 @@ public OnGameModeInit()
 	FractionColor[Fraction_Bikers] = PlayerColors[91];
 	FractionColor[Fraction_FarmOfTruth] = PlayerColors[33];
     FractionColor[Fraction_RussiaMafia] = PlayerColors[6];
+    FractionColor[Fraction_LaCosaNostra] = PlayerColors[44];
+    FractionColor[Fraction_Yakuza] = PlayerColors[72];
 
 	#include <mapping/interior/spawn>
 	#include <mapping/interior/demorgan>
@@ -3143,6 +3153,22 @@ public OnPlayerSpawn(playerid)
 						SetPVarInt(playerid, "InPickup", RussiaMafiaEnter+1);
 						SetPlayerPosition(playerid, -226.3535,1409.7509,27.7734,180.3660, 5, 18);
 						GivePlayerGun(playerid, 5, 1);
+                        GivePlayerGun(playerid, 30, 300);
+                        GivePlayerGun(playerid, 24, 150);
+					}
+                    case Fraction_LaCosaNostra:
+					{
+						SetPVarInt(playerid, "InPickup", LaCosaNostraEnter+1);
+						SetPlayerPosition(playerid, 149.5617,1372.2145,1083.8594,117.3625, 1, 5);
+						GivePlayerGun(playerid, 15, 1);
+                        GivePlayerGun(playerid, 30, 300);
+                        GivePlayerGun(playerid, 24, 150);
+					}
+                    case Fraction_Yakuza:
+					{
+						SetPVarInt(playerid, "InPickup", YakuzaEnter+1);
+						SetPlayerPosition(playerid, -2161.7471,645.5548,1057.5861,128.3213, 3, 1);
+						GivePlayerGun(playerid, 8, 1);
                         GivePlayerGun(playerid, 30, 300);
                         GivePlayerGun(playerid, 24, 150);
 					}
@@ -4646,6 +4672,22 @@ public LoadFractionInfo()
 					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, -218.3894,1401.8822,27.7734, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 5, 18);
 					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-218.3894,1401.8822,27.7734, 5.0, 5, 18);
 					CreateDynamicPickup(1279, 1, -218.3894,1401.8822,27.7734, 5, 18);
+					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
+					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
+				}
+                case Fraction_LaCosaNostra:
+				{
+					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, 147.6701,1367.2035,1083.8594, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0,  1, 5);
+					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(147.6701,1367.2035,1083.8594, 5.0, 1, 5);
+					CreateDynamicPickup(1279, 1, 147.6701,1367.2035,1083.8594, 1, 5);
+					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
+					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
+				}
+                case Fraction_Yakuza:
+				{
+					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, -2160.1130,639.0449,1057.5861, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0,  3, 1);
+					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-2160.1130,639.0449,1057.5861, 5.0, 3, 1);
+					CreateDynamicPickup(1279, 1, -2160.1130,639.0449,1057.5861, 3, 1);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
 				}
@@ -24650,7 +24692,7 @@ stock IsABand(FractionID)
 
 stock IsAMafia(FractionID)
 {
-    if(FractionID == Fraction_RussiaMafia) return true;
+    if(FractionID == Fraction_RussiaMafia || FractionID == Fraction_LaCosaNostra || FractionID == Fraction_Yakuza) return true;
     else return false;
 }
 
@@ -29083,6 +29125,50 @@ stock CreatePickups()
 	Pickups[RussiaMafiaEnter][PickTpPickID] = RussiaMafiaExit;
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[RussiaMafiaEnter][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[RussiaMafiaEnter][PickAreaID],  E_STREAMER_INDX, RussiaMafiaEnter);
+
+    Pickups[LaCosaNostraExit][PickJob] = Job_None;
+	Pickups[LaCosaNostraExit][PickFraction] = Fraction_None;
+	Pickups[LaCosaNostraExit][PickID] = CreateDynamicPickup(1318, 1, 140.2926,1365.9287,1083.8594, 1, 5);
+	Pickups[LaCosaNostraExit][PickAreaID] = CreateDynamicSphere(140.2926,1365.9287,1083.8594, 2.0, 1, 5);
+	Pickups[LaCosaNostraExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 140.2926,1365.9287,1083.8594+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 5);
+	Pickups[LaCosaNostraExit][PickAngle] = 7.6772;
+	Pickups[LaCosaNostraExit][IsPickTP] = true;
+	Pickups[LaCosaNostraExit][PickTpPickID] = LaCosaNostraEnter;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[LaCosaNostraExit][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[LaCosaNostraExit][PickAreaID],  E_STREAMER_INDX, LaCosaNostraExit);
+
+	Pickups[LaCosaNostraEnter][PickJob] = Job_None;
+	Pickups[LaCosaNostraEnter][PickFraction] = Fraction_LaCosaNostra;
+	Pickups[LaCosaNostraEnter][PickID] = CreateDynamicPickup(1318, 1,1456.1329,2773.3433,10.8203, 0, 0);
+	Pickups[LaCosaNostraEnter][PickAreaID] = CreateDynamicSphere(1456.1329,2773.3433,10.8203, 2.0, 0, 0);
+	Pickups[LaCosaNostraEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 1456.1329,2773.3433,10.8203+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[LaCosaNostraEnter][PickAngle] = 251.8455;
+	Pickups[LaCosaNostraEnter][IsPickTP] = true;
+	Pickups[LaCosaNostraEnter][PickTpPickID] = LaCosaNostraExit;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[LaCosaNostraEnter][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[LaCosaNostraEnter][PickAreaID],  E_STREAMER_INDX, LaCosaNostraEnter);
+
+    Pickups[YakuzaExit][PickJob] = Job_None;
+	Pickups[YakuzaExit][PickFraction] = Fraction_None;
+	Pickups[YakuzaExit][PickID] = CreateDynamicPickup(1318, 1, -2158.6958,643.1111,1052.3750, 3, 1);
+	Pickups[YakuzaExit][PickAreaID] = CreateDynamicSphere(-2158.6958,643.1111,1052.3750, 2.0, 3, 1);
+	Pickups[YakuzaExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -2158.6958,643.1111,1052.3750+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 3, 1);
+	Pickups[YakuzaExit][PickAngle] = 187.4092;
+	Pickups[YakuzaExit][IsPickTP] = true;
+	Pickups[YakuzaExit][PickTpPickID] = YakuzaEnter;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[YakuzaExit][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[YakuzaExit][PickAreaID],  E_STREAMER_INDX, YakuzaExit);
+
+	Pickups[YakuzaEnter][PickJob] = Job_None;
+	Pickups[YakuzaEnter][PickFraction] = Fraction_Yakuza;
+	Pickups[YakuzaEnter][PickID] = CreateDynamicPickup(1318, 1,-2172.4546,679.9202,55.1614, 0, 0);
+	Pickups[YakuzaEnter][PickAreaID] = CreateDynamicSphere(-2172.4546,679.9202,55.1614, 2.0, 0, 0);
+	Pickups[YakuzaEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -2172.4546,679.9202,55.1614+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[YakuzaEnter][PickAngle] = 97.4114;
+	Pickups[YakuzaEnter][IsPickTP] = true;
+	Pickups[YakuzaEnter][PickTpPickID] = YakuzaExit;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[YakuzaEnter][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[YakuzaEnter][PickAreaID],  E_STREAMER_INDX, YakuzaEnter);
 	return 1;
 }
 
