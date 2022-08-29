@@ -1074,8 +1074,10 @@ new BusinessType[][BusinessTypeInfo] = {
 };
 
 #define Business_World		5000
-
 #define MAX_BUSINESS	301
+#define Thief_Status_None       0
+#define Thief_Status_Capture    1
+#define Thief_Status_Looting    2
 enum BusinessInfo
 {
 	bID,
@@ -1108,8 +1110,12 @@ enum BusinessInfo
 	bCarPickup,
 	bCarArea,
 	Text3D:bCarText,
+    bThiefStatus,
+    bThiefTimer,
+    bThiefCount
 };
 new bInfo[MAX_BUSINESS][BusinessInfo];
+new Iterator:Business<MAX_BUSINESS>;
 stock ClearBusiness(BusinessID)
 {
 	bInfo[BusinessID][bID] = 0;
@@ -1171,6 +1177,10 @@ stock ClearBusiness(BusinessID)
 		if(bInfo[BusinessID][bActor][i] && IsValidDynamicActor(bInfo[BusinessID][bActor][i])) DestroyDynamicActor(bInfo[BusinessID][bActor][i]);
 		bInfo[BusinessID][bActor][i] = 0;
 	}
+
+    bInfo[BusinessID][bThiefStatus] = Thief_Status_None;
+    bInfo[BusinessID][bThiefTimer] = 0;
+    bInfo[BusinessID][bThiefCount] = 0;
 	return 1;
 }
 //////////House/////////////////
@@ -4226,6 +4236,7 @@ public LoadBusiness()
 			new indx;
 			cache_get_value_name_int(i, "ID", indx);
 			bInfo[indx][bID] = indx;
+            Iter_Add(Business, indx);
 			new bool:CheckNull;
 			cache_is_value_name_null(i, "OwnerID", CheckNull);
 			if(CheckNull) bInfo[indx][bOwnerID] = 0;
@@ -5703,6 +5714,8 @@ public ReloadBusiness()
 	mysql_format(DB, query, sizeof(query), "ALTER TABLE `business` AUTO_INCREMENT = %d", row+1);
 	mysql_tquery(DB, query);
 
+    Iter_Clear(Business);
+
 	mysql_tquery(DB, "SELECT * FROM `business`", "LoadBusiness");
 
 	foreach(new i: Player)
@@ -5715,18 +5728,11 @@ public ReloadBusiness()
 	return 1;
 }
 
-stock BusinessCount()
-{
-	new count = 0;
-	for(new i = 0; i < sizeof(bInfo); i++) if(bInfo[i][bID]) count++;
-	return count;
-}
-
 stock ShowBusinessList(playerid, Type) //Type = 1 GPS || Type = 2 CreateVehicle || Type = 3 TP
 {
 	new str[1500];
 	new List = GetPVarInt(playerid, "Business_List");
-	new count = BusinessCount();
+	new count = Iter_Count(Business);
 	if(!count) return SendClientMessage(playerid, -1, Color_Grey"Бизнесы отсутствуют.");
 	for(new i = (10*List)-9; i <= 10*List; i++)
 	{
@@ -6264,7 +6270,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 					return 1;
 				}
 			}
-			for(new i = 1; i < sizeof(bInfo); i++)
+            foreach(new i:Business)
 			{
 				if(!bInfo[i][bID]) continue;
 				if(IsPlayerInDynamicArea(playerid, bInfo[i][bArea]) && BusinessType[bInfo[i][bType]][bInt])
@@ -6272,7 +6278,10 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 					if(bInfo[i][bType] == BusinessCasinoBeginner && pInfo[playerid][pLevel] < 3) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Войти в это казино можно только с 3 уровня");
 					else if(bInfo[i][bType] == BusinessCasinoCaligula && pInfo[playerid][pLevel] < 10) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Войти в это казино можно только с 10 уровня");
 					else if(bInfo[i][bType] == BusinessCasinoFourDragons && pInfo[playerid][pLevel] < 15) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Войти в это казино можно только с 15 уровня");
-					SetPVarInt(playerid, "InBusiness", bInfo[i][bID]);
+
+                    if(bInfo[i][bThiefStatus] != Thief_Status_None) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"На данный момент этот бизнес грабят. Двери закрыты");
+
+                    SetPVarInt(playerid, "InBusiness", bInfo[i][bID]);
 					SetPlayerPosition(playerid, BusinessType[bInfo[i][bType]][bIntX], BusinessType[bInfo[i][bType]][bIntY], BusinessType[bInfo[i][bType]][bIntZ], BusinessType[bInfo[i][bType]][bIntA], Business_World+bInfo[i][bID], BusinessType[bInfo[i][bType]][bInt]);
 					return 1;
 				}
@@ -6645,7 +6654,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 				}
 			}
 
-			for(new i = 1; i < sizeof(bInfo); i++)
+			foreach(new i:Business)
 			{
 				if(!bInfo[i][bID]) continue;
 				if(IsPlayerInDynamicArea(playerid, bInfo[i][bCarArea]))
@@ -10138,7 +10147,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				return pc_cmd_gps(playerid, "");
 			}
 
-			new count = BusinessCount();
+			new count = Iter_Count(Business);
 			new ListCount = count/10;
 			new NextButton = 10;
 			if(GetPVarInt(playerid, "Business_List") > ListCount) NextButton = (count%10);
@@ -10381,7 +10390,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			if(!vehicleid) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны находится в машине которая редактируется");
 			if(!vInfo[vehicleid][vEdit]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта машина не редактировалась");
 
-			new count = BusinessCount();
+			new count = Iter_Count(Business);
 			new ListCount = count/10;
 			new NextButton = 10;
 			if(GetPVarInt(playerid, "Business_List") > ListCount) NextButton = (count%10);
@@ -11293,16 +11302,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			if(!strlen(inputtext)) ShowDialog(playerid, D_CreateBusiness_Price, DIALOG_STYLE_INPUT, Main_Color"Цена бизнеса", Color_White"Введите стоимость бизнеса\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Закрыть");
 			if(strval(inputtext) < 0) ShowDialog(playerid, D_CreateBusiness_Price, DIALOG_STYLE_INPUT, Main_Color"Цена бизнеса", Color_White"Введите стоимость бизнеса\n"Color_Red"Цена не может быть меньше 0", Color_White"Далее", Color_White"Закрыть");
 
-			new BusinessID = 0;
-			for(new i = 1; i < sizeof(bInfo); i++)
-			{
-				if(!bInfo[i][bID])
-				{
-					BusinessID = i;
-					break;
-				}
-			}
-			if(!BusinessID)
+			if(Iter_Count(Business) >= MAX_BUSINESS)
 			{
 				DeletePVar(playerid, "BusinessX");
 				DeletePVar(playerid, "BusinessY");
@@ -11314,6 +11314,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"На данный момент создано максимальное количество бизнесов.");
 				return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Обратитесь к тех.администрации");
 			}
+
+            new BusinessID = Iter_Free(Business);
 			ClearBusiness(BusinessID);
 
 			bInfo[BusinessID][bPrice] = strval(inputtext);
@@ -13312,7 +13314,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 		case D_TP_Business:
 		{
 			if(!response) return DeletePVar(playerid, "Business_List");
-			new count = BusinessCount();
+			new count = Iter_Count(Business);
 			new ListCount = count/10;
 			new NextButton = 10;
 			if(GetPVarInt(playerid, "Business_List") > ListCount) NextButton = (count%10);
@@ -15420,7 +15422,7 @@ CMD:robbery(playerid)
 	if(GetPlayerState(playerid) != PLAYER_STATE_DRIVER) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть за рулем");
 
     new BusinessID = -1;
-    for(new i = 1; i < sizeof(bInfo); i++)
+    foreach(new i:Business)
     {
         if(!bInfo[i][bID]) continue;
         if(bInfo[i][bType] == BusinessBankFillial || bInfo[i][bType] == BusinessGeneralStore1 || bInfo[i][bType] == BusinessGeneralStore2 || bInfo[i][bType] == BusinessGeneralStore3)
@@ -15442,6 +15444,16 @@ CMD:robbery(playerid)
         return SendClientMessage(playerid, -1, str);
     }
 
+    new str[150];
+    format(str, sizeof(str), "В бизнесе %s №%d сработала тревожная кнопка. Для того чтобы отметить место на радаре введите /alarm", BusinessType[bInfo[BusinessID][bType]][bName], bInfo[BusinessID][bID]);
+    SendRMessageEx(Fraction_FBI,str);
+    SendRMessageEx(Fraction_Army, str);
+    SendRMessageEx(Fraction_Police, str);
+
+    format(str, sizeof(str), "Ваша банда начала захват бизнеса %s №%d вам необходимо удержать его в течении 2х минут", BusinessType[bInfo[BusinessID][bType]][bName], bInfo[BusinessID][bID]);
+    bInfo[BusinessID][bThiefStatus] = Thief_Status_Capture;
+    bInfo[BusinessID][bThiefTimer] = 120;
+    bInfo[BusinessID][bThiefCount] = 0;
     return 1;
 }
 
@@ -21237,8 +21249,7 @@ CMD:editbusiness(playerid, params[])
 	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
 	new BusinessID;
 	if(sscanf(params, "d", BusinessID)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/editbusiness [Номер бизнеса]");
-	if(BusinessID <= 0 || BusinessID >= sizeof(bInfo)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный номер бизнеса");
-	if(!bInfo[BusinessID][bID]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Такой бизнес не существует");
+	if(!Iter_Contains(Business, BusinessID)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Такой бизнес не существует");
 
 	SetPVarInt(playerid, "Business", BusinessID);
 
@@ -21259,8 +21270,7 @@ CMD:deletebusiness(playerid, params[])
 	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
 	new BusinessID;
 	if(sscanf(params, "d", BusinessID)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/deletebusiness [Номер бизнеса]");
-	if(BusinessID <= 0 || BusinessID >= sizeof(bInfo)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный номер бизнеса");
-	if(!bInfo[BusinessID][bID]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Такой бизнес не существует");
+	if(!Iter_Contains(Business, BusinessID)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Такой бизнес не существует");
 
 	new query[100];
 	mysql_format(DB, query, sizeof(query), "DELETE FROM `business` WHERE `ID` = '%d'", bInfo[BusinessID][bID]);
@@ -21285,7 +21295,7 @@ CMD:deletebusiness(playerid, params[])
 	}
 
 	new ID = bInfo[BusinessID][bID];
-	for(new i = 1; i < sizeof(bInfo); i++)
+	foreach(new i:Business)
 	{
 		if(bInfo[i][bID])
 		{
@@ -22359,7 +22369,7 @@ public GetCreateBusinessID(BusinessID, playerid)
 {
 	bInfo[BusinessID][bID] = cache_insert_id();
 	UpdateBusiness(BusinessID);
-
+    Iter_Add(Business, BusinessID);
 	SendClientMessage(playerid, -1, Main_Color"Бизнес создан. Для редактирования используйте /editbusiness");
 	return 1;
 }
@@ -23502,7 +23512,7 @@ stock PropertyTax()
 		}
 	}
 
-	for(new i = 1; i < sizeof(bInfo); i++)
+	foreach(new i:Business)
 	{
 		if(bInfo[i][bOwnerID] && bInfo[i][bTax] < gettime())
 		{
@@ -25672,7 +25682,7 @@ stock SaveBusinessNull(BusinessID, const ColumnName[])
 stock GiveCompanyPay(playerid, BusinessTypes, money)
 {
 	new Float:dist, BusinessID = 0;
-	for(new i = 1; i < sizeof(bInfo); i++)
+	foreach(new i:Business)
 	{
 		if(bInfo[i][bType] == BusinessTypes && bInfo[i][bOwnerID])
 		{
