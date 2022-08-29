@@ -1,0 +1,28 @@
+	// Модер-мост
+	vw = 0, int = 0;
+	CreateDynamicObject(18450,-834.063,-1130.277,97.441,0.0,0.0,-11.250,vw,int);
+    CreateDynamicObject(18450,-755.933,-1145.827,93.256,0.0,6.016,-11.250,vw,int);
+    CreateDynamicObject(18450,-678.051,-1161.307,84.875,0.0,6.016,-11.250,vw,int);
+    CreateDynamicObject(18450,-601.952,-1180.660,76.504,0.0,6.016,-17.343,vw,int);
+    CreateDynamicObject(18450,-528.311,-1208.009,68.149,0.0,6.016,-23.437,vw,int);
+    CreateDynamicObject(18450,-455.815,-1240.071,59.773,0.0,6.016,-24.296,vw,int);
+    CreateDynamicObject(18450,-383.815,-1272.570,48.425,0.0,10.313,-24.296,vw,int);
+    CreateDynamicObject(18450,-313.372,-1305.655,34.265,0.0,10.313,-26.015,vw,int);
+    CreateDynamicObject(18450,-244.138,-1341.389,20.061,0.0,10.313,-28.593,vw,int);
+    CreateDynamicObject(18450,-175.528,-1378.789,3.413,0.0,13.751,-28.593,vw,int);
+    CreateDynamicObject(3330,-213.691,-1357.306,2.686,-1.719,0.0,56.250,vw,int);
+    CreateDynamicObject(3330,-278.795,-1322.527,16.727,0.0,0.0,-112.500,vw,int);
+    CreateDynamicObject(3330,-353.220,-1285.911,31.430,0.0,0.0,67.500,vw,int);
+    CreateDynamicObject(3330,-456.263,-1239.460,48.516,0.0,0.0,67.500,vw,int);
+    CreateDynamicObject(3330,-607.673,-1178.856,65.833,0.0,0.0,67.500,vw,int);
+    CreateDynamicObject(3330,-720.197,-1152.124,78.515,0.0,0.0,-112.500,vw,int);
+    CreateDynamicObject(3330,-797.012,-1137.473,87.149,0.0,0.0,-90.000,vw,int);
+    CreateDynamicObject(1290,-209.400,-1360.250,19.240,0.0,0.0,61.407,vw,int);
+    CreateDynamicObject(1290,-277.837,-1323.018,33.356,0.0,0.0,61.407,vw,int);
+    CreateDynamicObject(1290,-347.975,-1288.736,47.555,0.0,0.0,61.407,vw,int);
+    CreateDynamicObject(1290,-419.642,-1256.352,61.877,0.0,0.0,61.407,vw,int);
+    CreateDynamicObject(1290,-491.717,-1223.823,70.172,0.0,0.0,61.407,vw,int);
+    CreateDynamicObject(1290,-564.136,-1192.544,78.605,0.0,0.0,72.657,vw,int);
+    CreateDynamicObject(1290,-639.058,-1169.113,86.848,0.0,0.0,83.907,vw,int);
+    CreateDynamicObject(1290,-716.893,-1153.595,95.312,0.0,0.0,83.907,vw,int);
+    CreateDynamicObject(1290,-794.353,-1138.206,103.650,0.0,0.0,83.907,vw,int);
