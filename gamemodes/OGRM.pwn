@@ -956,6 +956,9 @@ enum FractionWareInfo
 };
 new FractionWare[MAX_FRACTION][FractionWareInfo];
 ////////////////////////////////
+//////////Thief/////////////////
+new FractionThiefCD[MAX_FRACTION] = {0, ...};
+////////////////////////////////
 //////////Gang War//////////////
 
 enum GangWarZoneInfo
@@ -2870,10 +2873,11 @@ public OnPlayerDisconnect(playerid, reason)
 }
 
 
-#define PLAYER_SYNC	207
+#define PLAYER_SYNC	    207
+#define SPECTATING_SYNC 212
 public OnIncomingPacket(playerid, packetid, BitStream:bs)
 {
-	if(packetid == PLAYER_SYNC)
+    if(packetid == PLAYER_SYNC)
 	{
 		new onFootData[PR_OnFootSync];
 
@@ -2895,10 +2899,10 @@ public OnIncomingPacket(playerid, packetid, BitStream:bs)
 	return 1;
 }
 
-/*#define PLAYER_DEATH 53
+/* #define PLAYER_DEATH 53
+#define PLAYER_SPAWN 52
 public OnIncomingRPC(playerid, rpcid, BitStream:bs)
 {
-	if(rpcid == PLAYER_DEATH)
 	{
 		if(GetPVarInt(playerid, "PlayerKnockoutStatus") == Player_No_Knockout)
 	    {
@@ -2913,7 +2917,7 @@ public OnIncomingRPC(playerid, rpcid, BitStream:bs)
 	    }
 	}
 	return 1;
-}*/
+} */
 
 stock KnockoutPlayer(playerid)
 {
@@ -4532,6 +4536,7 @@ public LoadFractionInfo()
 			cache_get_value_name_int(i, "FractionMoney", FractionWare[indx][FractionWareMoney]);
 			cache_get_value_name_int(i, "FractionMaterials", FractionWare[indx][FractionWareMaterials]);
 			cache_get_value_name_int(i, "FractionDrugs", FractionWare[indx][FractionWareDrugs]);
+            cache_get_value_name_int(i, "Thief_CD", FractionThiefCD[indx]);
 
 			switch(indx)
 			{
@@ -15361,8 +15366,7 @@ CMD:robbery(playerid)
     new vehicleid = GetPlayerVehicleID(playerid);
 
 	if(!vehicleid || vInfo[vehicleid][vType] != VehicleTypeFraction || vInfo[vehicleid][vOwner] != pInfo[playerid][pMembers]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть в транспорте вашей организации");
-
-	else if(IsABand(pInfo[playerid][pMembers]) && vInfo[vehicleid][vModel] != 482) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть в грузовике");
+	if( vInfo[vehicleid][vModel] != 482) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть в грузовике");
 	if(GetPlayerState(playerid) != PLAYER_STATE_DRIVER) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть за рулем");
 
     new BusinessID = -1;
@@ -15381,7 +15385,12 @@ CMD:robbery(playerid)
 
     if(BusinessID == -1) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны находится возле отделения банка либо магазина General Store");
 
-
+    if(FractionThiefCD[pInfo[playerid][pMembers]] > gettime())
+    {
+        new str[150];
+        format(str, sizeof(str), Color_Grey"Ваша банда уже проводила ограбление недавно. Вы снова сможете грабить "Color_Red"%s", date(FractionThiefCD[pInfo[playerid][pMembers]], 3, "%dd.%mm.%yyyy %hh:%ii"));
+        return SendClientMessage(playerid, -1, str);
+    }
 
     return 1;
 }
