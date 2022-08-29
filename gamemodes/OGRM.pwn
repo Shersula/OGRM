@@ -15,12 +15,6 @@
 #include <Pawn.RakNet>
 #include <mapping/mapfix>
 
-<<<<<<< HEAD
-ffggggggggg
-=======
-243
->>>>>>> 03e05c8116f65ba3b15b8aa6cc901e7410dd0276
-
 #define E_STREAMER_CUSTOM(%0) ((%0) | 0x40000000 & ~0x80000000)
 #define Array_Type_Spike			1
 #define Array_Type_Pickups			2
