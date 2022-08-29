@@ -1,4 +1,4 @@
- #include <a_samp>
+#include <a_samp>
 #include <crashdetect>
 #include <sscanf2>
 #include <nex-ac_ru.lang>
