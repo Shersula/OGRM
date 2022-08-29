@@ -15,8 +15,6 @@
 #include <Pawn.RakNet>
 #include <mapping/mapfix>
 
-test
-
 #define E_STREAMER_CUSTOM(%0) ((%0) | 0x40000000 & ~0x80000000)
 #define Array_Type_Spike			1
 #define Array_Type_Pickups			2
@@ -15350,6 +15348,40 @@ CMD:main(playerid)
 	return 1;
 }
 alias:main("mm", "menu");
+
+CMD:robbery(playerid)
+{
+    if(!IsABand(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам");
+    if(pInfo[playerid][pRank] < 3) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно с 3 ранга");
+    if(GetPlayerVirtualWorld(playerid) || GetPlayerInterior(playerid)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только на улице");
+
+    new vehicleid = GetPlayerVehicleID(playerid);
+
+	if(!vehicleid || vInfo[vehicleid][vType] != VehicleTypeFraction || vInfo[vehicleid][vOwner] != pInfo[playerid][pMembers]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть в транспорте вашей организации");
+
+	else if(IsABand(pInfo[playerid][pMembers]) && vInfo[vehicleid][vModel] != 482) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть в грузовике");
+	if(GetPlayerState(playerid) != PLAYER_STATE_DRIVER) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть за рулем");
+
+    new BusinessID = -1;
+    for(new i = 1; i < sizeof(bInfo); i++)
+    {
+        if(!bInfo[i][bID]) continue;
+        if(bInfo[i][bType] == BusinessBankFillial || bInfo[i][bType] == BusinessGeneralStore1 || bInfo[i][bType] == BusinessGeneralStore2 || bInfo[i][bType] == BusinessGeneralStore3)
+        {
+            if(IsPlayerInRangeOfPoint(playerid, 20.0, bInfo[i][bX], bInfo[i][bY], bInfo[i][bZ]))
+            {
+                BusinessID = i;
+                break;
+            }
+        }
+    }
+
+    if(BusinessID == -1) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны находится возле отделения банка либо магазина General Store");
+
+
+
+    return 1;
+}
 
 CMD:war(playerid)
 {
