@@ -2581,15 +2581,19 @@ public OnPlayerConnect(playerid)
 	SetPlayerColor(playerid, PlayerColors[0]);
 	SetSpawnInfo(playerid, NO_TEAM, 0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0, 0, 0);
 	TogglePlayerSpectating(playerid, true);
-	RemovePlayerObject(playerid);
-	LoadPlayerTextDraw(playerid);
-
-	mysql_format(DB, query, sizeof(query), "SELECT * FROM `ipbans` WHERE `IP` = '%s'", query);
-	mysql_tquery(DB, query, "CheckAccountIPBan", "d", playerid);
 
 	if(IsBot[playerid]) DeactivateAntiCheat(playerid);
-	else ActivateAntiCheat(playerid);
-	return 1;
+	else
+    {
+        RemovePlayerObject(playerid);
+    	LoadPlayerTextDraw(playerid);
+
+    	mysql_format(DB, query, sizeof(query), "SELECT * FROM `ipbans` WHERE `IP` = '%s'", query);
+    	mysql_tquery(DB, query, "CheckAccountIPBan", "d", playerid);
+
+        ActivateAntiCheat(playerid);
+    }
+    return 1;
 }
 
 public OnPlayerDisconnect(playerid, reason)
@@ -3146,7 +3150,6 @@ public OnPlayerSpawn(playerid)
 			}
 		}
 		SetSkin(playerid, pInfo[playerid][pSkins][pInfo[playerid][pSkin]]);
-		GiveAllGun(playerid);
 	}
 	SetCameraBehindPlayer(playerid);
 	SetColor(playerid);
