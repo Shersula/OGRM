@@ -4638,6 +4638,14 @@ public LoadFractionInfo()
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
 				}
+                case Fraction_RussiaMafia:
+				{
+					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, -218.3894,1401.8822,27.7734, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 5, 18);
+					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-218.3894,1401.8822,27.7734, 5.0, 5, 18);
+					CreateDynamicPickup(1279, 1, -218.3894,1401.8822,27.7734, 5, 18);
+					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
+					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
+				}
 			}
 		}
 
@@ -29050,7 +29058,7 @@ stock CreatePickups()
 	Pickups[RussiaMafiaExit][PickID] = CreateDynamicPickup(1318, 1, -229.2149,1401.1981,27.7656, 5, 18);
 	Pickups[RussiaMafiaExit][PickAreaID] = CreateDynamicSphere(-229.2149,1401.1981,27.7656, 2.0, 5, 18);
 	Pickups[RussiaMafiaExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -229.2149,1401.1981,27.7656+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 5, 18);
-	Pickups[RussiaMafiaExit][PickAngle] = 265.1119;
+	Pickups[RussiaMafiaExit][PickAngle] = 93.9074;
 	Pickups[RussiaMafiaExit][IsPickTP] = true;
 	Pickups[RussiaMafiaExit][PickTpPickID] = RussiaMafiaEnter;
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[RussiaMafiaExit][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
@@ -29061,7 +29069,7 @@ stock CreatePickups()
 	Pickups[RussiaMafiaEnter][PickID] = CreateDynamicPickup(1318, 1, -683.9308,939.5360,13.6328, 0, 0);
 	Pickups[RussiaMafiaEnter][PickAreaID] = CreateDynamicSphere(-683.9308,939.5360,13.6328, 2.0, 0, 0);
 	Pickups[RussiaMafiaEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -683.9308,939.5360,13.6328+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
-	Pickups[RussiaMafiaEnter][PickAngle] = 270.2953;
+	Pickups[RussiaMafiaEnter][PickAngle] = 93.9074;
 	Pickups[RussiaMafiaEnter][IsPickTP] = true;
 	Pickups[RussiaMafiaEnter][PickTpPickID] = RussiaMafiaExit;
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[RussiaMafiaEnter][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
