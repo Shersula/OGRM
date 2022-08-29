@@ -6115,7 +6115,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 						new str[100];
 						format(str, sizeof(str), Main_Color"Склад организации %s", FractionName[FractionID]);
 						if(CanUseRChat(FractionID)) ShowDialog(playerid, D_FractionWare, DIALOG_STYLE_LIST, str, Color_White"Деньги", Color_White"Далее", Color_White"Закрыть");
-						else if(IsABand(FractionID)) ShowDialog(playerid, D_FractionWare, DIALOG_STYLE_LIST, str, Color_White"Деньги\nМатериалы\nНаркотики", Color_White"Далее", Color_White"Закрыть");
+						else if(IsABand(FractionID)||IsAMafia(FractionID)) ShowDialog(playerid, D_FractionWare, DIALOG_STYLE_LIST, str, Color_White"Деньги\nМатериалы\nНаркотики", Color_White"Далее", Color_White"Закрыть");
 					}
 					case Array_Type_Gate:
 					{
@@ -24645,6 +24645,12 @@ stock IsABand(FractionID)
 	else return false;
 }
 
+stock IsAMafia(FractionID)
+{
+    if(FractionID == Fraction_RussiaMafia) return true;
+    else return false;
+}
+
 stock CanUseRChat(FractionID)
 {
 	if(IsGovFraction(FractionID) || FractionID == Fraction_Hospital || FractionID == Fraction_Taxi || FractionID == Fraction_SanNews) return true;
@@ -24653,7 +24659,7 @@ stock CanUseRChat(FractionID)
 
 stock CanUseFChat(FractionID)
 {
-	if(IsABand(FractionID)) return true;
+	if(IsABand(FractionID)||IsAMafia(FractionID)) return true;
 	else return false;
 }
 
@@ -29058,7 +29064,7 @@ stock CreatePickups()
 	Pickups[RussiaMafiaExit][PickID] = CreateDynamicPickup(1318, 1, -229.2149,1401.1981,27.7656, 5, 18);
 	Pickups[RussiaMafiaExit][PickAreaID] = CreateDynamicSphere(-229.2149,1401.1981,27.7656, 2.0, 5, 18);
 	Pickups[RussiaMafiaExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -229.2149,1401.1981,27.7656+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 5, 18);
-	Pickups[RussiaMafiaExit][PickAngle] = 93.9074;
+	Pickups[RussiaMafiaExit][PickAngle] = 265.1119;
 	Pickups[RussiaMafiaExit][IsPickTP] = true;
 	Pickups[RussiaMafiaExit][PickTpPickID] = RussiaMafiaEnter;
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[RussiaMafiaExit][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
