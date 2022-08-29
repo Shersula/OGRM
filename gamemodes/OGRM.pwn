@@ -15,12 +15,6 @@
 #include <Pawn.RakNet>
 #include <mapping/mapfix>
 
-<<<<<<< HEAD
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-=======
-YA GEY
->>>>>>> 4e8a35bebb2865fa5ba7219fbc8a4049d3560e97
-
 #define E_STREAMER_CUSTOM(%0) ((%0) | 0x40000000 & ~0x80000000)
 #define Array_Type_Spike			1
 #define Array_Type_Pickups			2
@@ -32,9 +26,6 @@ YA GEY
 #define Array_Type_Car				8
 #define E_STREAMER_ARRAY_TYPE 	E_STREAMER_CUSTOM(0xFE)
 #define E_STREAMER_INDX 		E_STREAMER_CUSTOM(0xFF)
-
-YA GEY
-
 //////////////////////COLOR////////////////////////////////////////////////////
 #define Main_Color 		"{D8816E}"
 #define Color_Blue		"{29CDDF}"
