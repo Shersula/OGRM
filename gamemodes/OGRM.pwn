@@ -7449,11 +7449,7 @@ public OnPlayerLeaveRaceCheckpoint(playerid)
 public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 {
 
-	if(GetPVarInt(playerid, "ThiefBusinessTimer"))
-	{
-		KillTimer(GetPVarInt(playerid, "ThiefBusinessTimer"));
-		DeletePVar(playerid, "ThiefBusinessTimer");
-	}
+	if(GetPVarInt(playerid, "ThiefBusiness") && GetPVarInt(playerid, "ThiefBusinessTimer") && areaid == bInfo[GetPVarInt(playerid, "ThiefBusiness")][bThiefZoneArea]) DeletePVar(playerid, "ThiefBusinessTimer");
 
 	if(GetPlayerState(playerid) == PLAYER_STATE_ONFOOT)
 	{
@@ -8450,14 +8446,10 @@ public OnPlayerLeaveDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 		}
 	}
 
-	if(GetPVarInt(playerid, "ThiefBusiness"))
+	if(GetPVarInt(playerid, "ThiefBusiness") && areaid == bInfo[GetPVarInt(playerid, "ThiefBusiness")][bThiefZoneArea])
 	{
-		new BusinessID = GetPVarInt(playerid, "ThiefBusiness");
-		if(areaid == bInfo[BusinessID][bThiefZoneArea])
-		{
-			SendClientMessage(playerid, -1, Color_Yellow"Вы покинули зону ограбления. Вернитесь назад в течении 30 секунд, иначе ограбление будет завершено");
-			SetPVarInt(playerid, "ThiefBusinessTimer", SetTimerEx("StopBusinessThiefTimer", 30000, false, "d", BusinessID));
-		}
+		SendClientMessage(playerid, -1, Color_Yellow"Вы покинули зону ограбления. Вернитесь назад в течении 30 секунд, иначе ограбление будет завершено");
+		SetPVarInt(playerid, "ThiefBusinessTimer", 30);
 	}
 
 	if(GetPlayerState(playerid) == PLAYER_STATE_DRIVER)
@@ -15815,7 +15807,7 @@ stock StartLoad(playerid, vehicleid, Type)
 	GetVehicleBootPos(vehicleid, X, Y, Z);
 
 	if(Type == Vehicle_Item_Materials) vInfo[vehicleid][vPickup] = CreateDynamicPickup(19832, 1, X, Y, Z, 0, 0);
-	else if(Type == Vehicle_Item_Materials) vInfo[vehicleid][vPickup] = CreateDynamicPickup(1550, 1, X, Y, Z, 0, 0);
+	else if(Type == Vehicle_Item_Money) vInfo[vehicleid][vPickup] = CreateDynamicPickup(1550, 1, X, Y, Z, 0, 0);
 	vInfo[vehicleid][vArea] = CreateDynamicSphere(X, Y, Z, 1.5, 0, 0);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, vInfo[vehicleid][vArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Car);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, vInfo[vehicleid][vArea],  E_STREAMER_INDX, vehicleid);
@@ -21909,23 +21901,11 @@ CMD:deletevehicle(playerid)
 
 stock KickPlayer(playerid) {SetTimerEx("KickEx", 500, false, "d", playerid);}
 
-forward StopBusinessThiefTimer(BusinessID);
-public StopBusinessThiefTimer(BusinessID)
-{
-	SendRMessage(bInfo[BusinessID][bThiefPlayer], "Ограбление завершено так как игрок начавший ограбление покинул зону ограбления.");
-	StopBusinessThief(BusinessID);
-	return 1;
-}
-
 stock StopBusinessThief(BusinessID)
 {
 	DeletePVar(bInfo[BusinessID][bThiefPlayer], "ThiefBusiness");
 
-	if(GetPVarInt(bInfo[BusinessID][bThiefPlayer], "ThiefBusinessTimer"))
-	{
-		KillTimer(GetPVarInt(bInfo[BusinessID][bThiefPlayer], "ThiefBusinessTimer"));
-		DeletePVar(bInfo[BusinessID][bThiefPlayer], "ThiefBusinessTimer");
-	}
+	if(GetPVarInt(bInfo[BusinessID][bThiefPlayer], "ThiefBusinessTimer")) DeletePVar(bInfo[BusinessID][bThiefPlayer], "ThiefBusinessTimer");
 
 	bInfo[BusinessID][bThiefStatus] = Thief_Status_None;
     bInfo[BusinessID][bThiefTimer] = 0;
@@ -24325,13 +24305,15 @@ public SecondTimer()
 
 		if(GetPVarInt(i, "BloodDonorTime"))
 		{
-			SetPVarInt(i, "BloodDonorTime", GetPVarInt(i, "BloodDonorTime")-1);
+			new BloodTime = GetPVarInt(i, "BloodDonorTime");
+			BloodTime--;
+			SetPVarInt(i, "BloodDonorTime", BloodTime);
 
 			new str[200];
-			format(str, sizeof(str), "~w~%d", GetPVarInt(i, "BloodDonorTime"));
+			format(str, sizeof(str), "~w~%d", BloodTime);
 			GameTextForPlayer(i, str, 1000, 3);
 
-			if(GetPVarInt(i, "BloodDonorTime") <= 0)
+			if(BloodTime <= 0)
 			{
 				new vehicleid = GetPlayerVehicleID(i);
 
@@ -24370,12 +24352,30 @@ public SecondTimer()
 			}
 		}
 
+		if(GetPVarInt(i, "ThiefBusinessTimer"))
+		{
+			new TheifBusinessTime = GetPVarInt(i, "ThiefBusinessTimer");
+			TheifBusinessTime--;
+			SetPVarInt(i, "ThiefBusinessTimer", TheifBusinessTime);
+			if(!TheifBusinessTime && GetPVarInt(i, "ThiefBusiness"))
+			{
+				new BusinessID = GetPVarInt(i, "ThiefBusiness");
+				SendRMessage(bInfo[BusinessID][bThiefPlayer], "Ограбление завершено так как игрок начавший ограбление покинул зону ограбления.");
+				StopBusinessThief(BusinessID);
+			}
+			new str[20];
+			format(str, sizeof(str), "~w~%d", TheifBusinessTime);
+			GameTextForPlayer(i, str, 1000, 3);
+		}
+
 		if(GetPVarInt(i, "StreetRacersTime"))
 		{
+			new StreetRacersTime = GetPVarInt(i, "StreetRacersTime");
+			StreetRacersTime--;
 			PlayerPlaySound(i, 5205, 0.0, 0.0, 0.0);
-			SetPVarInt(i, "StreetRacersTime", GetPVarInt(i, "StreetRacersTime")-1);
+			SetPVarInt(i, "StreetRacersTime", StreetRacersTime);
 
-			if(GetPVarInt(i, "StreetRacersTime") <= 0)
+			if(StreetRacersTime <= 0)
 			{
 				DeletePVar(i, "StreetRacersTime");
 				GameTextForPlayer(i, "~w~GO", 1000, 3);
@@ -24383,17 +24383,19 @@ public SecondTimer()
 			else
 			{
 				new str[20];
-				format(str, sizeof(str), "~w~%d", GetPVarInt(i, "StreetRacersTime"));
+				format(str, sizeof(str), "~w~%d", StreetRacersTime);
 				GameTextForPlayer(i, str, 1000, 3);
 			}
 		}
 
 		if(GetPVarInt(i, "HangarTime"))
 		{
+			new HangarTime = GetPVarInt(i, "HangarTime");
+			HangarTime--;
 			PlayerPlaySound(i, 5205, 0.0, 0.0, 0.0);
-			SetPVarInt(i, "HangarTime", GetPVarInt(i, "HangarTime")-1);
+			SetPVarInt(i, "HangarTime", HangarTime);
 
-			if(GetPVarInt(i, "HangarTime") <= 0)
+			if(HangarTime <= 0)
 			{
 				DeletePVar(i, "HangarTime");
 				GameTextForPlayer(i, "~w~GO", 1000, 3);
@@ -24401,20 +24403,22 @@ public SecondTimer()
 			else
 			{
 				new str[20];
-				format(str, sizeof(str), "~w~%d", GetPVarInt(i, "HangarTime"));
+				format(str, sizeof(str), "~w~%d", HangarTime);
 				GameTextForPlayer(i, str, 1000, 3);
 			}
 		}
 
 		if(GetPVarInt(i, "SpermDonorTime"))
 		{
-			SetPVarInt(i, "SpermDonorTime", GetPVarInt(i, "SpermDonorTime")-1);
+			new SpermDonorTime = GetPVarInt(i, "SpermDonorTime");
+			SpermDonorTime--;
+			SetPVarInt(i, "SpermDonorTime", SpermDonorTime);
 
 			new str[20];
-			format(str, sizeof(str), "~w~%d", GetPVarInt(i, "SpermDonorTime"));
+			format(str, sizeof(str), "~w~%d", SpermDonorTime);
 			GameTextForPlayer(i, str, 1000, 3);
 
-			if(GetPVarInt(i, "SpermDonorTime") <= 0)
+			if(SpermDonorTime <= 0)
 			{
 				DeletePVar(i, "SpermDonorTime");
 				DeletePVar(i, "DisableTextAnim");
