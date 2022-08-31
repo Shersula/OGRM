@@ -2240,11 +2240,8 @@ enum PlayerInfo
 	bool:pMask,
 	pStashDrugs,
 	pStashMaterials,
-<<<<<<< HEAD
-	pKnockoutStatus
-=======
+	pKnockoutStatus,
 	bool:pStealSkin
->>>>>>> 500aca5e586295ed565181ab09d676da32f005ff
 };
 new pInfo[MAX_PLAYERS][PlayerInfo];
 #define MAX_ADMINS  100
@@ -2344,11 +2341,8 @@ stock ClearAccount(playerid)
 	pInfo[playerid][pMask] = false;
 	pInfo[playerid][pStashDrugs] = 0;
 	pInfo[playerid][pStashMaterials] = 0;
-<<<<<<< HEAD
 	pInfo[playerid][pKnockoutStatus] = Player_No_Knockout;
-=======
 	pInfo[playerid][pStealSkin] = false;
->>>>>>> 500aca5e586295ed565181ab09d676da32f005ff
 	UnloadHouseVehicle(playerid);
 
     if(Iter_Contains(Admins, playerid)) Iter_Remove(Admins, playerid);
@@ -15500,14 +15494,10 @@ CMD:main(playerid)
 }
 alias:main("mm", "menu");
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 CMD:stealdress(playerid)
 {
 
-=======
-=======
->>>>>>> f314285b3fab484a3525c4e4af5cf5ab35459f90
+}
 CMD:robbery(playerid)
 {
     if(!IsABand(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам");
@@ -15561,10 +15551,6 @@ CMD:robbery(playerid)
 	bInfo[BusinessID][bThiefPlayer] = playerid;
 	SetPVarInt(playerid, "ThiefBusiness", BusinessID);
     return 1;
-<<<<<<< HEAD
->>>>>>> f314285b3fab484a3525c4e4af5cf5ab35459f90
-=======
->>>>>>> f314285b3fab484a3525c4e4af5cf5ab35459f90
 }
 
 CMD:war(playerid)
@@ -16849,7 +16835,6 @@ CMD:uninvite(playerid, params[])
 
 	format(str, sizeof(str), Main_Color"%s %s "Color_White"выгнал вас из организации по причине: "Main_Color"%s", FractionRankName[pInfo[playerid][pMembers]][pInfo[playerid][pRank]], pInfo[playerid][pName], message);
 	SendClientMessage(id, -1, str);
-<<<<<<< HEAD
 
 	str[0] = EOS;
 	GetPlayerIp(playerid, str, 16);
@@ -16861,19 +16846,6 @@ CMD:uninvite(playerid, params[])
 	return 1;
 }
 
-=======
-
-	str[0] = EOS;
-	GetPlayerIp(playerid, str, 16);
-	new SubStr[20];
-	GetPlayerIp(id, SubStr, 16);
-	format(str, sizeof(str), "(IP: %s | RegIP: %s) выгнал %s (IP: %s | RegIP: %s) из организации %s по причине: %s", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp], FractionName[pInfo[playerid][pMembers]], message);
-
-	AddLog(LogTypeFraction, pInfo[playerid][pID], str);
-	return 1;
-}
-
->>>>>>> f314285b3fab484a3525c4e4af5cf5ab35459f90
 stock UninvitePlayer(playerid)
 {
 	new members = pInfo[playerid][pMembers];
