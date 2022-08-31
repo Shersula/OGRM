@@ -932,7 +932,7 @@ Notes:
 	the data.
 \*----------------------------------------------------------------------------*/
 
-stock Iter_FreeInternal(array[], size)
+stock Iter_FreeInternal(const array[], size)
 {
 	for (new i = 0; i != size; ++i)
 	{
