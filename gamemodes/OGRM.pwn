@@ -1531,7 +1531,8 @@ new Actors[ActorsInfo];*/
 #define GateHospitalFive	11
 #define GateTaxiFirst		12
 #define GateStreetRacers    13
-#define MAX_GATE 			14
+#define GateYakuza			14
+#define MAX_GATE 			15
 enum GateInfo
 {
 	GateID,
@@ -26841,6 +26842,9 @@ stock RemovePlayerObject(playerid)
 	RemoveBuildingForPlayer(playerid, 985, 2497.4063, 2777.0703, 11.5313, 0.25);
 	RemoveBuildingForPlayer(playerid, 986, 2497.4063, 2769.1094, 11.5313, 0.25);
 	////////////////////
+	//Ворота Yakuza
+	RemoveBuildingForPlayer(playerid, 3036, -2179.35352, 661.22162, 50.21000, 200.25);
+	////////////////////
 	//Spawn
 	RemoveBuildingForPlayer(playerid, 18520, -2224.7109, -2288.4375, 29.6172, 0.25);
 	RemoveBuildingForPlayer(playerid, 18521, -2213.9688, -2295.9609, 29.6172, 0.25);
@@ -28086,6 +28090,18 @@ stock CreateGates()
 	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White"H"Main_Color"]\n\
 	"Color_White"или "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateStreetRacers][GateClose][0], Gate[GateStreetRacers][GateClose][1]-6.0, Gate[GateStreetRacers][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Gate[GateStreetRacers][GateStatus] = false;
+
+	Gate[GateYakuza][GateFraction] = Fraction_Yakuza;
+	Gate[GateYakuza][GateClose] = Float:{-2179.3508, 661.2209, 50.1697, 0.0, 0.0, 0.0};
+	Gate[GateYakuza][GateOpen] = Float:{-2183.8598, 661.2209, 50.1697, 0.0, 0.0, 0.0};
+	Gate[GateYakuza][GateSpeed] = 2;
+	Gate[GateYakuza][GateID] = CreateDynamicObject(3036, Gate[GateYakuza][GateClose][0], Gate[GateYakuza][GateClose][1], Gate[GateYakuza][GateClose][2], Gate[GateYakuza][GateClose][3], Gate[GateYakuza][GateClose][4], Gate[GateYakuza][GateClose][5], 0, 0);
+	Gate[GateYakuza][GateArea] = CreateDynamicSphere(Gate[GateYakuza][GateClose][0]+2.3, Gate[GateYakuza][GateClose][1], Gate[GateYakuza][GateClose][2], 5.0, 0, 0);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateYakuza][GateArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Gate);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateYakuza][GateArea],  E_STREAMER_INDX, GateYakuza);
+	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White"H"Main_Color"]\n\
+	"Color_White"или "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateYakuza][GateClose][0]+2.3, Gate[GateYakuza][GateClose][1], Gate[GateYakuza][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Gate[GateYakuza][GateStatus] = false;
 }
 
 forward CloseGate(GatesID);
