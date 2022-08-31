@@ -2240,11 +2240,8 @@ enum PlayerInfo
 	bool:pMask,
 	pStashDrugs,
 	pStashMaterials,
-<<<<<<< HEAD
-	pKnockoutStatus
-=======
+	pKnockoutStatus,
 	bool:pStealSkin
->>>>>>> 500aca5e586295ed565181ab09d676da32f005ff
 };
 new pInfo[MAX_PLAYERS][PlayerInfo];
 #define MAX_ADMINS  100
@@ -2344,11 +2341,8 @@ stock ClearAccount(playerid)
 	pInfo[playerid][pMask] = false;
 	pInfo[playerid][pStashDrugs] = 0;
 	pInfo[playerid][pStashMaterials] = 0;
-<<<<<<< HEAD
 	pInfo[playerid][pKnockoutStatus] = Player_No_Knockout;
-=======
 	pInfo[playerid][pStealSkin] = false;
->>>>>>> 500aca5e586295ed565181ab09d676da32f005ff
 	UnloadHouseVehicle(playerid);
 
     if(Iter_Contains(Admins, playerid)) Iter_Remove(Admins, playerid);
@@ -15500,11 +15494,10 @@ CMD:main(playerid)
 }
 alias:main("mm", "menu");
 
-<<<<<<< HEAD
 CMD:stealdress(playerid)
 {
 
-=======
+}
 CMD:robbery(playerid)
 {
     if(!IsABand(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам");
@@ -15558,7 +15551,6 @@ CMD:robbery(playerid)
 	bInfo[BusinessID][bThiefPlayer] = playerid;
 	SetPVarInt(playerid, "ThiefBusiness", BusinessID);
     return 1;
->>>>>>> f314285b3fab484a3525c4e4af5cf5ab35459f90
 }
 
 CMD:war(playerid)
