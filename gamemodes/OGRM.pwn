@@ -13427,8 +13427,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				SavePlayerInt(id, "SpawnChange", pInfo[id][pSpawnChange]);
 				SetColor(id);
 
-				if(pInfo[id][pGender]) SetPlayerSkin(id, FractionSkinFemale[pInfo[id][pMembers]][pInfo[id][pRank]]);
-				else SetPlayerSkin(id, FractionSkinMale[pInfo[id][pMembers]][pInfo[id][pRank]]);
+				if(pInfo[id][pGender]) SetSkin(id, FractionSkinFemale[pInfo[id][pMembers]][pInfo[id][pRank]]);
+				else SetSkin(id, FractionSkinMale[pInfo[id][pMembers]][pInfo[id][pRank]]);
 
 				if(pInfo[id][pJob] == Job_Lawyer && pInfo[id][pMembers] != Fraction_None && IsGovFraction(pInfo[id][pMembers])) ChangePlayerJob(id, Job_None);
 
@@ -13456,8 +13456,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			SavePlayerInt(playerid, "SpawnChange", pInfo[playerid][pSpawnChange]);
 			SetColor(playerid);
 
-			if(pInfo[playerid][pGender]) SetPlayerSkin(playerid, FractionSkinFemale[pInfo[playerid][pMembers]][pInfo[playerid][pRank]]);
-			else SetPlayerSkin(playerid, FractionSkinMale[pInfo[playerid][pMembers]][pInfo[playerid][pRank]]);
+			if(pInfo[playerid][pGender]) SetSkin(playerid, FractionSkinFemale[pInfo[playerid][pMembers]][pInfo[playerid][pRank]]);
+			else SetSkin(playerid, FractionSkinMale[pInfo[playerid][pMembers]][pInfo[playerid][pRank]]);
 
 			if(pInfo[playerid][pJob] == Job_Lawyer && pInfo[playerid][pMembers] != Fraction_None && IsGovFraction(pInfo[playerid][pMembers])) ChangePlayerJob(playerid, Job_None);
 
@@ -16812,8 +16812,8 @@ CMD:giverank(playerid, params[])
 	SavePlayerInt(id, "Rank", pInfo[id][pRank]);
 	SetColor(id);
 
-	if(pInfo[id][pGender]) SetPlayerSkin(id, FractionSkinFemale[pInfo[id][pMembers]][pInfo[id][pRank]]);
-	else SetPlayerSkin(id, FractionSkinMale[pInfo[id][pMembers]][pInfo[id][pRank]]);
+	if(pInfo[id][pGender]) SetSkin(id, FractionSkinFemale[pInfo[id][pMembers]][pInfo[id][pRank]]);
+	else SetSkin(id, FractionSkinMale[pInfo[id][pMembers]][pInfo[id][pRank]]);
 
 	return 1;
 }
