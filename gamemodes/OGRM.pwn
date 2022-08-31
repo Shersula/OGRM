@@ -15615,6 +15615,7 @@ alias:main("mm", "menu");
 
 CMD:stealdress(playerid, params[])
 {
+	if(!IsABand(pInfo[playerid][pMembers]) && !IsAMafia(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам");
 	new id;
 	if(sscanf(params, "d", id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/stealdress [ID]");
 	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
@@ -15630,6 +15631,7 @@ CMD:stealdress(playerid, params[])
 	pInfo[id][pStealSkin] = true;
 	SavePlayerBool(id, "StealSkin", pInfo[id][pStealSkin]);
 	SetSkin(id, pInfo[id][pSkins][pInfo[id][pSkin]]);
+	ProxDetector(playerid, MESSAGE_DIST, BitColor_Me, "украл(а) одежду");
 	return 1;
 }
 
@@ -25832,6 +25834,7 @@ stock UsePlayerInventory(playerid, ItemsID, Count = 1)
 			pInfo[playerid][pStealSkin] = false;
 			SavePlayerBool(playerid, "StealDress", pInfo[playerid][pStealSkin]);
 			SetSkin(playerid, pInfo[playerid][pSkins][pInfo[playerid][pSkin]]);
+			RemovePlayerInventory(playerid, ItemsID);
 			SendClientMessage(playerid, -1, Color_White"Вы вернули свою одежду");
 		}
 		default:
