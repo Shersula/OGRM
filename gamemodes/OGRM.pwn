@@ -13051,6 +13051,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				case 1:
 				{
+					if(!pInfo[playerid][pStealSkin]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша одежда не украдена");
 					if(pInfo[playerid][pMoney] < 5000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств");
 					if(!AddPlayerInventory(playerid, ItemDress)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
 
@@ -25877,7 +25878,7 @@ stock UsePlayerInventory(playerid, ItemsID, Count = 1)
 		{
 			if(!pInfo[playerid][pStealSkin]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша одежда не украдена");
 			pInfo[playerid][pStealSkin] = false;
-			SavePlayerBool(playerid, "StealDress", pInfo[playerid][pStealSkin]);
+			SavePlayerBool(playerid, "StealSkin", pInfo[playerid][pStealSkin]);
 			SetSkin(playerid, pInfo[playerid][pSkins][pInfo[playerid][pSkin]]);
 			RemovePlayerInventory(playerid, ItemsID);
 			SendClientMessage(playerid, -1, Color_White"Вы вернули свою одежду");
