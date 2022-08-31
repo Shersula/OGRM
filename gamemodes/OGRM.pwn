@@ -9508,9 +9508,9 @@ public OnUnoccupiedVehicleUpdate(vehicleid, playerid, passenger_seat, Float:new_
 
 public OnPlayerUpdate(playerid)
 {
-	if(pInfo[playerid][pAFK])
+	if(pInfo[playerid][pAFK] > 2)
 	{
-		if(pInfo[playerid][pAFK] > 2 && pInfo[playerid][pAuth] && !GetPVarInt(playerid, "FirstSpawn"))
+		if(pInfo[playerid][pAuth] && !GetPVarInt(playerid, "FirstSpawn"))
 		{
 			new str[100];
 			ConvertedSeconds(pInfo[playerid][pAFK], str);
@@ -9523,8 +9523,8 @@ public OnPlayerUpdate(playerid)
 			DestroyDynamic3DTextLabel(pInfo[playerid][pAFKText]);
 			pInfo[playerid][pAFKText] = Text3D:0;
 		}
-		pInfo[playerid][pAFK] = 0;
 	}
+	pInfo[playerid][pAFK] = 0;
 	return 1;
 }
 
@@ -15106,6 +15106,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					pInfo[playerid][pGPSType] = GPS_Type_GPS;
 					SetPlayerRaceCheckpoint(playerid, 2, bInfo[i][bX], bInfo[i][bY], bInfo[i][bZ], 0.0, 0.0, 0.0, 10.0);
 					SendClientMessage(playerid, -1, Main_Color"[GPS] "Color_White"Навигатор включен");
+					return 1;
 				}
 				else listitem--;
 			}
@@ -16420,7 +16421,7 @@ CMD:alarm(playerid, params[])
 		if(!bInfo[i][bID] || bInfo[i][bThiefStatus] == Thief_Status_None) continue;
 		format(str, sizeof(str), "%s"Color_Red"* "Color_White"%s №%d\n", str, BusinessType[bInfo[i][bType]][bName], bInfo[i][bID]);
 	}
-	if(!strlen(str)) return ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color"Эстренные вызовы", Main_Color"\nЭкстренных вызовов не поступало\n", Color_White"Закрыть", Color_White"");
+	if(!strlen(str)) return ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color"Эстренные вызовы", Main_Color"Экстренных вызовов не поступало", Color_White"Закрыть", "");
 
 	ShowDialog(playerid, D_Alarm, DIALOG_STYLE_LIST, Main_Color"Эстренные вызовы", str, Color_White"Далее", Color_White"Закрыть");
 
