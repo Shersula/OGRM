@@ -1694,7 +1694,15 @@ new Gate[MAX_GATE][GateInfo];
 #define LaCosaNostraExit        106
 #define YakuzaEnter             107
 #define YakuzaExit              108
-#define MAX_PICK 				109
+#define CommandHelpVagos		109
+#define CommandHelpBallas		110
+#define CommandHelpAztecas		111
+#define CommandHelpGrove		112
+#define CommandHelpRifa			113
+#define CommandHelpStreetRacers	114
+#define CommandHelpBikers		115
+#define CommandHelpFarmOfTruth	116
+#define MAX_PICK 				117
 
 enum PickupInfo
 {
@@ -8065,7 +8073,11 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 		}
 		else if(areaid == Pickups[CommandHelpPolice][PickAreaID] || areaid == Pickups[CommandHelpArmy][PickAreaID]
 		|| areaid == Pickups[CommandHelpFBI][PickAreaID] || areaid == Pickups[CommandHelpHospital][PickAreaID]
-		|| areaid == Pickups[CommandHelpTaxi][PickAreaID] || areaid == Pickups[CommandHelpSanNews][PickAreaID])
+		|| areaid == Pickups[CommandHelpTaxi][PickAreaID] || areaid == Pickups[CommandHelpSanNews][PickAreaID]
+		|| areaid == Pickups[CommandHelpVagos][PickAreaID] || areaid == Pickups[CommandHelpBallas][PickAreaID]
+		|| areaid == Pickups[CommandHelpAztecas][PickAreaID] || areaid == Pickups[CommandHelpGrove][PickAreaID]
+		|| areaid == Pickups[CommandHelpRifa][PickAreaID] || areaid == Pickups[CommandHelpStreetRacers][PickAreaID]
+		|| areaid == Pickups[CommandHelpBikers][PickAreaID] || areaid == Pickups[CommandHelpFarmOfTruth][PickAreaID])
 		{
 			ShowFractionCommand(playerid);
 		}
@@ -22433,6 +22445,33 @@ stock ShowFractionCommand(playerid)
 			"Main_Color"/uninvite [ID] "Color_White"- Выгнать из организации\n\
 			"Main_Color"/giverank [ID] "Color_White"- Изменить должность сотрудника", Color_White"Закрыть", "");
 		}
+		case Fraction_Vagos..Fraction_Rifa, Fraction_Bikers, Fraction_FarmOfTruth:
+		{
+			ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Организации", Main_Color"/members "Color_White"- Члены банды онлайн\n\
+			"Main_Color"/f "Color_White"- Чат банды\n\
+			"Main_Color"/war "Color_White"- Объявить войну другой банде\n\
+			"Main_Color"/robbery "Color_White"- Начать ограбление бизнеса\n\
+			"Main_Color"/stealdress "Color_White"- Украсть одежду\n\
+			"Main_Color"/load "Color_White"- Начать загрузку/разгрузку материалов/денег\n\
+			"Main_Color"/invite [ID] "Color_White"- Пригласить в банду\n\
+			"Main_Color"/uninvite [ID] "Color_White"- Выгнать из банды\n\
+			"Main_Color"/giverank [ID] "Color_White"- Изменить звание члена банды", Color_White"Закрыть", "");
+		}
+		case Fraction_StreetRacers:
+		{
+			ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Организации", Main_Color"/members "Color_White"- Члены банды онлайн\n\
+			"Main_Color"/f "Color_White"- Чат банды\n\
+			"Main_Color"/war "Color_White"- Объявить войну другой банде\n\
+			"Main_Color"/robbery "Color_White"- Начать ограбление бизнеса\n\
+			"Main_Color"/stealdress "Color_White"- Украсть одежду\n\
+			"Main_Color"/load "Color_White"- Начать загрузку/разгрузку материалов/денег\n\
+			"Main_Color"/gtime "Color_White"- Начать отсчет\n\
+			"Main_Color"/neon "Color_White"- Установить неон\n\
+			"Main_Color"/paint "Color_White"- Нанести винил\n\
+			"Main_Color"/invite [ID] "Color_White"- Пригласить в банду\n\
+			"Main_Color"/uninvite [ID] "Color_White"- Выгнать из банды\n\
+			"Main_Color"/giverank [ID] "Color_White"- Изменить звание члена банды", Color_White"Закрыть", "");
+		}
 	}
 	return 1;
 }
@@ -29528,6 +29567,14 @@ stock CreatePickups()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[VagosEnter][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[VagosEnter][PickAreaID],  E_STREAMER_INDX, VagosEnter);
 
+	Pickups[CommandHelpVagos][PickJob] = Job_None;
+	Pickups[CommandHelpVagos][PickID] = CreateDynamicPickup(1239, 1, 300.8134,311.4068,1003.3047, 1, 4);
+	Pickups[CommandHelpVagos][PickAreaID] = CreateDynamicSphere(300.8134,311.4068,1003.3047, 1.0, 1, 4);
+	Pickups[CommandHelpVagos][PickTextID] = CreateDynamic3DTextLabel(Main_Color"Команды организации", -1, 300.8134,311.4068,1003.3047+0.5, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 4);
+	Pickups[CommandHelpVagos][IsPickTP] = false;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpVagos][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpVagos][PickAreaID],  E_STREAMER_INDX, CommandHelpVagos);
+
 	Pickups[BallasExit][PickJob] = Job_None;
 	Pickups[BallasExit][PickFraction] = Fraction_None;
 	Pickups[BallasExit][PickID] = CreateDynamicPickup(1318, 1, -68.8422,1351.1971,1080.2109, 1, 6);
@@ -29549,6 +29596,14 @@ stock CreatePickups()
 	Pickups[BallasEnter][PickTpPickID] = BallasExit;
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[BallasEnter][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[BallasEnter][PickAreaID],  E_STREAMER_INDX, BallasEnter);
+
+	Pickups[CommandHelpBallas][PickJob] = Job_None;
+	Pickups[CommandHelpBallas][PickID] = CreateDynamicPickup(1239, 1, -61.9862,1360.7892,1080.2185, 1, 6);
+	Pickups[CommandHelpBallas][PickAreaID] = CreateDynamicSphere(-61.9862,1360.7892,1080.2185, 1.0, 1, 6);
+	Pickups[CommandHelpBallas][PickTextID] = CreateDynamic3DTextLabel(Main_Color"Команды организации", -1, -61.9862,1360.7892,1080.2185+0.5, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 6);
+	Pickups[CommandHelpBallas][IsPickTP] = false;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpBallas][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpBallas][PickAreaID],  E_STREAMER_INDX, CommandHelpBallas);
 
 	Pickups[AztecasExit][PickJob] = Job_None;
 	Pickups[AztecasExit][PickFraction] = Fraction_None;
@@ -29572,6 +29627,14 @@ stock CreatePickups()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[AztecasEnter][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[AztecasEnter][PickAreaID],  E_STREAMER_INDX, AztecasEnter);
 
+	Pickups[CommandHelpAztecas][PickJob] = Job_None;
+	Pickups[CommandHelpAztecas][PickID] = CreateDynamicPickup(1239, 1, 415.1583,2535.2200,10.0000, 1, 10);
+	Pickups[CommandHelpAztecas][PickAreaID] = CreateDynamicSphere(415.1583,2535.2200,10.0000, 1.0, 1, 10);
+	Pickups[CommandHelpAztecas][PickTextID] = CreateDynamic3DTextLabel(Main_Color"Команды организации", -1, 415.1583,2535.2200,10.0000+0.5, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 10);
+	Pickups[CommandHelpAztecas][IsPickTP] = false;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpAztecas][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpAztecas][PickAreaID],  E_STREAMER_INDX, CommandHelpAztecas);
+
 	Pickups[GroveExit][PickJob] = Job_None;
 	Pickups[GroveExit][PickFraction] = Fraction_None;
 	Pickups[GroveExit][PickID] = CreateDynamicPickup(1318, 1, 2524.0283,-1679.3945,1015.4986, 1, 1);
@@ -29593,6 +29656,14 @@ stock CreatePickups()
 	Pickups[GroveEnter][PickTpPickID] = GroveExit;
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GroveEnter][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GroveEnter][PickAreaID],  E_STREAMER_INDX, GroveEnter);
+
+	Pickups[CommandHelpGrove][PickJob] = Job_None;
+	Pickups[CommandHelpGrove][PickID] = CreateDynamicPickup(1239, 1, 2527.4634,-1673.1003,1015.4986, 1, 1);
+	Pickups[CommandHelpGrove][PickAreaID] = CreateDynamicSphere(2527.4634,-1673.1003,1015.4986, 1.0, 1, 1);
+	Pickups[CommandHelpGrove][PickTextID] = CreateDynamic3DTextLabel(Main_Color"Команды организации", -1, 2527.4634,-1673.1003,1015.4986+0.5, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 1);
+	Pickups[CommandHelpGrove][IsPickTP] = false;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpGrove][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpGrove][PickAreaID],  E_STREAMER_INDX, CommandHelpGrove);
 
 	Pickups[RifaExit][PickJob] = Job_None;
 	Pickups[RifaExit][PickFraction] = Fraction_None;
@@ -29616,6 +29687,14 @@ stock CreatePickups()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[RifaEnter][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[RifaEnter][PickAreaID],  E_STREAMER_INDX, RifaEnter);
 
+	Pickups[CommandHelpRifa][PickJob] = Job_None;
+	Pickups[CommandHelpRifa][PickID] = CreateDynamicPickup(1239, 1, -218.6324,1406.2338,27.7734, 1, 18);
+	Pickups[CommandHelpRifa][PickAreaID] = CreateDynamicSphere(-218.6324,1406.2338,27.7734, 1.0, 1, 18);
+	Pickups[CommandHelpRifa][PickTextID] = CreateDynamic3DTextLabel(Main_Color"Команды организации", -1, -218.6324,1406.2338,27.7734+0.5, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 18);
+	Pickups[CommandHelpRifa][IsPickTP] = false;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpRifa][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpRifa][PickAreaID],  E_STREAMER_INDX, CommandHelpRifa);
+
 	Pickups[StreetRacersExit][PickJob] = Job_None;
 	Pickups[StreetRacersExit][PickFraction] = Fraction_None;
 	Pickups[StreetRacersExit][PickID] = CreateDynamicPickup(1318, 1, -2670.7085,599.9630,375.1918, 2, 18);
@@ -29637,6 +29716,14 @@ stock CreatePickups()
 	Pickups[StreetRacersEnter][PickTpPickID] = StreetRacersExit;
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[StreetRacersEnter][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[StreetRacersEnter][PickAreaID],  E_STREAMER_INDX, StreetRacersEnter);
+
+	Pickups[CommandHelpStreetRacers][PickJob] = Job_None;
+	Pickups[CommandHelpStreetRacers][PickID] = CreateDynamicPickup(1239, 1, -2661.9744,608.2532,375.1918, 2, 18);
+	Pickups[CommandHelpStreetRacers][PickAreaID] = CreateDynamicSphere(-2661.9744,608.2532,375.1918, 1.0, 2, 18);
+	Pickups[CommandHelpStreetRacers][PickTextID] = CreateDynamic3DTextLabel(Main_Color"Команды организации", -1, -2661.9744,608.2532,375.1918+0.5, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 18);
+	Pickups[CommandHelpStreetRacers][IsPickTP] = false;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpStreetRacers][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpStreetRacers][PickAreaID],  E_STREAMER_INDX, CommandHelpStreetRacers);
 
 	Pickups[BikersExit][PickJob] = Job_None;
 	Pickups[BikersExit][PickFraction] = Fraction_None;
@@ -29660,6 +29747,14 @@ stock CreatePickups()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[BikersEnter][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[BikersEnter][PickAreaID],  E_STREAMER_INDX, BikersEnter);
 
+	Pickups[CommandHelpBikers][PickJob] = Job_None;
+	Pickups[CommandHelpBikers][PickID] = CreateDynamicPickup(1239, 1, -218.6324,1406.2338,27.7734, 3, 18);
+	Pickups[CommandHelpBikers][PickAreaID] = CreateDynamicSphere(-218.6324,1406.2338,27.7734, 1.0, 3, 18);
+	Pickups[CommandHelpBikers][PickTextID] = CreateDynamic3DTextLabel(Main_Color"Команды организации", -1, -218.6324,1406.2338,27.7734+0.5, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 3, 18);
+	Pickups[CommandHelpBikers][IsPickTP] = false;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpBikers][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpBikers][PickAreaID],  E_STREAMER_INDX, CommandHelpBikers);
+
 	Pickups[FarmOfTruthExit][PickJob] = Job_None;
 	Pickups[FarmOfTruthExit][PickFraction] = Fraction_None;
 	Pickups[FarmOfTruthExit][PickID] = CreateDynamicPickup(1318, 1, -229.2149,1401.1981,27.7656, 4, 18);
@@ -29681,6 +29776,14 @@ stock CreatePickups()
 	Pickups[FarmOfTruthEnter][PickTpPickID] = FarmOfTruthExit;
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[FarmOfTruthEnter][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[FarmOfTruthEnter][PickAreaID],  E_STREAMER_INDX, FarmOfTruthEnter);
+
+	Pickups[CommandHelpFarmOfTruth][PickJob] = Job_None;
+	Pickups[CommandHelpFarmOfTruth][PickID] = CreateDynamicPickup(1239, 1, -218.6324,1406.2338,27.7734, 4, 18);
+	Pickups[CommandHelpFarmOfTruth][PickAreaID] = CreateDynamicSphere(-218.6324,1406.2338,27.7734, 1.0, 4, 18);
+	Pickups[CommandHelpFarmOfTruth][PickTextID] = CreateDynamic3DTextLabel(Main_Color"Команды организации", -1, -218.6324,1406.2338,27.7734+0.5, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 4, 18);
+	Pickups[CommandHelpFarmOfTruth][IsPickTP] = false;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpFarmOfTruth][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpFarmOfTruth][PickAreaID],  E_STREAMER_INDX, CommandHelpFarmOfTruth);
 
     Pickups[RussiaMafiaExit][PickJob] = Job_None;
 	Pickups[RussiaMafiaExit][PickFraction] = Fraction_None;
