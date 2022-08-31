@@ -1116,7 +1116,8 @@ enum BusinessInfo
 	bThiefPlayer,
 	bThiefPickup,
 	bThiefArea,
-	Text3D:bThiefText
+	Text3D:bThiefText,
+	bThiefZoneArea
 };
 new bInfo[MAX_BUSINESS+1][BusinessInfo]; //+1 - на 0 индекс который не используется
 new Iterator:Business<MAX_BUSINESS+1>; //+1 - на 0 индекс который не используется
@@ -1189,6 +1190,9 @@ stock ClearBusiness(BusinessID)
 
 	if(bInfo[BusinessID][bThiefArea] && IsValidDynamicArea(bInfo[BusinessID][bThiefArea])) DestroyDynamicArea(bInfo[BusinessID][bThiefArea]);
 	bInfo[BusinessID][bThiefArea] = 0;
+
+	if(bInfo[BusinessID][bThiefZoneArea] && IsValidDynamicArea(bInfo[BusinessID][bThiefZoneArea])) DestroyDynamicArea(bInfo[BusinessID][bThiefZoneArea]);
+	bInfo[BusinessID][bThiefZoneArea] = 0;
 
 	if(bInfo[BusinessID][bThiefText] && IsValidDynamic3DTextLabel(bInfo[BusinessID][bThiefText])) DestroyDynamic3DTextLabel(bInfo[BusinessID][bThiefText]);
 	bInfo[BusinessID][bThiefText] = Text3D:0;
@@ -2234,7 +2238,8 @@ enum PlayerInfo
 	bool:pArmyTicket,
 	bool:pMask,
 	pStashDrugs,
-	pStashMaterials
+	pStashMaterials,
+	pKnockoutStatus
 };
 new pInfo[MAX_PLAYERS][PlayerInfo];
 #define MAX_ADMINS  100
@@ -2334,6 +2339,7 @@ stock ClearAccount(playerid)
 	pInfo[playerid][pMask] = false;
 	pInfo[playerid][pStashDrugs] = 0;
 	pInfo[playerid][pStashMaterials] = 0;
+	pInfo[playerid][pKnockoutStatus] = Player_No_Knockout;
 	UnloadHouseVehicle(playerid);
 
     if(Iter_Contains(Admins, playerid)) Iter_Remove(Admins, playerid);
@@ -2925,14 +2931,14 @@ public OnIncomingPacket(playerid, packetid, BitStream:bs)
 	    BS_IgnoreBits(bs, 8);
 	    BS_ReadOnFootSync(bs, onFootData);
 
-	    if(onFootData[PR_health] < 14.0 && GetPVarInt(playerid, "PlayerKnockoutStatus") == Player_No_Knockout)
+	    if(onFootData[PR_health] < 14.0 && pInfo[playerid][pKnockoutStatus] == Player_No_Knockout)
 	    {
 	    	SetPVarFloat(playerid, "PlayerKnockoutX", onFootData[PR_position][0]);
 			SetPVarFloat(playerid, "PlayerKnockoutY", onFootData[PR_position][1]);
 			SetPVarFloat(playerid, "PlayerKnockoutZ", onFootData[PR_position][2]);
 			SetPVarInt(playerid, "PlayerKnockoutVW", GetPlayerVirtualWorld(playerid));
 			SetPVarInt(playerid, "PlayerKnockoutInt", GetPlayerInterior(playerid));
-			SetPVarInt(playerid, "PlayerKnockoutStatus", Player_Go_To_Knockout);
+			pInfo[playerid][pKnockoutStatus] = Player_Go_To_Knockout;
 
 	    	if(onFootData[PR_health] > 0.0) KnockoutPlayer(playerid);
 	    }
@@ -2945,7 +2951,7 @@ public OnIncomingPacket(playerid, packetid, BitStream:bs)
 public OnIncomingRPC(playerid, rpcid, BitStream:bs)
 {
 	{
-		if(GetPVarInt(playerid, "PlayerKnockoutStatus") == Player_No_Knockout)
+		if(pInfo[playerid][pKnockoutStatus] == Player_No_Knockout)
 	    {
 	    	new Float:X, Float:Y, Float:Z;
 			GetPlayerPos(playerid, X, Y, Z);
@@ -2954,7 +2960,7 @@ public OnIncomingRPC(playerid, rpcid, BitStream:bs)
 			SetPVarFloat(playerid, "PlayerKnockoutZ", Z-0.5);
 			SetPVarInt(playerid, "PlayerKnockoutVW", GetPlayerVirtualWorld(playerid));
 			SetPVarInt(playerid, "PlayerKnockoutInt", GetPlayerInterior(playerid));
-			SetPVarInt(playerid, "PlayerKnockoutStatus", Player_Go_To_Knockout);
+			pInfo[playerid][pKnockoutStatus] = Player_Go_To_Knockout;
 	    }
 	}
 	return 1;
@@ -2962,12 +2968,12 @@ public OnIncomingRPC(playerid, rpcid, BitStream:bs)
 
 stock KnockoutPlayer(playerid)
 {
-	if(GetPVarInt(playerid, "PlayerKnockoutStatus") == Player_In_Knockout)
+	if(pInfo[playerid][pKnockoutStatus] == Player_In_Knockout)
 	{
-		SetPVarInt(playerid, "PlayerKnockoutStatus", Player_No_Knockout);
+		pInfo[playerid][pKnockoutStatus] = Player_No_Knockout;
 		DeletePVar(playerid, "DisableTextAnim");
 	}
-	else if(GetPVarInt(playerid, "PlayerKnockoutStatus") == Player_Go_To_Knockout)
+	else if(pInfo[playerid][pKnockoutStatus] == Player_Go_To_Knockout)
 	{
 		SetPlayerPosition(playerid, GetPVarFloat(playerid, "PlayerKnockoutX"), GetPVarFloat(playerid, "PlayerKnockoutY"), GetPVarFloat(playerid, "PlayerKnockoutZ"), 0.0, GetPVarInt(playerid, "PlayerKnockoutVW"), GetPVarInt(playerid, "PlayerKnockoutInt"));
 		SetCameraBehindPlayer(playerid);
@@ -2985,7 +2991,7 @@ stock KnockoutPlayer(playerid)
 		DeletePVar(playerid, "PlayerKnockoutZ");
 		DeletePVar(playerid, "PlayerKnockoutVW");
 		DeletePVar(playerid, "PlayerKnockoutInt");
-		SetPVarInt(playerid, "PlayerKnockoutStatus", Player_In_Knockout);
+		pInfo[playerid][pKnockoutStatus] = Player_In_Knockout;
 	}
 	return 1;
 }
@@ -6642,6 +6648,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 			}
 		}
 		else if(GetPVarInt(playerid, "AmmoBox") && (newkeys & KEY_FIRE || newkeys & KEY_JUMP)) RemoveCarriedObj(playerid, true);
+		else if(GetPVarInt(playerid, "MoneyBox") && (newkeys & KEY_FIRE || newkeys & KEY_JUMP)) RemoveCarriedObj(playerid, true);
 
 
 	}
@@ -7427,6 +7434,12 @@ public OnPlayerLeaveRaceCheckpoint(playerid)
 public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 {
 
+	if(GetPVarInt(playerid, "ThiefBusinessTimer"))
+	{
+		KillTimer(GetPVarInt(playerid, "ThiefBusinessTimer"));
+		DeletePVar(playerid, "ThiefBusinessTimer");
+	}
+
 	if(GetPlayerState(playerid) == PLAYER_STATE_ONFOOT)
 	{
 		if(Streamer_HasIntData(STREAMER_TYPE_AREA, areaid, E_STREAMER_ARRAY_TYPE))
@@ -7581,6 +7594,18 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 
 						format(SubStr, sizeof(SubStr), Main_Color"Бизнес №"Color_White"%d", bInfo[indx][bID]);
 						ShowDialog(playerid, D_Business_Buy, DIALOG_STYLE_MSGBOX, SubStr, str, Color_White"Купить", Color_White"Закрыть");
+					}
+					else if(areaid == bInfo[indx][bThiefArea] && GetPVarInt(playerid, "InBusiness") == bInfo[indx][bID])
+					{
+						if(pInfo[playerid][pMembers] != pInfo[bInfo[indx][bThiefPlayer]][pMembers]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этот бизнес ограбили не вы");
+						if(GetPVarInt(playerid, "MoneyBox")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас уже есть мешок в руке");
+
+						SendClientMessage(playerid, -1, Color_Yellow"Вы взяли мешок с деньгами. Отнесите его в машину.");
+						ClearAnimations(playerid, true);
+						SetPlayerAttachedObject(playerid, AttachSlotJob, 1550, 14, 0.4449, -0.0609, 0.0309, -78.5000, -123.1999, 59.1999, 0.7209, 0.5439, 0.6930, 0, 0);
+						if(bInfo[indx][bType] == BusinessGeneralStore1 || bInfo[indx][bType] == BusinessGeneralStore2 || bInfo[indx][bType] == BusinessGeneralStore3) SetPVarInt(playerid, "MoneyBox", 5000);
+						else if(bInfo[indx][bType] == BusinessBankFillial) SetPVarInt(playerid, "MoneyBox", 10000);
+						return 1;
 					}
 					else if((areaid == bInfo[indx][bSellArea][0] || areaid == bInfo[indx][bSellArea][1] || areaid == bInfo[indx][bSellArea][2] || areaid == bInfo[indx][bSellArea][3]) && GetPVarInt(playerid, "InBusiness") == bInfo[indx][bID])
 					{
@@ -7740,22 +7765,44 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 				}
 				case Array_Type_FractionWare:
 				{
-					if(GetPVarInt(playerid, "AmmoBox") && IsABand(pInfo[playerid][pMembers]))
+					if(IsABand(pInfo[playerid][pMembers]))
 					{
-						new FractionID = Streamer_GetIntData(STREAMER_TYPE_AREA, areaid, E_STREAMER_INDX);
-						if(pInfo[playerid][pMembers] != FractionID) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не являетесь членом этой организации");
+						if(GetPVarInt(playerid, "AmmoBox"))
+						{
+							new FractionID = Streamer_GetIntData(STREAMER_TYPE_AREA, areaid, E_STREAMER_INDX);
+							if(pInfo[playerid][pMembers] != FractionID) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не являетесь членом этой организации");
 
-						FractionWare[pInfo[playerid][pMembers]][FractionWareMaterials] += 1000;
-						SaveFractionWare(pInfo[playerid][pMembers]);
+							FractionWare[pInfo[playerid][pMembers]][FractionWareMaterials] += 1000;
+							SaveFractionWare(pInfo[playerid][pMembers]);
 
-						new str[200];
-						format(str, sizeof(str), Main_Color"%s %s "Color_White"доставил в общак организации "Main_Color"1000"Color_White" материалов", FractionRankName[pInfo[playerid][pMembers]][pInfo[playerid][pRank]], pInfo[playerid][pName]);
-						SendRMessage(playerid, str);
-						format(str, sizeof(str), Color_White"Общее количество материалов в общаке "Main_Color"%d", FractionWare[pInfo[playerid][pMembers]][FractionWareMaterials]);
-						SendRMessage(playerid, str);
+							new str[200];
+							format(str, sizeof(str), Main_Color"%s %s "Color_White"доставил в общак организации "Main_Color"1000"Color_White" материалов", FractionRankName[pInfo[playerid][pMembers]][pInfo[playerid][pRank]], pInfo[playerid][pName]);
+							SendRMessage(playerid, str);
+							format(str, sizeof(str), Color_White"Общее количество материалов в общаке "Main_Color"%d", FractionWare[pInfo[playerid][pMembers]][FractionWareMaterials]);
+							SendRMessage(playerid, str);
 
-						RemoveCarriedObj(playerid, false);
-						ApplyAnimation(playerid, "CARRY", "PUTDWN", 4.1, false, false, false, false, 0, true);
+							RemoveCarriedObj(playerid, false);
+							ApplyAnimation(playerid, "CARRY", "PUTDWN", 4.1, false, false, false, false, 0, true);
+						}
+						else if(GetPVarInt(playerid, "MoneyBox"))
+						{
+							new FractionID = Streamer_GetIntData(STREAMER_TYPE_AREA, areaid, E_STREAMER_INDX);
+							if(pInfo[playerid][pMembers] != FractionID) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не являетесь членом этой организации");
+
+							new money = GetPVarInt(playerid, "MoneyBox");
+
+							FractionWare[pInfo[playerid][pMembers]][FractionWareMoney] += money;
+							SaveFractionWare(pInfo[playerid][pMembers]);
+
+							new str[200];
+							format(str, sizeof(str), Main_Color"%s %s "Color_White"доставил в общак организации "Color_Green"%d$", FractionRankName[pInfo[playerid][pMembers]][pInfo[playerid][pRank]], pInfo[playerid][pName], money);
+							SendRMessage(playerid, str);
+							format(str, sizeof(str), Color_White"Общее количество денег в банке организации "Color_Green"%d$", FractionWare[pInfo[playerid][pMembers]][FractionWareMoney]);
+							SendRMessage(playerid, str);
+
+							RemoveCarriedObj(playerid, false);
+							ApplyAnimation(playerid, "CARRY", "PUTDWN", 4.1, false, false, false, false, 0, true);
+						}
 					}
 				}
 
@@ -8287,14 +8334,24 @@ public FillingBarrel(playerid)
 
 public OnPlayerLeaveDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 {
-	new indx = GetPVarInt(playerid, "TentRent");
-	if(indx)
+	if(GetPVarInt(playerid, "TentRent"))
 	{
+		new indx = GetPVarInt(playerid, "TentRent");
 		indx--;
 		if(Tent[indx][TentArea] == areaid)
 		{
 			SendClientMessage(playerid, -1, Color_Yellow"Вы не можете отойти от палатки которую арендуете");
 			SetPlayerPosition(playerid, Tent[indx][TentX], Tent[indx][TentY], Tent[indx][TentZ]);
+		}
+	}
+
+	if(GetPVarInt(playerid, "ThiefBusiness"))
+	{
+		new BusinessID = GetPVarInt(playerid, "ThiefBusiness");
+		if(areaid == bInfo[BusinessID][bThiefZoneArea])
+		{
+			SendClientMessage(playerid, -1, Color_Yellow"Вы покинули зону ограбления. Вернитесь назад в течении 30 секунд, иначе ограбление будет завершено");
+			SetPVarInt(playerid, "ThiefBusinessTimer", SetTimerEx("StopBusinessThiefTimer", 30000, false, "d", BusinessID));
 		}
 	}
 
@@ -8982,6 +9039,12 @@ stock RemoveCarriedObj(playerid, bool:msg)
 		DeletePVar(playerid, "AmmoBox");
 		ClearAnimations(playerid, true);
 		if(msg) SendClientMessage(playerid, -1, Color_Grey"Вы уронили коробку с материалами");
+	}
+	else if(GetPVarInt(playerid, "MoneyBox"))
+	{
+		DeletePVar(playerid, "MoneyBox");
+		ClearAnimations(playerid, true);
+		if(msg) SendClientMessage(playerid, -1, Color_Grey"Вы уронили мешок с деньгами");
 	}
 	RemovePlayerAttachedObject(playerid, AttachSlotJob);
 	return 1;
@@ -15462,6 +15525,9 @@ CMD:robbery(playerid)
         return SendClientMessage(playerid, -1, str);
     }
 
+	if(bInfo[BusinessID][bThiefZoneArea] && IsValidDynamicArea(bInfo[BusinessID][bThiefZoneArea])) DestroyDynamicArea(bInfo[BusinessID][bThiefZoneArea]);
+	bInfo[BusinessID][bThiefZoneArea] = CreateDynamicSphere(bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 20.0, 0, 0);
+
     new str[150];
     format(str, sizeof(str), "В бизнесе %s №%d сработала тревожная кнопка. Для того чтобы отметить место на радаре введите /alarm", BusinessType[bInfo[BusinessID][bType]][bName], bInfo[BusinessID][bID]);
     SendRMessageEx(Fraction_FBI,str);
@@ -15760,8 +15826,8 @@ CMD:fsd(playerid, params[])
 	if(!IsPlayerConnected(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не подключен");
 	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
 	if(playerid == id) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете вколоть препарат самому себе");
-	if(GetPVarInt(playerid, "PlayerKnockoutStatus") != Player_No_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ранены");
-	if(GetPVarInt(id, "PlayerKnockoutStatus") != Player_In_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этот игрок не ранен");
+	if(pInfo[playerid][pKnockoutStatus] != Player_No_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ранены");
+	if(pInfo[id][pKnockoutStatus] != Player_In_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этот игрок не ранен");
 
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
@@ -15787,7 +15853,7 @@ public WaitFSD(playerid, id)
 
 	ClearAnimations(id, true);
 	TogglePlayerControllable(id, true);
-	SetPVarInt(id, "PlayerKnockoutStatus", Player_No_Knockout);
+	pInfo[id][pKnockoutStatus] = Player_No_Knockout;
 	DeletePVar(id, "DisableTextAnim");
 
 	ClearAnimations(playerid, true);
@@ -16838,6 +16904,8 @@ stock UninvitePlayer(playerid)
 
 	if(GetPVarInt(playerid, "AmmoBox")) RemoveCarriedObj(playerid, true);
 
+	if(GetPVarInt(playerid, "MoneyBox")) RemoveCarriedObj(playerid, true);
+
 	return 1;
 }
 
@@ -17595,7 +17663,7 @@ CMD:service(playerid, params[])
 	}
 	else if(!strcmp(type, "medic"))
 	{
-		if(GetPVarInt(playerid, "PlayerKnockoutStatus") != Player_In_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не нуждаетесь в помощи медика");
+		if(pInfo[playerid][pKnockoutStatus] != Player_In_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не нуждаетесь в помощи медика");
 		new str[200];
 		format(str, sizeof(str), Color_Red2"[Диспетчер] %s[%d] вызывает медика. Приянть вызов (/accept medic)", pInfo[playerid][pName], playerid);
 		foreach(new i:Player)
@@ -20697,11 +20765,11 @@ CMD:sethp(playerid, params[])
 	SetPlayerHealth(id, pInfo[id][pHealth]);
 	SavePlayerFloat(id, "Health", pInfo[id][pHealth]);
 
-	if(pInfo[id][pHealth] > 25.0 && GetPVarInt(id, "PlayerKnockoutStatus") == Player_In_Knockout)
+	if(pInfo[id][pHealth] > 14.0 && pInfo[id][pKnockoutStatus] == Player_In_Knockout)
 	{
 		ClearAnimations(id, true);
 		TogglePlayerControllable(id, true);
-		SetPVarInt(id, "PlayerKnockoutStatus", Player_No_Knockout);
+		pInfo[id][pKnockoutStatus] = Player_No_Knockout;
 		DeletePVar(id, "DisableTextAnim");
 	}
 
@@ -20729,6 +20797,14 @@ CMD:spawn(playerid, params[])
 	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
 	if(!IsPlayerConnected(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не подключен");
 	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
+
+	if(pInfo[id][pKnockoutStatus] == Player_In_Knockout)
+	{
+		ClearAnimations(id, true);
+		TogglePlayerControllable(id, true);
+		pInfo[id][pKnockoutStatus] = Player_No_Knockout;
+		DeletePVar(id, "DisableTextAnim");
+	}
 
 	SpawnPlayer(id);
 
@@ -21673,9 +21749,23 @@ CMD:deletevehicle(playerid)
 
 stock KickPlayer(playerid) {SetTimerEx("KickEx", 500, false, "d", playerid);}
 
+forward StopBusinessThiefTimer(BusinessID);
+public StopBusinessThiefTimer(BusinessID)
+{
+	SendRMessage(bInfo[BusinessID][bThiefPlayer], "Ограбление завершено так как игрок начавший ограбление покинул зону ограбления.");
+	StopBusinessThief(BusinessID);
+	return 1;
+}
+
 stock StopBusinessThief(BusinessID)
 {
 	DeletePVar(bInfo[BusinessID][bThiefPlayer], "ThiefBusiness");
+
+	if(GetPVarInt(bInfo[BusinessID][bThiefPlayer], "ThiefBusinessTimer"))
+	{
+		KillTimer(GetPVarInt(bInfo[BusinessID][bThiefPlayer], "ThiefBusinessTimer"));
+		DeletePVar(bInfo[BusinessID][bThiefPlayer], "ThiefBusinessTimer");
+	}
 
 	bInfo[BusinessID][bThiefStatus] = Thief_Status_None;
     bInfo[BusinessID][bThiefTimer] = 0;
@@ -21684,6 +21774,9 @@ stock StopBusinessThief(BusinessID)
 
 	if(bInfo[BusinessID][bThiefArea] && IsValidDynamicArea(bInfo[BusinessID][bThiefArea])) DestroyDynamicArea(bInfo[BusinessID][bThiefArea]);
 	bInfo[BusinessID][bThiefArea] = 0;
+
+	if(bInfo[BusinessID][bThiefZoneArea] && IsValidDynamicArea(bInfo[BusinessID][bThiefZoneArea])) DestroyDynamicArea(bInfo[BusinessID][bThiefZoneArea]);
+	bInfo[BusinessID][bThiefZoneArea] = 0;
 
 	if(bInfo[BusinessID][bThiefText] && IsValidDynamic3DTextLabel(bInfo[BusinessID][bThiefText])) DestroyDynamic3DTextLabel(bInfo[BusinessID][bThiefText]);
 	bInfo[BusinessID][bThiefText] = Text3D:0;
@@ -23698,6 +23791,7 @@ public SecondTimer()
 				if(bInfo[i][bThiefStatus] == Thief_Status_Capture)
 				{
 					bInfo[i][bThiefStatus] = Thief_Status_Looting;
+					bInfo[i][bThiefTimer] = 180;
 
 					new Float:X, Float:Y, Float:Z;
 					switch (bInfo[i][bType])
@@ -23732,8 +23826,12 @@ public SecondTimer()
 						}
 					}
 
+					SendRMessage(bInfo[i][bThiefPlayer], "Касса бизнеса взломана, у вас есть 3 минуты чтобы забрать деньги.");
+
 					if(bInfo[i][bThiefArea] && IsValidDynamicArea(bInfo[i][bThiefArea])) DestroyDynamicArea(bInfo[i][bThiefArea]);
 					bInfo[i][bThiefArea] = CreateDynamicSphere(X, Y, Z, 1.0, Business_World+bInfo[i][bID], BusinessType[bInfo[i][bType]][bInt]);
+					Streamer_SetIntData(STREAMER_TYPE_AREA, bInfo[i][bThiefArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Business);
+					Streamer_SetIntData(STREAMER_TYPE_AREA, bInfo[i][bThiefArea],  E_STREAMER_INDX, i);
 
 					if(bInfo[i][bThiefText] && IsValidDynamic3DTextLabel(bInfo[i][bThiefText])) DestroyDynamic3DTextLabel(bInfo[i][bThiefText]);
 					new str[100];
