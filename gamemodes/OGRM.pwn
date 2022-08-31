@@ -15629,7 +15629,7 @@ CMD:stealdress(playerid, params[])
 	if(!AddPlayerInventory(playerid, ItemDress)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
 	pInfo[id][pStealSkin] = true;
 	SavePlayerBool(id, "StealSkin", pInfo[id][pStealSkin]);
-	SetSkin(playerid, pInfo[playerid][pSkins][pInfo[playerid][pSkin]]);
+	SetSkin(id, pInfo[id][pSkins][pInfo[id][pSkin]]);
 	return 1;
 }
 
@@ -23582,9 +23582,8 @@ stock SetSkin(playerid, Skin, bool:IgnoredFractionSkin = false)
 
 	if(pInfo[playerid][pStealSkin])
 	{
-		if(!pInfo[playerid][pGender])
-		return SetPlayerSkin(playerid, 252);
-		else  SetPlayerSkin(playerid, 140);
+		if(!pInfo[playerid][pGender]) return SetPlayerSkin(playerid, 252);
+		else return SetPlayerSkin(playerid, 140);
 	}
 
 	if(pInfo[playerid][pMembers] != Fraction_None && pInfo[playerid][pRank])
@@ -25827,6 +25826,14 @@ stock UsePlayerInventory(playerid, ItemsID, Count = 1)
 			RemovePlayerInventory(playerid, ItemsID);
 		}
 		case ItemDrugs: pc_cmd_usedrugs(playerid, "1");
+		case ItemDress:
+		{
+			if(!pInfo[playerid][pStealSkin]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша одежда не украдена");
+			pInfo[playerid][pStealSkin] = false;
+			SavePlayerBool(playerid, "StealDress", pInfo[playerid][pStealSkin]);
+			SetSkin(playerid, pInfo[playerid][pSkins][pInfo[playerid][pSkin]]);
+			SendClientMessage(playerid, -1, Color_White"Вы вернули свою одежду");
+		}
 		default:
 		{
 			if(Items[ItemsID][WeaponsID])
