@@ -15406,6 +15406,11 @@ CMD:main(playerid)
 }
 alias:main("mm", "menu");
 
+CMD:stealdress(playerid)
+{
+
+}
+
 CMD:war(playerid)
 {
 	if(!IsABand(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам");
@@ -21436,8 +21441,6 @@ CMD:saveveh(playerid, params[])
 	}
 	return 1;
 }
-
-
 
 stock DeleteCar(playerid, VehMysqlID)
 {
