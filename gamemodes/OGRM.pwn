@@ -2208,7 +2208,8 @@ enum PlayerInfo
 	bool:pArmyTicket,
 	bool:pMask,
 	pStashDrugs,
-	pStashMaterials
+	pStashMaterials,
+	bool:pStealSkin
 };
 new pInfo[MAX_PLAYERS][PlayerInfo];
 #define MAX_ADMINS  100
@@ -2308,6 +2309,7 @@ stock ClearAccount(playerid)
 	pInfo[playerid][pMask] = false;
 	pInfo[playerid][pStashDrugs] = 0;
 	pInfo[playerid][pStashMaterials] = 0;
+	pInfo[playerid][pStealSkin] = false;
 	UnloadHouseVehicle(playerid);
 
     if(Iter_Contains(Admins, playerid)) Iter_Remove(Admins, playerid);
@@ -21435,6 +21437,8 @@ CMD:saveveh(playerid, params[])
 	return 1;
 }
 
+
+
 stock DeleteCar(playerid, VehMysqlID)
 {
 	if(!VehMysqlID) return 1;
@@ -23011,6 +23015,7 @@ public LoadAccount(playerid)
 	cache_get_value_name_bool(0, "LicBoat", pInfo[playerid][pLicBoat]);
 	cache_get_value_name_bool(0, "LicGun", pInfo[playerid][pLicGun]);
 	cache_get_value_name_bool(0, "ArmyTicket", pInfo[playerid][pArmyTicket]);
+	cache_get_value_name_bool(0, "StealSkin", pInfo[playerid][pStealSkin]);
 
 	cache_get_value_name_float(0, "Health", pInfo[playerid][pHealth]);
 	cache_get_value_name_float(0, "Armor", pInfo[playerid][pArmor]);
