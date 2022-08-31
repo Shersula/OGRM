@@ -2935,7 +2935,8 @@ stock KnockoutPlayer(playerid)
 	}
 	else if(GetPVarInt(playerid, "PlayerKnockoutStatus") == Player_Go_To_Knockout)
 	{
-		SetPlayerPosition(playerid, GetPVarFloat(playerid, "PlayerKnockoutX"), GetPVarFloat(playerid, "PlayerKnockoutY"), GetPVarFloat(playerid, "PlayerKnockoutZ"), 0.0, GetPVarInt(playerid, "PlayerKnockoutVW"), GetPVarInt(playerid, "PlayerKnockoutInt"));
+		SetPlayerPosition(playerid, GetPVarFloat(playerid, "PlayerKnockoutX"), GetPVarFloat(playerid, "PlayerKnockoutY"), GetPVarFloat(playerid, "PlayerKnockoutZ"), 0.0, GetPVarInt(playerid, "PlayerKnockoutVW"), GetPVarInt(playerid, "PlayerKnockoutInt"), false);
+		TogglePlayerControllable(playerid, true);
 		SetCameraBehindPlayer(playerid);
 		SetPlayerSpecialAction(playerid, SPECIAL_ACTION_NONE);
 		SetPVarInt(playerid, "DisableTextAnim", 1);
