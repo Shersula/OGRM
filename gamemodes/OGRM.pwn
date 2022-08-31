@@ -15796,7 +15796,7 @@ CMD:load(playerid)
 	else if(IsABand(pInfo[playerid][pMembers]))
 	{
 		if(vInfo[vehicleid][vModel] != 482) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть в грузовике");
-		if(vInfo[vehicleid][vItemType] == Vehicle_Item_Other) ShowDialog(playerid, D_Select_Load, DIALOG_STYLE_LIST, Main_Color"Выберите тип предмета", Color_White"Материалы\nДеньги", Color_White"Далее", Color_White"Закрыть");
+		if(vInfo[vehicleid][vItemType] == Vehicle_Item_Other || !vInfo[vehicleid][vItemInVehicle]) ShowDialog(playerid, D_Select_Load, DIALOG_STYLE_LIST, Main_Color"Выберите тип предмета", Color_White"Материалы\nДеньги", Color_White"Далее", Color_White"Закрыть");
 		else StartLoad(playerid, vehicleid, vInfo[vehicleid][vItemType]);
 	}
 	return 1;
