@@ -1336,6 +1336,10 @@ stock ClearHouse(HouseID)
 
 #define MaxAttachedObjOnVehicle	10
 
+#define Vehicle_Item_Other		0
+#define Vehicle_Item_Materials	1
+#define Vehicle_Item_Money		2
+
 enum VehicleInfo
 {
 	vID,
@@ -1357,6 +1361,7 @@ enum VehicleInfo
 	Text3D:vText,
 	vPickup,
 	vArea,
+	vItemType,
 	vItemInVehicle,
 	vAttachedObj[MaxAttachedObjOnVehicle],
 	vPlateNumber[10],
@@ -1461,6 +1466,7 @@ stock ClearVehicle(vehicleid)
 	if(vInfo[vehicleid][vArea] && IsValidDynamicArea(vInfo[vehicleid][vArea])) DestroyDynamicArea(vInfo[vehicleid][vArea]);
 	vInfo[vehicleid][vArea] = 0;
 	vInfo[vehicleid][vItemInVehicle] = 0;
+	vInfo[vehicleid][vItemType] = Vehicle_Item_Other;
 	for(new j = 0; j < MaxAttachedObjOnVehicle; j++) RemoveVehicleAttachObj(vehicleid, j);
 	vInfo[vehicleid][vLock] = false;
 	vInfo[vehicleid][vSpoiler] = 0;
@@ -1871,7 +1877,8 @@ enum
 	D_War_Select_Gang,
 	D_War_Select_Bet,
 	D_War_Set_Bet,
-    D_Paint
+    D_Paint,
+	D_Select_Load
 };
 
 stock ShowDialog(playerid, dialogid, style, const caption[], const info[], const button1[], const button2[])
@@ -3473,6 +3480,8 @@ public OnVehicleSpawn(vehicleid)
 			DestroyDynamicArea(vInfo[vehicleid][vArea]);
 			vInfo[vehicleid][vArea] = 0;
 		}
+
+		vInfo[vehicleid][vItemType] = Vehicle_Item_Other;
 
 		if(vInfo[vehicleid][vNeon][0] && IsValidDynamicObject(vInfo[vehicleid][vNeon][0])) DestroyDynamicObject(vInfo[vehicleid][vNeon][0]);
 		vInfo[vehicleid][vNeon][0] = 0;
@@ -7604,6 +7613,18 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 						if(pInfo[playerid][pMembers] != pInfo[bInfo[indx][bThiefPlayer]][pMembers]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этот бизнес ограбили не вы");
 						if(GetPVarInt(playerid, "MoneyBox")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас уже есть мешок в руке");
 
+						bInfo[indx][bThiefCount]--;
+						if(bInfo[indx][bThiefCount])
+						{
+							new str[100];
+							format(str, sizeof(str), Main_Color"Мешки с деньгами\nОсталось"Color_White": %d", bInfo[indx][bThiefCount]);
+							UpdateDynamic3DTextLabelText(bInfo[indx][bThiefText], -1, str);
+						}
+						else
+						{
+							SendRMessage(bInfo[indx][bThiefPlayer], "Ваша банда вынесла все мешки из бизнеса. Ограбление завершено.");
+							StopBusinessThief(indx);
+						}
 						SendClientMessage(playerid, -1, Color_Yellow"Вы взяли мешок с деньгами. Отнесите его в машину.");
 						ClearAnimations(playerid, true);
 						SetPlayerAttachedObject(playerid, AttachSlotJob, 1550, 14, 0.4449, -0.0609, 0.0309, -78.5000, -123.1999, 59.1999, 0.7209, 0.5439, 0.6930, 0, 0);
@@ -7688,81 +7709,159 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 					new indx = Streamer_GetIntData(STREAMER_TYPE_AREA, areaid, E_STREAMER_INDX);
 					if(vInfo[indx][vType] == VehicleTypeFraction && (vInfo[indx][vOwner] == Fraction_Army || IsABand(vInfo[indx][vOwner])) && pInfo[playerid][pMembers] == vInfo[indx][vOwner])
 					{
-						if(!GetPVarInt(playerid, "AmmoBox") && vInfo[indx][vItemInVehicle])
+						switch(vInfo[indx][vItemType])
 						{
-							SendClientMessage(playerid, -1, Color_Yellow"Вы взяли материалы из машины");
-							ClearAnimations(playerid, true);
-							ApplyAnimation(playerid,"CARRY","crry_prtial", 4.0, true, false, false, true, 1, true);
-							SetPlayerAttachedObject(playerid, AttachSlotJob, 19832, 14, 0.2979, -0.0469, 0.0979, 103.1000, -3.5999, 84.1000, 1.0000, 1.0000, 1.0000, 0, 0);
-							SetPVarInt(playerid, "AmmoBox", 1);
-
-							vInfo[indx][vItemInVehicle]--;
-							new str[50];
-							if(vInfo[indx][vText] && IsValidDynamic3DTextLabel(vInfo[indx][vText]))
+							case Vehicle_Item_Materials:
 							{
-								if(vInfo[indx][vItemInVehicle] <= 0)
+								if(!GetPVarInt(playerid, "AmmoBox") && vInfo[indx][vItemInVehicle])
 								{
-									vInfo[indx][vItemInVehicle] = 0;
+									SendClientMessage(playerid, -1, Color_Yellow"Вы взяли материалы из машины");
+									ClearAnimations(playerid, true);
+									ApplyAnimation(playerid,"CARRY","crry_prtial", 4.0, true, false, false, true, 1, true);
+									SetPlayerAttachedObject(playerid, AttachSlotJob, 19832, 14, 0.2979, -0.0469, 0.0979, 103.1000, -3.5999, 84.1000, 1.0000, 1.0000, 1.0000, 0, 0);
+									SetPVarInt(playerid, "AmmoBox", 1);
 
-									DestroyDynamic3DTextLabel(vInfo[indx][vText]);
-									vInfo[indx][vText] = Text3D:0;
-
-									if(vInfo[indx][vPickup] && IsValidDynamicPickup(vInfo[indx][vPickup]))
+									vInfo[indx][vItemInVehicle]--;
+									new str[50];
+									if(vInfo[indx][vText] && IsValidDynamic3DTextLabel(vInfo[indx][vText]))
 									{
-										DestroyDynamicPickup(vInfo[indx][vPickup]);
-										vInfo[indx][vPickup] = 0;
+										if(vInfo[indx][vItemInVehicle] <= 0)
+										{
+											vInfo[indx][vItemInVehicle] = 0;
+
+											DestroyDynamic3DTextLabel(vInfo[indx][vText]);
+											vInfo[indx][vText] = Text3D:0;
+
+											if(vInfo[indx][vPickup] && IsValidDynamicPickup(vInfo[indx][vPickup]))
+											{
+												DestroyDynamicPickup(vInfo[indx][vPickup]);
+												vInfo[indx][vPickup] = 0;
+											}
+
+											if(vInfo[indx][vArea] && IsValidDynamicArea(vInfo[indx][vArea]))
+											{
+												DestroyDynamicArea(vInfo[indx][vArea]);
+												vInfo[indx][vArea] = 0;
+											}
+
+											vInfo[indx][vItemType] = Vehicle_Item_Other;
+										}
+										else
+										{
+											format(str, sizeof(str), Main_Color"Коробок с материалами: %d", vInfo[indx][vItemInVehicle]);
+											UpdateDynamic3DTextLabelText(vInfo[indx][vText], -1, str);
+										}
+									}
+								}
+								else if(GetPVarInt(playerid, "AmmoBox") && vInfo[indx][vItemInVehicle] < 10)
+								{
+
+									SendClientMessage(playerid, -1, Color_Yellow"Вы положили материалы в машину");
+
+									RemoveCarriedObj(playerid, false);
+									ApplyAnimation(playerid, "CARRY", "PUTDWN", 4.1, false, false, false, false, 0, true);
+									vInfo[indx][vItemInVehicle]++;
+
+									new str[50];
+
+									if(vInfo[indx][vItemInVehicle] >= 10)
+									{
+										vInfo[indx][vItemInVehicle] = 10;
+
+										if(vInfo[indx][vPickup] && IsValidDynamicPickup(vInfo[indx][vPickup]))
+										{
+											DestroyDynamicPickup(vInfo[indx][vPickup]);
+											vInfo[indx][vPickup] = 0;
+										}
+
+										if(vInfo[indx][vArea] && IsValidDynamicArea(vInfo[indx][vArea]))
+										{
+											DestroyDynamicArea(vInfo[indx][vArea]);
+											vInfo[indx][vArea] = 0;
+										}
 									}
 
-									if(vInfo[indx][vArea] && IsValidDynamicArea(vInfo[indx][vArea]))
+									if(vInfo[indx][vText] && IsValidDynamic3DTextLabel(vInfo[indx][vText]))
 									{
-										DestroyDynamicArea(vInfo[indx][vArea]);
-										vInfo[indx][vArea] = 0;
+										format(str, sizeof(str), Main_Color"Коробок с материалами: %d", vInfo[indx][vItemInVehicle]);
+										UpdateDynamic3DTextLabelText(vInfo[indx][vText], -1, str);
+									}
+									else
+									{
+										format(str, sizeof(str), Main_Color"Коробок с материалами: %d", vInfo[indx][vItemInVehicle]);
+										vInfo[indx][vText] = CreateDynamic3DTextLabel(str, -1, 0.0, 0.0, 0.0, 10.0, INVALID_PLAYER_ID, vInfo[indx][vServerID], 0, 0, 0);
 									}
 								}
-								else
-								{
-									format(str, sizeof(str), Main_Color"Коробок с материалами: %d", vInfo[indx][vItemInVehicle]);
-									UpdateDynamic3DTextLabelText(vInfo[indx][vText], -1, str);
-								}
 							}
-						}
-						else if(GetPVarInt(playerid, "AmmoBox") && vInfo[indx][vItemInVehicle] < 10)
-						{
-
-							SendClientMessage(playerid, -1, Color_Yellow"Вы положили материалы в машину");
-
-							RemoveCarriedObj(playerid, false);
-							ApplyAnimation(playerid, "CARRY", "PUTDWN", 4.1, false, false, false, false, 0, true);
-							vInfo[indx][vItemInVehicle]++;
-
-							new str[50];
-
-							if(vInfo[indx][vItemInVehicle] >= 10)
+							case Vehicle_Item_Money:
 							{
-								vInfo[indx][vItemInVehicle] = 10;
-
-								if(vInfo[indx][vPickup] && IsValidDynamicPickup(vInfo[indx][vPickup]))
+								if(!GetPVarInt(playerid, "MoneyBox") && vInfo[indx][vItemInVehicle])
 								{
-									DestroyDynamicPickup(vInfo[indx][vPickup]);
-									vInfo[indx][vPickup] = 0;
-								}
+									SendClientMessage(playerid, -1, Color_Yellow"Вы взяли мешок с деньгами из машины");
+									ClearAnimations(playerid, true);
+									SetPlayerAttachedObject(playerid, AttachSlotJob, 1550, 14, 0.4449, -0.0609, 0.0309, -78.5000, -123.1999, 59.1999, 0.7209, 0.5439, 0.6930, 0, 0);
+									if(vInfo[indx][vItemInVehicle] - 10000 > 0)
+									{
+										vInfo[indx][vItemInVehicle] -= 10000;
+										SetPVarInt(playerid, "MoneyBox", 10000);
+									}
+									else
+									{
+										SetPVarInt(playerid, "MoneyBox", vInfo[indx][vItemInVehicle]);
+										vInfo[indx][vItemInVehicle] = 0;
+									}
+									new str[50];
+									if(vInfo[indx][vText] && IsValidDynamic3DTextLabel(vInfo[indx][vText]))
+									{
+										if(vInfo[indx][vItemInVehicle] <= 0)
+										{
+											vInfo[indx][vItemInVehicle] = 0;
 
-								if(vInfo[indx][vArea] && IsValidDynamicArea(vInfo[indx][vArea]))
+											DestroyDynamic3DTextLabel(vInfo[indx][vText]);
+											vInfo[indx][vText] = Text3D:0;
+
+											if(vInfo[indx][vPickup] && IsValidDynamicPickup(vInfo[indx][vPickup]))
+											{
+												DestroyDynamicPickup(vInfo[indx][vPickup]);
+												vInfo[indx][vPickup] = 0;
+											}
+
+											if(vInfo[indx][vArea] && IsValidDynamicArea(vInfo[indx][vArea]))
+											{
+												DestroyDynamicArea(vInfo[indx][vArea]);
+												vInfo[indx][vArea] = 0;
+											}
+
+											vInfo[indx][vItemType] = Vehicle_Item_Other;
+										}
+										else
+										{
+											format(str, sizeof(str), Main_Color"Денег в машине: %d$", vInfo[indx][vItemInVehicle]);
+											UpdateDynamic3DTextLabelText(vInfo[indx][vText], -1, str);
+										}
+									}
+								}
+								else if(GetPVarInt(playerid, "MoneyBox"))
 								{
-									DestroyDynamicArea(vInfo[indx][vArea]);
-									vInfo[indx][vArea] = 0;
-								}
-							}
 
-							if(vInfo[indx][vText] && IsValidDynamic3DTextLabel(vInfo[indx][vText]))
-							{
-								format(str, sizeof(str), Main_Color"Коробок с материалами: %d", vInfo[indx][vItemInVehicle]);
-								UpdateDynamic3DTextLabelText(vInfo[indx][vText], -1, str);
-							}
-							else
-							{
-								format(str, sizeof(str), Main_Color"Коробок с материалами: %d", vInfo[indx][vItemInVehicle]);
-								vInfo[indx][vText] = CreateDynamic3DTextLabel(str, -1, 0.0, 0.0, 0.0, 10.0, INVALID_PLAYER_ID, vInfo[indx][vServerID], 0, 0, 0);
+									SendClientMessage(playerid, -1, Color_Yellow"Вы положили мешок с деньгами в машину");
+
+									vInfo[indx][vItemInVehicle] += GetPVarInt(playerid, "MoneyBox");
+									RemoveCarriedObj(playerid, false);
+									ApplyAnimation(playerid, "CARRY", "PUTDWN", 4.1, false, false, false, false, 0, true);
+
+									new str[50];
+									if(vInfo[indx][vText] && IsValidDynamic3DTextLabel(vInfo[indx][vText]))
+									{
+										format(str, sizeof(str), Main_Color"Денег в машине: %d$", vInfo[indx][vItemInVehicle]);
+										UpdateDynamic3DTextLabelText(vInfo[indx][vText], -1, str);
+									}
+									else
+									{
+										format(str, sizeof(str), Main_Color"Денег в машине: %d$", vInfo[indx][vItemInVehicle]);
+										vInfo[indx][vText] = CreateDynamic3DTextLabel(str, -1, 0.0, 0.0, 0.0, 10.0, INVALID_PLAYER_ID, vInfo[indx][vServerID], 0, 0, 0);
+									}
+								}
 							}
 						}
 					}
@@ -14939,6 +15038,24 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
             }
             return 1;
         }
+		case D_Select_Load:
+		{
+			if(!response) return 1;
+			new vehicleid = GetPlayerVehicleID(playerid);
+
+			if(!vehicleid || vInfo[vehicleid][vType] != VehicleTypeFraction || vInfo[vehicleid][vOwner] != pInfo[playerid][pMembers]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть в транспорте вашей организации");
+
+			if(GetPlayerState(playerid) != PLAYER_STATE_DRIVER) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть за рулем");
+
+			if((vInfo[vehicleid][vPickup] && IsValidDynamicPickup(vInfo[vehicleid][vPickup])) || (vInfo[vehicleid][vArea] && IsValidDynamicArea(vInfo[vehicleid][vArea]))) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Загрузка/разгрузка уже начата, чтобы завершить заведите двигатель");
+
+			if(!IsABand(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам");
+			if(vInfo[vehicleid][vModel] != 482) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть в грузовике");
+
+			if(!listitem) StartLoad(playerid, vehicleid, Vehicle_Item_Materials);
+			else StartLoad(playerid, vehicleid, Vehicle_Item_Money);
+			return 1;
+		}
 	}
 	///////////////////////////////End Dialog Response///////////////////////////////////////
 	return 1;
@@ -15645,22 +15762,38 @@ CMD:load(playerid)
 
 	if(!vehicleid || vInfo[vehicleid][vType] != VehicleTypeFraction || vInfo[vehicleid][vOwner] != pInfo[playerid][pMembers]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть в транспорте вашей организации");
 
-	if(pInfo[playerid][pMembers] == Fraction_Army && vInfo[vehicleid][vModel] != 433) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть в армейском грузовике");
-	else if(IsABand(pInfo[playerid][pMembers]) && vInfo[vehicleid][vModel] != 482) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть в грузовике");
 	if(GetPlayerState(playerid) != PLAYER_STATE_DRIVER) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть за рулем");
 
 	if((vInfo[vehicleid][vPickup] && IsValidDynamicPickup(vInfo[vehicleid][vPickup])) || (vInfo[vehicleid][vArea] && IsValidDynamicArea(vInfo[vehicleid][vArea]))) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Загрузка/разгрузка уже начата, чтобы завершить заведите двигатель");
+
+	if(pInfo[playerid][pMembers] == Fraction_Army)
+	{
+		if(vInfo[vehicleid][vModel] != 433) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть в армейском грузовике");
+		StartLoad(playerid, vehicleid, Vehicle_Item_Materials);
+	}
+	else if(IsABand(pInfo[playerid][pMembers]))
+	{
+		if(vInfo[vehicleid][vModel] != 482) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть в грузовике");
+		if(vInfo[vehicleid][vItemType] == Vehicle_Item_Other) ShowDialog(playerid, D_Select_Load, DIALOG_STYLE_LIST, Main_Color"Выберите тип предмета", Color_White"Материалы\nДеньги", Color_White"Далее", Color_White"Закрыть");
+		else StartLoad(playerid, vehicleid, vInfo[vehicleid][vItemType]);
+	}
+	return 1;
+}
+
+stock StartLoad(playerid, vehicleid, Type)
+{
+	vInfo[vehicleid][vItemType] = Type;
 
 	new bool:engine, bool:lights, bool:alarm, bool:doors, bool:bonnet, bool:boot, bool:objective;
 	GetVehicleParamsEx(vehicleid, engine, lights, alarm, doors, bonnet, boot, objective);
 	if(engine) EngineVehicle(vehicleid, playerid);
 
 	new Float:X, Float:Y, Float:Z;
-
 	SetVehicleVelocity(vehicleid, 0.0, 0.0, 0.0);
 	GetVehicleBootPos(vehicleid, X, Y, Z);
 
-	vInfo[vehicleid][vPickup] = CreateDynamicPickup(19832, 1, X, Y, Z, 0, 0);
+	if(Type == Vehicle_Item_Materials) vInfo[vehicleid][vPickup] = CreateDynamicPickup(19832, 1, X, Y, Z, 0, 0);
+	else if(Type == Vehicle_Item_Materials) vInfo[vehicleid][vPickup] = CreateDynamicPickup(1550, 1, X, Y, Z, 0, 0);
 	vInfo[vehicleid][vArea] = CreateDynamicSphere(X, Y, Z, 1.5, 0, 0);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, vInfo[vehicleid][vArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Car);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, vInfo[vehicleid][vArea],  E_STREAMER_INDX, vehicleid);
@@ -15668,6 +15801,7 @@ CMD:load(playerid)
 	RemovePlayerFromVehicle(playerid);
 	ProxDetector(playerid, MESSAGE_DIST, BitColor_Me, "начал(а) загрузку/разгрузку");
 	Streamer_Update(playerid);
+
 	return 1;
 }
 
