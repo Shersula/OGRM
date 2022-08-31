@@ -15494,10 +15494,6 @@ CMD:main(playerid)
 }
 alias:main("mm", "menu");
 
-CMD:stealdress(playerid)
-{
-
-}
 CMD:robbery(playerid)
 {
     if(!IsABand(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам");
