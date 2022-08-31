@@ -2034,7 +2034,8 @@ enum
 	ItemShotgun,
 	ItemAK47,
 	ItemM4,
-	ItemEmptyBarrel
+	ItemEmptyBarrel,
+	ItemDress
 }
 
 enum ItemsInfo
@@ -2078,10 +2079,11 @@ new Items[][ItemsInfo] =
 	{349, -1, "Shotgun", 25, 100},
 	{355, -1, "AK-47", 30, 100},
 	{356, -1, "M4", 31, 100},
-	{935, -1, "Пустая бочка", 0, 0}
+	{935, -1, "Пустая бочка", 0, 0},
+	{2386, -1, "Одежда", 0, 0}
 };
 
-#define Max_Slots 	30
+#define Max_Slots 	31
 enum InventoryInfo
 {
 	ItemID,
@@ -12641,7 +12643,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				{
 					new str[100];
 					format(str, sizeof(str), Main_Color"Банк || На счету: "Color_Green"%d$", pInfo[playerid][pBankMoney]);
-					ShowDialog(playerid, D_Bank_Transfer_ID, DIALOG_STYLE_INPUT, str, Color_White"Укажите ID игрока которому хотите сделать перевод", Color_White"Далее", Color_White"Закрыть");
+					ShowDialog(playerid, D_Bank_Transfer_ID, DIALOG_STYLE_INPUT, str, Color_White"Укажите ID игрока, которому хотите сделать перевод", Color_White"Далее", Color_White"Закрыть");
 				}
 				case 3:
 				{
@@ -12743,31 +12745,31 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			{
 				new str[100];
 				format(str, sizeof(str), Main_Color"Банк || На счету: "Color_Green"%d$", pInfo[playerid][pBankMoney]);
-				return ShowDialog(playerid, D_Bank_Transfer_ID, DIALOG_STYLE_INPUT, str, Color_White"Укажите ID игрока которому хотите сделать перевод"Color_Red"\nВы ничего не ввели", Color_White"Далее", Color_White"Закрыть");
+				return ShowDialog(playerid, D_Bank_Transfer_ID, DIALOG_STYLE_INPUT, str, Color_White"Укажите ID игрока, которому хотите сделать перевод"Color_Red"\nВы ничего не ввели", Color_White"Далее", Color_White"Закрыть");
 			}
 			if(strval(inputtext) < 0 || strval(inputtext) > MAX_PLAYERS)
 			{
 				new str[100];
 				format(str, sizeof(str), Main_Color"Банк || На счету: "Color_Green"%d$", pInfo[playerid][pBankMoney]);
-				return ShowDialog(playerid, D_Bank_Transfer_ID, DIALOG_STYLE_INPUT, str, Color_White"Укажите ID игрока которому хотите сделать перевод"Color_Red"\nНеверный ID игрока", Color_White"Далее", Color_White"Закрыть");
+				return ShowDialog(playerid, D_Bank_Transfer_ID, DIALOG_STYLE_INPUT, str, Color_White"Укажите ID игрока, которому хотите сделать перевод"Color_Red"\nНеверный ID игрока", Color_White"Далее", Color_White"Закрыть");
 			}
 			if(!IsPlayerConnected(strval(inputtext)))
 			{
 				new str[100];
 				format(str, sizeof(str), Main_Color"Банк || На счету: "Color_Green"%d$", pInfo[playerid][pBankMoney]);
-				return ShowDialog(playerid, D_Bank_Transfer_ID, DIALOG_STYLE_INPUT, str, Color_White"Укажите ID игрока которому хотите сделать перевод"Color_Red"\nИгрок с данным ID не подключен", Color_White"Далее", Color_White"Закрыть");
+				return ShowDialog(playerid, D_Bank_Transfer_ID, DIALOG_STYLE_INPUT, str, Color_White"Укажите ID игрока, которому хотите сделать перевод"Color_Red"\nИгрок с данным ID не подключен", Color_White"Далее", Color_White"Закрыть");
 			}
 			if(!pInfo[strval(inputtext)][pAuth])
 			{
 				new str[100];
 				format(str, sizeof(str), Main_Color"Банк || На счету: "Color_Green"%d$", pInfo[playerid][pBankMoney]);
-				return ShowDialog(playerid, D_Bank_Transfer_ID, DIALOG_STYLE_INPUT, str, Color_White"Укажите ID игрока которому хотите сделать перевод"Color_Red"\nИгрок с данным ID не авторизировался", Color_White"Далее", Color_White"Закрыть");
+				return ShowDialog(playerid, D_Bank_Transfer_ID, DIALOG_STYLE_INPUT, str, Color_White"Укажите ID игрока, которому хотите сделать перевод"Color_Red"\nИгрок с данным ID не авторизировался", Color_White"Далее", Color_White"Закрыть");
 			}
 			if(playerid == strval(inputtext))
 			{
 				new str[100];
 				format(str, sizeof(str), Main_Color"Банк || На счету: "Color_Green"%d$", pInfo[playerid][pBankMoney]);
-				return ShowDialog(playerid, D_Bank_Transfer_ID, DIALOG_STYLE_INPUT, str, Color_White"Укажите ID игрока которому хотите сделать перевод"Color_Red"\nВы ввели свой ID", Color_White"Далее", Color_White"Закрыть");
+				return ShowDialog(playerid, D_Bank_Transfer_ID, DIALOG_STYLE_INPUT, str, Color_White"Укажите ID игрока, которому хотите сделать перевод"Color_Red"\nВы ввели свой ID", Color_White"Далее", Color_White"Закрыть");
 			}
 			if(!pInfo[strval(inputtext)][pCard])
 			{
@@ -14320,7 +14322,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 				new Float:X, Float:Y, Float:Z;
 				GetPlayerPos(id, X, Y, Z);
-				if(playerid != id && (!IsPlayerInRangeOfPoint(playerid, 1.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id))) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которому хотите собрать оружие");
+				if(playerid != id && (!IsPlayerInRangeOfPoint(playerid, 1.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id))) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которому хотите собрать оружие");
 
 				new count = strval(inputtext) * GunInfo[indx][MaterialCount];
 
@@ -14332,7 +14334,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					if(id != playerid)
 					{
 						SendClientMessage(id, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно места в инвентаре чтобы взять оружие");
-						SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У игрока которому вы хотите дать оружие недостаточно места в инвентаре");
+						SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У игрока, которому вы хотите дать оружие недостаточно места в инвентаре");
 					}
 					else SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно места в инвентаре чтобы сделать оружие");
 					return 1;
@@ -15611,6 +15613,26 @@ CMD:main(playerid)
 }
 alias:main("mm", "menu");
 
+CMD:stealdress(playerid, params[])
+{
+	new id;
+	if(sscanf(params, "d", id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/stealdress [ID]");
+	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
+	if(!IsPlayerConnected(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не подключен");
+	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
+	if(pInfo[id][pKnockoutStatus] != Player_In_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этот игрок не ранен");
+	if(pInfo[id][pStealSkin]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"C этого игрока уже сняли одежду");
+	if(id == playerid) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете снять одежду с себя");
+	new Float:X, Float:Y, Float:Z;
+	GetPlayerPos(id, X, Y, Z);
+	if(!IsPlayerInRangeOfPoint(playerid, 1.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, с которого хотите снять одежду");
+	if(!AddPlayerInventory(playerid, ItemDress)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+	pInfo[id][pStealSkin] = true;
+	SavePlayerBool(id, "StealSkin", pInfo[id][pStealSkin]);
+	SetSkin(playerid, pInfo[playerid][pSkins][pInfo[playerid][pSkin]]);
+	return 1;
+}
+
 CMD:robbery(playerid)
 {
     if(!IsABand(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам");
@@ -15860,7 +15882,7 @@ CMD:givedrugs(playerid, params[])
 
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
-	if(!IsPlayerInRangeOfPoint(playerid, 2.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которому хотите передать наркотики");
+	if(!IsPlayerInRangeOfPoint(playerid, 2.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которому хотите передать наркотики");
 
 	if(!RemovePlayerInventory(playerid, ItemDrugs, count)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас нет такого количества наркотиков");
 	if(!AddPlayerInventory(id, ItemDrugs, count))
@@ -15889,7 +15911,7 @@ CMD:selldrugs(playerid, params[])
 
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
-	if(!IsPlayerInRangeOfPoint(playerid, 2.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которому хотите продать наркотики");
+	if(!IsPlayerInRangeOfPoint(playerid, 2.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которому хотите продать наркотики");
 
 	if(GetItemCountInInventory(playerid, ItemDrugs) < count) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас нет такого количества наркотиков");
 
@@ -15917,7 +15939,7 @@ CMD:givegun(playerid, params[])
 
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
-	if(playerid != id && (!IsPlayerInRangeOfPoint(playerid, 2.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id))) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которому хотите собрать оружие");
+	if(playerid != id && (!IsPlayerInRangeOfPoint(playerid, 2.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id))) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которому хотите собрать оружие");
 
 	SetPVarInt(playerid, "GiveGunID", id);
 	new str[300];
@@ -15942,7 +15964,7 @@ CMD:sellgun(playerid, params[])
 
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
-	if(playerid != id && (!IsPlayerInRangeOfPoint(playerid, 2.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id))) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которому хотите продать оружие");
+	if(playerid != id && (!IsPlayerInRangeOfPoint(playerid, 2.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id))) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которому хотите продать оружие");
 
 	SetPVarInt(playerid, "GiveGunID", id);
 	SetPVarInt(playerid, "GiveGunMoney", money);
@@ -15969,7 +15991,7 @@ CMD:fsd(playerid, params[])
 
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
-	if(!IsPlayerInRangeOfPoint(playerid, 1.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которому хотите вколоть препарат");
+	if(!IsPlayerInRangeOfPoint(playerid, 1.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которому хотите вколоть препарат");
 
 	TogglePlayerControllable(playerid, false);
 	ApplyAnimation(playerid, "BOMBER","BOM_PLANT_LOOP", 4.1, true, false, false, false, 0, true);
@@ -16060,7 +16082,7 @@ CMD:heal(playerid, params[])
 
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
-	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которого хотите вылечить");
+	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которого хотите вылечить");
 
 	AntiCheatGetHealth(id, pInfo[id][pHealth]);
 	if(pInfo[id][pHealth] >= 100.0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок здоров");
@@ -16093,7 +16115,7 @@ CMD:psih(playerid, params[])
 
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
-	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которого хотите посадить в психушку");
+	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которого хотите посадить в психушку");
 
 	ChangePlayerJob(id, pInfo[id][pJob]);
 	ChangePlayerUnOfficialJob(id, Job_None);
@@ -16266,7 +16288,7 @@ CMD:giveguard(playerid, params[])
 
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
-	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которому хотите выписать военный билет");
+	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которому хотите выписать военный билет");
 
 	new str[300];
 	format(str, sizeof(str), "%s %s[%d] выдал военный билет %s[%d]", FractionRankName[pInfo[playerid][pMembers]][pInfo[playerid][pRank]], pInfo[playerid][pName], playerid, pInfo[id][pName], id);
@@ -16632,7 +16654,7 @@ CMD:frisk(playerid, params[])
 	if(AntiCheatGetSpecialAction(id) != SPECIAL_ACTION_CUFFED) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этот игрок не в наручниках");
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
-	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которого хотите обыскать");
+	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которого хотите обыскать");
 
 	new str[1000];
 	for(new i = 0; i < sizeof(pInventory[]); i++)
@@ -16687,7 +16709,7 @@ CMD:putcop(playerid, params[])
 
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
-	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которого хотите затащить в транспорт");
+	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которого хотите затащить в транспорт");
 	ClearAnimations(id);
 	TogglePlayerControllable(id, false);
 	PutPlayerInVehicle(id, vehicleid, seat);
@@ -16716,7 +16738,7 @@ CMD:putout(playerid, params[])
 
 	new Float:X, Float:Y, Float:Z;
 	GetVehiclePos(vehicleid, X, Y, Z);
-	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которого хотите вытащить из машины");
+	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которого хотите вытащить из машины");
 	RemovePlayerFromVehicle(id);
 
 	new str[100];
@@ -16760,7 +16782,7 @@ CMD:follow(playerid, params[])
 	if(pInfo[id][pFollow] != -1) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этого игрока уже кто-то ведет за собой");
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
-	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которого хотите тащить за собой");
+	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которого хотите тащить за собой");
 
 	pInfo[id][pFollow] = playerid;
 	SetPVarInt(playerid, "Following", id+1);
@@ -16903,7 +16925,7 @@ CMD:ticket(playerid, params[])
 	if(money > 5000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Максимальная сумма штрафа 5000$");
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
-	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которому хотите выписать штраф");
+	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которому хотите выписать штраф");
 
 	new str[300];
 	format(str, sizeof(str), "%s %s[%d] выписал штраф %s[%d] на сумму %d$, по причине: %s", FractionRankName[pInfo[playerid][pMembers]][pInfo[playerid][pRank]], pInfo[playerid][pName], playerid, pInfo[id][pName], id, money, message);
@@ -16931,7 +16953,7 @@ CMD:invite(playerid, params[])
 	if(pInfo[id][pMembers] != Fraction_None) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок уже состоит в какой-то организации");
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
-	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которого хотите пригласить в организацию");
+	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которого хотите пригласить в организацию");
 
 	SetPVarInt(id, "InviterID", playerid);
 	new str[200];
@@ -17516,7 +17538,7 @@ CMD:givekey(playerid, params[])
 
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
-	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которому хотите передать ключи");
+	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которому хотите передать ключи");
 
 	new str[200];
 	format(str, sizeof(str), Color_White"Вы предложили "Main_Color"%s"Color_White" взять ключи от "Main_Color"%s", pInfo[id][pName], CarName[vInfo[pInfo[playerid][pVehicleID]][vModel]-400]);
@@ -17608,7 +17630,7 @@ CMD:sellbusiness(playerid, params[])
 
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
-	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которому хотите продать бизнес");
+	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которому хотите продать бизнес");
 
 	new str[200];
 	format(str, sizeof(str), Color_White"Вы предложили "Main_Color"%s"Color_White" купить "Main_Color"Бизнес №"Color_White": %d за "Color_Green"%d$", pInfo[id][pName], pInfo[playerid][pBusinessID], money);
@@ -17682,7 +17704,7 @@ CMD:sellhouse(playerid, params[])
 
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
-	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которому хотите продать дом");
+	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которому хотите продать дом");
 
 	new str[200];
 	format(str, sizeof(str), Color_White"Вы предложили "Main_Color"%s"Color_White" купить "Main_Color"Дом №"Color_White": %d за "Color_Green"%d$", pInfo[id][pName], pInfo[playerid][pHouseID], money);
@@ -17762,7 +17784,7 @@ CMD:free(playerid, params[])
 
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
-	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которого хотите выпустить");
+	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которого хотите выпустить");
 
 	new str[200];
 	format(str, sizeof(str), Color_White"Вы предложили "Main_Color"%s"Color_White" освободиться за "Color_Green"%d$", pInfo[id][pName], money);
@@ -18422,11 +18444,11 @@ stock PlayerAccept(playerid)
 			}
 			case OfferID_GiveKey:
 			{
-				if(!pInfo[ProposePlayer][pHouseID]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У игрока который дает ключи нет дома");
-				if(!pInfo[ProposePlayer][pVehicleID]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У игрока который дает ключи не выбрана машина");
+				if(!pInfo[ProposePlayer][pHouseID]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У игрока, который дает ключи нет дома");
+				if(!pInfo[ProposePlayer][pVehicleID]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У игрока, который дает ключи не выбрана машина");
 				new Float:X, Float:Y, Float:Z;
 				GetPlayerPos(ProposePlayer, X, Y, Z);
-				if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, ProposePlayer)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока который хочет передать вам ключи");
+				if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, ProposePlayer)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, который хочет передать вам ключи");
 
 				new str[200];
 				format(str, sizeof(str), Main_Color"%s "Color_White"взял(а) ключи от"Main_Color" %s", pInfo[playerid][pName], CarName[vInfo[pInfo[ProposePlayer][pVehicleID]][vModel]-400]);
@@ -18447,7 +18469,7 @@ stock PlayerAccept(playerid)
 
 				new Float:X, Float:Y, Float:Z;
 				GetPlayerPos(ProposePlayer, X, Y, Z);
-				if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, ProposePlayer)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока который продает бизнес");
+				if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, ProposePlayer)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, который продает бизнес");
 
 				new str[400];
 				format(str, sizeof(str), Main_Color"%s"Color_White" купил "Main_Color"Бизнес №"Color_White": %d за "Color_Green"%d$", pInfo[playerid][pName], pInfo[ProposePlayer][pBusinessID], money);
@@ -18533,7 +18555,7 @@ stock PlayerAccept(playerid)
 
 				new Float:X, Float:Y, Float:Z;
 				GetPlayerPos(ProposePlayer, X, Y, Z);
-				if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, ProposePlayer)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока который продает дом");
+				if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, ProposePlayer)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, который продает дом");
 
 				UnloadHouseVehicle(playerid);
 				UnloadHouseVehicle(ProposePlayer);
@@ -18632,7 +18654,7 @@ stock PlayerAccept(playerid)
 			{
 				new Float:X, Float:Y, Float:Z;
 				GetPlayerPos(ProposePlayer, X, Y, Z);
-				if(!IsPlayerInRangeOfPoint(playerid, 2.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, ProposePlayer)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока который продает вам оружие");
+				if(!IsPlayerInRangeOfPoint(playerid, 2.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, ProposePlayer)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, который продает вам оружие");
 
 				if(pInfo[playerid][pMoney] < money)
 				{
@@ -18653,7 +18675,7 @@ stock PlayerAccept(playerid)
 					AddPlayerInventory(ProposePlayer, ItemMaterial, counts);
 
 					SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно места в инвентаре чтобы купить оружие");
-					SendClientMessage(ProposePlayer, -1, Color_Red"[Ошибка] "Color_Grey"У игрока которому вы хотите продать оружие недостаточно места в инвентаре");
+					SendClientMessage(ProposePlayer, -1, Color_Red"[Ошибка] "Color_Grey"У игрока, которому вы хотите продать оружие недостаточно места в инвентаре");
 					return 1;
 				}
 
@@ -18673,7 +18695,7 @@ stock PlayerAccept(playerid)
 			{
 				new Float:X, Float:Y, Float:Z;
 				GetPlayerPos(ProposePlayer, X, Y, Z);
-				if(!IsPlayerInRangeOfPoint(playerid, 2.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, ProposePlayer)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока который продает вам наркотики");
+				if(!IsPlayerInRangeOfPoint(playerid, 2.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, ProposePlayer)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, который продает вам наркотики");
 
 				if(!RemovePlayerInventory(ProposePlayer, ItemDrugs, count))
 				{
@@ -19148,7 +19170,7 @@ CMD:iznas(playerid, params[])
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
 
-	if(!IsPlayerInRangeOfPoint(playerid, 2.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которого хотите изнасиловать");
+	if(!IsPlayerInRangeOfPoint(playerid, 2.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которого хотите изнасиловать");
 
 	SetPlayerFacingPos(playerid, X, Y);
 
@@ -19186,7 +19208,7 @@ CMD:kiss(playerid, params[])
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
 
-	if(!IsPlayerInRangeOfPoint(playerid, 2.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которому хотите предложить поцеловаться");
+	if(!IsPlayerInRangeOfPoint(playerid, 2.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которому хотите предложить поцеловаться");
 
 	new str[200];
 	format(str, sizeof(str), Color_White"Вы предложили "Main_Color"%s поцеловаться", pInfo[id][pName]);
@@ -19215,7 +19237,7 @@ CMD:hi(playerid, params[])
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
 
-	if(!IsPlayerInRangeOfPoint(playerid, 2.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которому хотите пожат руку");
+	if(!IsPlayerInRangeOfPoint(playerid, 2.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которому хотите пожат руку");
 
 	SetPlayerFacingPos(playerid, X, Y);
 
@@ -19913,7 +19935,7 @@ CMD:showstats(playerid, params[])
 	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
-	if((!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) && id != playerid) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которому хотите показать статистику");
+	if((!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) && id != playerid) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которому хотите показать статистику");
 
 	ShowPlayerStat(playerid, id);
 	new message[145];
@@ -19931,7 +19953,7 @@ CMD:showlicenses(playerid, params[])
 	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
-	if((!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) && id != playerid) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока которому хотите показать лицензии");
+	if((!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) && id != playerid) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которому хотите показать лицензии");
 
 	ShowPlayerLicenses(playerid, id);
 
@@ -23557,6 +23579,13 @@ stock SetPlayerPosition(playerid, Float:x, Float:y, Float:z, Float:a=0.0, virtua
 stock SetSkin(playerid, Skin, bool:IgnoredFractionSkin = false)
 {
 	if(pInfo[playerid][pDemorgan]) return SetPlayerSkin(playerid, 264);
+
+	if(pInfo[playerid][pStealSkin])
+	{
+		if(!pInfo[playerid][pGender])
+		return SetPlayerSkin(playerid, 252);
+		else  SetPlayerSkin(playerid, 140);
+	}
 
 	if(pInfo[playerid][pMembers] != Fraction_None && pInfo[playerid][pRank])
 	{
