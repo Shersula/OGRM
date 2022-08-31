@@ -1878,7 +1878,8 @@ enum
 	D_War_Select_Bet,
 	D_War_Set_Bet,
     D_Paint,
-	D_Select_Load
+	D_Select_Load,
+	D_Alarm
 };
 
 stock ShowDialog(playerid, dialogid, style, const caption[], const info[], const button1[], const button2[])
@@ -4640,49 +4641,49 @@ public LoadFractionInfo()
 				case Fraction_Police:
 				{
 					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Банк организации нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, 237.9677+0.5, 82.5557, 1005.6564, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 6);
-					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(237.9677+0.5, 82.5557, 1005.6564, 5.0, 1, 6);
+					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(237.9677+0.5, 82.5557, 1005.6564, 1.0, 1, 6);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
 				}
 				case Fraction_Army:
 				{
 					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Банк организации нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, 145.55510, 1874.69678+0.5, 2050.06812, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 1);
-					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(145.55510, 1874.69678+0.5, 2050.06812, 5.0, 2, 1);
+					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(145.55510, 1874.69678+0.5, 2050.06812, 1.0, 2, 1);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
 				}
 				case Fraction_FBI:
 				{
 					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Банк организации нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, 320.24551, 309.12140+0.5, 999.86810, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 3, 5);
-					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(320.24551, 309.12140+0.5, 999.86810, 5.0, 3, 5);
+					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(320.24551, 309.12140+0.5, 999.86810, 1.0, 3, 5);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
 				}
 				case Fraction_Hospital:
 				{
 					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Банк организации нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, -329.26630, 1027.82349+0.5, 1028.61646, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 4, 5);
-					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-329.26630, 1027.82349+0.5, 1028.61646, 5.0, 4, 5);
+					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-329.26630, 1027.82349+0.5, 1028.61646, 1.0, 4, 5);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
 				}
 				case Fraction_Taxi:
 				{
 					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Банк организации нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, -2028.28430+0.5, -113.27220, 1035.70227, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 5, 3);
-					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-2028.28430+0.5, -113.27220, 1035.70227, 5.0, 5, 3);
+					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-2028.28430+0.5, -113.27220, 1035.70227, 1.0, 5, 3);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
 				}
 				case Fraction_SanNews:
 				{
 					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Банк организации нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, 164.02400+0.5, -114.13020, 1077.28906, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 6, 6);
-					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(164.02400+0.5, -114.13020, 1077.28906, 5.0, 6, 6);
+					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(164.02400+0.5, -114.13020, 1077.28906, 1.0, 6, 6);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
 				}
 				case Fraction_Vagos:
 				{
 					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, 304.3056,311.1736,1003.3047, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 4);
-					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(304.3056,311.1736,1003.3047, 5.0, 1, 4);
+					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(304.3056,311.1736,1003.3047, 1.0, 1, 4);
 					CreateDynamicPickup(1279, 1, 304.3056,311.1736,1003.3047, 1, 4);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
@@ -4690,7 +4691,7 @@ public LoadFractionInfo()
 				case Fraction_Ballas:
 				{
 					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, -71.6223,1365.3029,1080.2185, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 6);
-					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-71.6223,1365.3029,1080.2185, 5.0, 1, 6);
+					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-71.6223,1365.3029,1080.2185, 1.0, 1, 6);
 					CreateDynamicPickup(1279, 1, -71.6223,1365.3029,1080.2185, 1, 6);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
@@ -4698,7 +4699,7 @@ public LoadFractionInfo()
 				case Fraction_Aztecas:
 				{
 					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, 417.4076,2541.3838,10.0000, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 10);
-					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(417.4076,2541.3838,10.0000, 5.0, 1, 10);
+					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(417.4076,2541.3838,10.0000, 1.0, 1, 10);
 					CreateDynamicPickup(1279, 1, 417.4076,2541.3838,10.0000, 1, 10);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
@@ -4706,7 +4707,7 @@ public LoadFractionInfo()
 				case Fraction_Grove:
 				{
 					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, 2530.8069,-1672.1730,1015.4986, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 1);
-					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(2530.8069,-1672.1730,1015.4986, 5.0, 1, 1);
+					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(2530.8069,-1672.1730,1015.4986, 1.0, 1, 1);
 					CreateDynamicPickup(1279, 1, 2530.8069,-1672.1730,1015.4986, 1, 1);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
@@ -4714,7 +4715,7 @@ public LoadFractionInfo()
 				case Fraction_Rifa:
 				{
 					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, -218.3894,1401.8822,27.7734, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 18);
-					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-218.3894,1401.8822,27.7734, 5.0, 1, 18);
+					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-218.3894,1401.8822,27.7734, 1.0, 1, 18);
 					CreateDynamicPickup(1279, 1, -218.3894,1401.8822,27.7734, 1, 18);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
@@ -4722,7 +4723,7 @@ public LoadFractionInfo()
 				case Fraction_StreetRacers:
 				{
 					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, -2678.9426,602.0468,375.1918, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 18);
-					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-2678.9426,602.0468,375.1918, 5.0, 2, 18);
+					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-2678.9426,602.0468,375.1918, 1.0, 2, 18);
 					CreateDynamicPickup(1279, 1, -2678.9426,602.0468,375.1918, 2, 18);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
@@ -4730,7 +4731,7 @@ public LoadFractionInfo()
 				case Fraction_Bikers:
 				{
 					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, -218.3894,1401.8822,27.7734, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 3, 18);
-					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-218.3894,1401.8822,27.7734, 5.0, 3, 18);
+					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-218.3894,1401.8822,27.7734, 1.0, 3, 18);
 					CreateDynamicPickup(1279, 1, -218.3894,1401.8822,27.7734, 3, 18);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
@@ -4738,7 +4739,7 @@ public LoadFractionInfo()
 				case Fraction_FarmOfTruth:
 				{
 					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, -218.3894,1401.8822,27.7734, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 4, 18);
-					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-218.3894,1401.8822,27.7734, 5.0, 4, 18);
+					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-218.3894,1401.8822,27.7734, 1.0, 4, 18);
 					CreateDynamicPickup(1279, 1, -218.3894,1401.8822,27.7734, 4, 18);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
@@ -4746,7 +4747,7 @@ public LoadFractionInfo()
                 case Fraction_RussiaMafia:
 				{
 					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, -218.3894,1401.8822,27.7734, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 5, 18);
-					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-218.3894,1401.8822,27.7734, 5.0, 5, 18);
+					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-218.3894,1401.8822,27.7734, 1.0, 5, 18);
 					CreateDynamicPickup(1279, 1, -218.3894,1401.8822,27.7734, 5, 18);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
@@ -4754,7 +4755,7 @@ public LoadFractionInfo()
                 case Fraction_LaCosaNostra:
 				{
 					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, 147.6701,1367.2035,1083.8594, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0,  1, 5);
-					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(147.6701,1367.2035,1083.8594, 5.0, 1, 5);
+					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(147.6701,1367.2035,1083.8594, 1.0, 1, 5);
 					CreateDynamicPickup(1279, 1, 147.6701,1367.2035,1083.8594, 1, 5);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
@@ -4762,7 +4763,7 @@ public LoadFractionInfo()
                 case Fraction_Yakuza:
 				{
 					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, -2160.1130,639.0449,1057.5861, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0,  3, 1);
-					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-2160.1130,639.0449,1057.5861, 5.0, 3, 1);
+					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-2160.1130,639.0449,1057.5861, 1.0, 3, 1);
 					CreateDynamicPickup(1279, 1, -2160.1130,639.0449,1057.5861, 3, 1);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
@@ -8451,7 +8452,7 @@ public OnPlayerLeaveDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 		}
 	}
 
-	if(GetPVarInt(playerid, "ThiefBusiness") && areaid == bInfo[GetPVarInt(playerid, "ThiefBusiness")][bThiefZoneArea])
+	if(GetPVarInt(playerid, "ThiefBusiness") && areaid == bInfo[GetPVarInt(playerid, "ThiefBusiness")][bThiefZoneArea] && GetPVarInt(playerid, "InBusiness") != GetPVarInt(playerid, "ThiefBusiness"))
 	{
 		SendClientMessage(playerid, -1, Color_Yellow"Вы покинули зону ограбления. Вернитесь назад в течении 30 секунд, иначе ограбление будет завершено");
 		SetPVarInt(playerid, "ThiefBusinessTimer", 30);
@@ -15092,6 +15093,24 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			else StartLoad(playerid, vehicleid, Vehicle_Item_Money);
 			return 1;
 		}
+		case D_Alarm:
+		{
+			if(!response) return 1;
+
+			foreach(new i:Business)
+			{
+				if(!bInfo[i][bID] || bInfo[i][bThiefStatus] == Thief_Status_None) continue;
+				if(!listitem)
+				{
+					if(pInfo[playerid][pGPSType] == GPS_Type_Job) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас уже установлена метка с одной из работ, вы не можете сменить её");
+					pInfo[playerid][pGPSType] = GPS_Type_GPS;
+					SetPlayerRaceCheckpoint(playerid, 2, bInfo[i][bX], bInfo[i][bY], bInfo[i][bZ], 0.0, 0.0, 0.0, 10.0);
+					SendClientMessage(playerid, -1, Main_Color"[GPS] "Color_White"Навигатор включен");
+				}
+				else listitem--;
+			}
+			return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Бизнес уже ограблен. Экстренный вызов отменен");
+		}
 	}
 	///////////////////////////////End Dialog Response///////////////////////////////////////
 	return 1;
@@ -15649,7 +15668,7 @@ alias:main("mm", "menu");
 
 CMD:stealdress(playerid, params[])
 {
-	if(!IsABand(pInfo[playerid][pMembers]) && !IsAMafia(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам");
+	if(!IsABand(pInfo[playerid][pMembers]) && !IsAMafia(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам и мафиям");
 	new id;
 	if(sscanf(params, "d", id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/stealdress [ID]");
 	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
@@ -15665,7 +15684,13 @@ CMD:stealdress(playerid, params[])
 	pInfo[id][pStealSkin] = true;
 	SavePlayerBool(id, "StealSkin", pInfo[id][pStealSkin]);
 	SetSkin(id, pInfo[id][pSkins][pInfo[id][pSkin]]);
-	ProxDetector(playerid, MESSAGE_DIST, BitColor_Me, "украл(а) одежду");
+
+	ApplyAnimation(id, "CRACK", "crckdeth2", 4.1, true, true, true, false, 0, true);
+
+	new str[60];
+	format(str, sizeof(str), "украл(а) одежду у %s", pInfo[id][pName]);
+
+	ProxDetector(playerid, MESSAGE_DIST, BitColor_Me, str);
 	return 1;
 }
 
@@ -16380,6 +16405,25 @@ CMD:tazer(playerid)
 	}
 
 	ProxDetector(playerid, MESSAGE_DIST, BitColor_Me, "использовал(а) Tazer");
+	return 1;
+}
+
+CMD:alarm(playerid, params[])
+{
+	if(pInfo[playerid][pMembers] == Fraction_None) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не состоите не в одной из организаций");
+	if(!IsSecurityAgency(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не являетесь членом силовой структуры");
+
+	new str[500];
+
+	foreach(new i:Business)
+	{
+		if(!bInfo[i][bID] || bInfo[i][bThiefStatus] == Thief_Status_None) continue;
+		format(str, sizeof(str), "%s"Color_Red"* "Color_White"%s №%d\n", str, BusinessType[bInfo[i][bType]][bName], bInfo[i][bID]);
+	}
+	if(!strlen(str)) return ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color"Эстренные вызовы", Main_Color"\nЭкстренных вызовов не поступало\n", Color_White"Закрыть", Color_White"");
+
+	ShowDialog(playerid, D_Alarm, DIALOG_STYLE_LIST, Main_Color"Эстренные вызовы", str, Color_White"Далее", Color_White"Закрыть");
+
 	return 1;
 }
 
@@ -22279,7 +22323,8 @@ stock ShowFractionCommand(playerid)
 			"Main_Color"/uninvite [ID] "Color_White"- Выгнать из организации\n\
 			"Main_Color"/giverank [ID] "Color_White"- Изменить должность сотрудника\n\
 			"Main_Color"/tazer "Color_White"- Оглушить всех вокруг себя\n\
-			"Main_Color"/shisp "Color_White"- Выбросить шипы на землю", Color_White"Закрыть", "");
+			"Main_Color"/shisp "Color_White"- Выбросить шипы на землю\n\
+			"Main_Color"/alarm "Color_White"- Список экстренных вызовов", Color_White"Закрыть", "");
 		}
 		case Fraction_Army:
 		{
@@ -22309,7 +22354,8 @@ stock ShowFractionCommand(playerid)
 			"Main_Color"/uninvite [ID] "Color_White"- Выгнать из организации\n\
 			"Main_Color"/giverank [ID] "Color_White"- Изменить должность сотрудника\n\
 			"Main_Color"/giveguard "Color_White"- Выдать военный билет\n\
-			"Main_Color"/load "Color_White"- Начать загрузку/разгрузку материалов", Color_White"Закрыть", "");
+			"Main_Color"/load "Color_White"- Начать загрузку/разгрузку материалов\n\
+			"Main_Color"/alarm "Color_White"- Список экстренных вызовов", Color_White"Закрыть", "");
 		}
 		case Fraction_FBI:
 		{
@@ -22343,7 +22389,8 @@ stock ShowFractionCommand(playerid)
 			"Main_Color"/mask "Color_White"- Надеть маску\n\
 			"Main_Color"/maskoff "Color_White"- Снять маску\n\
 			"Main_Color"/barrier "Color_White"- Установить барьер\n\
-			"Main_Color"/barrieroff "Color_White"- Убрать барьер", Color_White"Закрыть", "");
+			"Main_Color"/barrieroff "Color_White"- Убрать барьер\n\
+			"Main_Color"/alarm "Color_White"- Список экстренных вызовов", Color_White"Закрыть", "");
 		}
 		case Fraction_Hospital:
 		{
