@@ -7673,7 +7673,12 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 						}
 						else if(bInfo[indx][bType] == BusinessCasinoBeginner || bInfo[indx][bType] == BusinessCasinoCaligula || bInfo[indx][bType] == BusinessCasinoFourDragons) ShowDialog(playerid, D_Casino_Menu, DIALOG_STYLE_LIST, Main_Color"CASINO", Color_White"Купить фишки\nПродать фишки", Color_White"Далее", Color_White"Закрыть");
 						else if(bInfo[indx][bType] == BusinessBankFillial) ShowPlayerBankMenu(playerid);
-						else if(bInfo[indx][bType] == BusinessDressShop) ShowDialog(playerid, D_Buy_Cloth, DIALOG_STYLE_MSGBOX, Main_Color"Магазин одежды", Color_White"Желаете перейти к выбору одежды?", Color_White"Да", Color_White"Нет");
+						else if(bInfo[indx][bType] == BusinessDressShop)
+						{
+							ShowDialog(playerid, D_Buy_Cloth, DIALOG_STYLE_LIST, Main_Color"Магазин одежды", Color_White"Купить новую одежду\n\
+							"Color_White"Возврат украденой одежды - "Color_Green"5.000$\n\
+							"Color_White"Продажа одежды - "Color_Green"10.000$ "Color_White"за шт.", Color_White"Далее", Color_White"Закрыть");
+						}
 					}
 				}
 				case Array_Type_Shipment:
@@ -13033,19 +13038,55 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 		case D_Buy_Cloth:
 		{
 			if(!response) return 1;
-			new BusinessID = GetPVarInt(playerid, "InBusiness");
-			SetPlayerPosition(playerid, 215.1753, -41.2095, 1002.0234, 117.0, playerid+1000, BusinessType[bInfo[BusinessID][bType]][bInt], false);
-			new Float:X, Float:Y, Float:Z, Float:A;
-			GetPlayerCameraPos(playerid, X, Y, Z);
-			InterpolateCameraPos(playerid, X, Y, Z, 210.2262, -41.2242, 1003.0, 1000, CAMERA_MOVE);
-			GetPlayerPos(playerid, X, Y, Z);
-			GetPlayerFacingAngle(playerid, A);
-			SetPVarFloat(playerid, "SkinSelectX", X);
-			SetPVarFloat(playerid, "SkinSelectY", Y);
-			SetPVarFloat(playerid, "SkinSelectZ", Z);
-			SetPVarFloat(playerid, "SkinSelectA", A);
-			InterpolateCameraLookAt(playerid, X, Y, Z, 215.1753, -41.2095, 1002.7, 1000, CAMERA_MOVE);
-			ShowSkinSelect(playerid);
+			switch(listitem)
+			{
+				case 0:
+				{
+					if(pInfo[playerid][pStealSkin]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вашу одежду украли. Сперва верните её");
+					new BusinessID = GetPVarInt(playerid, "InBusiness");
+					SetPlayerPosition(playerid, 215.1753, -41.2095, 1002.0234, 117.0, playerid+1000, BusinessType[bInfo[BusinessID][bType]][bInt], false);
+					new Float:X, Float:Y, Float:Z, Float:A;
+					GetPlayerCameraPos(playerid, X, Y, Z);
+					InterpolateCameraPos(playerid, X, Y, Z, 210.2262, -41.2242, 1003.0, 1000, CAMERA_MOVE);
+					GetPlayerPos(playerid, X, Y, Z);
+					GetPlayerFacingAngle(playerid, A);
+					SetPVarFloat(playerid, "SkinSelectX", X);
+					SetPVarFloat(playerid, "SkinSelectY", Y);
+					SetPVarFloat(playerid, "SkinSelectZ", Z);
+					SetPVarFloat(playerid, "SkinSelectA", A);
+					InterpolateCameraLookAt(playerid, X, Y, Z, 215.1753, -41.2095, 1002.7, 1000, CAMERA_MOVE);
+					ShowSkinSelect(playerid);
+				}
+				case 1:
+				{
+					if(pInfo[playerid][pMoney] < 5000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств");
+					if(!AddPlayerInventory(playerid, ItemDress)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+
+					GivePlayerMoneyEx(playerid, -5000);
+
+					new BusinessID = GetPVarInt(playerid, "InBusiness");
+					ActivateBusinessActors(playerid, BusinessID);
+
+					if(bInfo[BusinessID][bOwnerID])
+					{
+						bInfo[BusinessID][bMoney] += 5000;
+						SaveBusinessInt(bInfo[BusinessID][bID], "Money", bInfo[BusinessID][bMoney]);
+					}
+
+					UsePlayerInventory(playerid, ItemDress);
+				}
+				case 2:
+				{
+					new count = GetItemCountInInventory(playerid, ItemDress);
+					if(!count) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас нет одежды для продажи");
+					RemovePlayerInventory(playerid, ItemDress, count);
+
+					GivePlayerMoneyEx(playerid, 10000*count);
+
+					new BusinessID = GetPVarInt(playerid, "InBusiness");
+					ActivateBusinessActors(playerid, BusinessID);
+				}
+			}
 			return 1;
 		}
 		case D_Select_Skin:
