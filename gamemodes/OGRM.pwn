@@ -24032,7 +24032,7 @@ public SecondTimer()
 					if(bInfo[i][bThiefPickup] && IsValidDynamicPickup(bInfo[i][bThiefPickup])) DestroyDynamicPickup(bInfo[i][bThiefPickup]);
 					bInfo[i][bThiefPickup] = CreateDynamicPickup(1550, 1, X, Y, Z, Business_World+bInfo[i][bID], BusinessType[bInfo[i][bType]][bInt]);
 				}
-				if(bInfo[i][bThiefStatus] == Thief_Status_Looting)
+				else if(bInfo[i][bThiefStatus] == Thief_Status_Looting)
 				{
 					SendRMessage(bInfo[i][bThiefPlayer], "Время ограбления бизнеса закончилось. Ваша банда не успела забрать все мешки");
 					StopBusinessThief(i);
@@ -24069,7 +24069,7 @@ public SecondTimer()
 
 	if(MaterialShipmentCD < gettime())
 	{
-		MaterialShipmentCD = gettime()+(86400*(6+random(7)));
+		MaterialShipmentCD = gettime()+(3600*(6+random(7)));
 		new query[100];
 		mysql_format(DB, query, sizeof(query), "UPDATE `server_info` SET `MaterialShipmentCD` = '%d'", MaterialShipmentCD);
 		mysql_tquery(DB, query);
