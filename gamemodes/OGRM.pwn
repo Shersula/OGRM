@@ -923,6 +923,8 @@ new bool:HangarStatus[6] = {false, ...};
 #define Fraction_Yakuza         17
 #define MAX_FRACTION			18
 
+new Iterator:FractionMembers[MAX_FRACTION]<MAX_PLAYERS>;
+
 new FractionName[MAX_FRACTION][] = {
 	"",
 	"Полиция",
@@ -1254,7 +1256,7 @@ new HouseInterior[][HouseInteriorInfo] = {
 
 new HouseClassName[][] = {"", "D", "C", "B", "A", "A+"};
 
-#define MAX_HOUSE	301
+#define MAX_HOUSE	300
 enum HouseInfo
 {
 	hID,
@@ -1282,7 +1284,8 @@ enum HouseInfo
 	Text3D:hExitText,
 	hExitArea
 };
-new hInfo[MAX_HOUSE][HouseInfo];
+new hInfo[MAX_HOUSE+1][HouseInfo]; //+1 - на 0 индекс который не используется
+new Iterator:Houses<MAX_HOUSE+1>; //+1 - на 0 индекс который не используется
 
 stock ClearHouse(HouseID)
 {
@@ -2313,8 +2316,11 @@ stock ClearAccount(playerid)
 	pInfo[playerid][pJailedFraction] = Fraction_None;
 	pInfo[playerid][pWarn] = 0;
 
-	if(pInfo[playerid][pMembers] != Fraction_None && pInfo[playerid][pRank] >= FractionMaxRank) FillLeaderBoard();
-
+	if(pInfo[playerid][pMembers] != Fraction_None)
+	{
+		Iter_Remove(FractionMembers[pInfo[playerid][pMembers]], playerid);
+		if(pInfo[playerid][pRank] >= FractionMaxRank) FillLeaderBoard();
+	}
 	pInfo[playerid][pMembers] = Fraction_None;
 	pInfo[playerid][pRank] = 0;
 	pInfo[playerid][pAFK] = 0;
@@ -2485,6 +2491,8 @@ public OnGameModeInit()
 	SetNameTagDrawDistance(MESSAGE_DIST);
 	MapAndreas_Init(MAP_ANDREAS_MODE_FULL);
 	Streamer_SetVisibleItems(STREAMER_TYPE_OBJECT, MAX_OBJECTS);
+
+	Iter_Init(FractionMembers);
 
 	mysql_tquery(DB, "SELECT * FROM `anticheat_codes`", "LoadAntiCheatCode");
 	mysql_tquery(DB, "SELECT * FROM `anticheat_codes_nop`", "LoadAntiCheatCodeNOP");
@@ -4829,10 +4837,9 @@ stock StartGangWar(FractionID)
 		}
 	}
 
-
-	foreach(new i:Player)
+	foreach(new i:FractionMembers[FractionID])
 	{
-		if(pInfo[i][pAuth] && pInfo[i][pMembers] == FractionID)
+		if(pInfo[i][pAuth])
 		{
 			GangZoneShowForPlayer(i, GangWarZones[GangWarZone[FractionID]][GangWarZoneID], FractionColor[FractionID]-0x7F);
 			GangZoneFlashForPlayer(i, GangWarZones[GangWarZone[FractionID]][GangWarZoneID], FractionColor[GangWarOpponent[FractionID]]-0x7F);
@@ -4940,9 +4947,9 @@ stock EndGangWar(FractionID, WinnerType = 0) //WinnerType = 0 - Проигравший || W
     GangZoneHideForAll(GangWarZones[GangWarZone[FractionID]][GangWarZoneID]);
     ClearGangWar(FractionID);
 
-    foreach(new i:Player)
+    foreach(new i:FractionMembers[FractionID])
 	{
-		if(pInfo[i][pAuth] && pInfo[i][pMembers] == FractionID)
+		if(pInfo[i][pAuth])
 		{
                 for(new j = 0; j < sizeof(GangWarPTD[]); j++) PlayerTextDrawHide(i, GangWarPTD[i][j]);
         }
@@ -5226,6 +5233,7 @@ public LoadHouse()
 		{
 			new indx;
 			cache_get_value_name_int(i, "ID", indx);
+			Iter_Add(Houses, indx);
 			hInfo[indx][hID] = indx;
 			new bool:CheckNull;
 			cache_is_value_name_null(i, "OwnerID", CheckNull);
@@ -5826,6 +5834,8 @@ public ReloadHouse()
 	mysql_format(DB, query, sizeof(query), "ALTER TABLE `house` AUTO_INCREMENT = %d", row+1);
 	mysql_tquery(DB, query);
 
+	Iter_Clear(Houses);
+
 	mysql_tquery(DB, "SELECT * FROM `house`", "LoadHouse");
 
 	foreach(new i: Player)
@@ -6295,6 +6305,24 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 							return 1;
 						}
 					}
+					case Array_Type_House:
+					{
+						new indx = Streamer_GetIntData(STREAMER_TYPE_AREA, areaid[0], E_STREAMER_INDX);
+						if(!hInfo[indx][hID]) return 1;
+						if(hInfo[indx][hArea] == areaid[0])
+						{
+							if(hInfo[indx][hClose] && hInfo[indx][hOwnerID] != pInfo[playerid][pID]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этот дом закрыт");
+							SetPVarInt(playerid, "InHouse", hInfo[indx][hID]);
+							SetPlayerPosition(playerid, HouseInterior[hInfo[indx][hInterior]][hIntX], HouseInterior[hInfo[indx][hInterior]][hIntY], HouseInterior[hInfo[indx][hInterior]][hIntZ], HouseInterior[hInfo[indx][hInterior]][hIntA], House_World+hInfo[indx][hID], HouseInterior[hInfo[indx][hInterior]][hInt]);
+							return 1;
+						}
+						else if(hInfo[indx][hExitArea] == areaid[0])
+						{
+							DeletePVar(playerid, "InHouse");
+							SetPlayerPosition(playerid, hInfo[indx][hX], hInfo[indx][hY], hInfo[indx][hZ], hInfo[indx][hA], 0, 0);
+							return 1;
+						}
+					}
 				}
 			}
 
@@ -6342,23 +6370,6 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 							else RemovePlayerAttachedObject(playerid, AttachSlotJob);
 						}
 					}
-					return 1;
-				}
-			}
-			for(new i = 1; i < sizeof(hInfo); i++)
-			{
-				if(!hInfo[i][hID]) continue;
-				if(IsPlayerInDynamicArea(playerid, hInfo[i][hArea]))
-				{
-					if(hInfo[i][hClose] && hInfo[i][hOwnerID] != pInfo[playerid][pID]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этот дом закрыт");
-					SetPVarInt(playerid, "InHouse", hInfo[i][hID]);
-					SetPlayerPosition(playerid, HouseInterior[hInfo[i][hInterior]][hIntX], HouseInterior[hInfo[i][hInterior]][hIntY], HouseInterior[hInfo[i][hInterior]][hIntZ], HouseInterior[hInfo[i][hInterior]][hIntA], House_World+hInfo[i][hID], HouseInterior[hInfo[i][hInterior]][hInt]);
-					return 1;
-				}
-				else if(IsPlayerInDynamicArea(playerid, hInfo[i][hExitArea]))
-				{
-					DeletePVar(playerid, "InHouse");
-					SetPlayerPosition(playerid, hInfo[i][hX], hInfo[i][hY], hInfo[i][hZ], hInfo[i][hA], 0, 0);
 					return 1;
 				}
 			}
@@ -10341,8 +10352,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			if(!response) return pc_cmd_gps(playerid, "");
 			if(!strlen(inputtext)) return ShowDialog(playerid, D_GPS_Find_House, DIALOG_STYLE_INPUT, Main_Color"Поиск дома", Color_White"Введите номер дома в поле ниже чтобы отметить его на карте\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Назад");
 			new HouseID = strval(inputtext);
-			if(HouseID <= 0 || HouseID >= sizeof(hInfo)) return ShowDialog(playerid, D_GPS_Find_House, DIALOG_STYLE_INPUT, Main_Color"Поиск дома", Color_White"Введите номер дома в поле ниже чтобы отметить его на карте\n"Color_Red"Не верный номер дома", Color_White"Далее", Color_White"Назад");
-			if(!hInfo[HouseID][hID]) return ShowDialog(playerid, D_GPS_Find_House, DIALOG_STYLE_INPUT, Main_Color"Поиск дома", Color_White"Введите номер дома в поле ниже чтобы отметить его на карте\n"Color_Red"Такого дома не существует", Color_White"Далее", Color_White"Назад");
+			if(!Iter_Contains(Houses, HouseID)) return ShowDialog(playerid, D_GPS_Find_House, DIALOG_STYLE_INPUT, Main_Color"Поиск дома", Color_White"Введите номер дома в поле ниже чтобы отметить его на карте\n"Color_Red"Такого дома не существует", Color_White"Далее", Color_White"Назад");
 
 			if(GetPVarInt(playerid, "TaxiPoint")) SetPlayerTaxiMarker(playerid, hInfo[HouseID][hX], hInfo[HouseID][hY], hInfo[HouseID][hZ]);
 			else
@@ -11636,16 +11646,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			if(!strlen(inputtext)) return ShowDialog(playerid, D_CreateHouse_Price, DIALOG_STYLE_INPUT, Main_Color"Цена дома", Color_White"Введите стоимость дома\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Закрыть");
 			if(strval(inputtext) < 0) return ShowDialog(playerid, D_CreateHouse_Price, DIALOG_STYLE_INPUT, Main_Color"Цена дома", Color_White"Введите стоимость дома\n"Color_Red"Цена не может быть меньше 0", Color_White"Далее", Color_White"Закрыть");
 
-			new HouseID = 0;
-			for(new i = 1; i < sizeof(hInfo); i++)
-			{
-				if(!hInfo[i][hID])
-				{
-					HouseID = i;
-					break;
-				}
-			}
-			if(!HouseID)
+			if(Iter_Count(Houses) >= MAX_HOUSE)
 			{
 				DeletePVar(playerid, "HouseX");
 				DeletePVar(playerid, "HouseY");
@@ -11657,36 +11658,21 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"На данный момент создано максимальное количество домов.");
 				return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Обратитесь к тех.администрации");
 			}
-			ClearHouse(HouseID);
 
-			hInfo[HouseID][hPrice] = strval(inputtext);
-			hInfo[HouseID][hIsDonate] = bool:GetPVarInt(playerid, "HouseIsDonate");
-			hInfo[HouseID][hX] = GetPVarFloat(playerid, "HouseX");
-			hInfo[HouseID][hY] = GetPVarFloat(playerid, "HouseY");
-			hInfo[HouseID][hZ] = GetPVarFloat(playerid, "HouseZ");
-			hInfo[HouseID][hA] = GetPVarFloat(playerid, "HouseA");
-			hInfo[HouseID][hInterior] = GetPVarInt(playerid, "HouseInt");
-			hInfo[HouseID][hNeedLevel] = GetPVarInt(playerid, "HouseNeedLevel");
-			DeletePVar(playerid, "HouseX");
-			DeletePVar(playerid, "HouseY");
-			DeletePVar(playerid, "HouseZ");
-			DeletePVar(playerid, "HouseA");
-			DeletePVar(playerid, "HouseInt");
-			DeletePVar(playerid, "HouseIsDonate");
-			DeletePVar(playerid, "HouseNeedLevel");
+			SetPVarInt(playerid, "HousePrice", strval(inputtext));
 
 			new query[400];
 			mysql_format(DB, query, sizeof(query), "INSERT INTO `house` (`Price`, `IsDonate`, `X`, `Y`, `Z`, `A`, `Interior`, `NeedLevel`) VALUES ('%d', '%d', '%f', '%f', '%f', '%f', '%d', '%d')",
-			hInfo[HouseID][hPrice],
-			hInfo[HouseID][hIsDonate],
-			hInfo[HouseID][hX],
-			hInfo[HouseID][hY],
-			hInfo[HouseID][hZ],
-			hInfo[HouseID][hA],
-			hInfo[HouseID][hInterior],
-			hInfo[HouseID][hNeedLevel]);
+			strval(inputtext),
+			GetPVarInt(playerid, "HouseIsDonate"),
+			GetPVarFloat(playerid, "HouseX"),
+			GetPVarFloat(playerid, "HouseY"),
+			GetPVarFloat(playerid, "HouseZ"),
+			GetPVarFloat(playerid, "HouseA"),
+			GetPVarInt(playerid, "HouseInt"),
+			GetPVarInt(playerid, "HouseNeedLevel"));
 
-			mysql_tquery(DB, query, "GetCreateHouseID", "dd", HouseID, playerid);
+			mysql_tquery(DB, query, "GetCreateHouseID", "d", playerid);
 			return 1;
 		}
 		case D_Remove_All_Job:
@@ -13587,8 +13573,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			if(!response) return pc_cmd_tp(playerid);
 			if(!strlen(inputtext)) return ShowDialog(playerid, D_TP_House, DIALOG_STYLE_INPUT, Main_Color"Телепорт к дому", Color_White"Введите номер дома в поле ниже чтобы телепортироваться к нему\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Назад");
 			new HouseID = strval(inputtext);
-			if(HouseID <= 0 || HouseID >= sizeof(hInfo)) return ShowDialog(playerid, D_TP_House, DIALOG_STYLE_INPUT, Main_Color"Телепорт к дому", Color_White"Введите номер дома в поле ниже чтобы телепортироваться к нему\n"Color_Red"Не верный номер дома", Color_White"Далее", Color_White"Назад");
-			if(!hInfo[HouseID][hID]) return ShowDialog(playerid, D_TP_House, DIALOG_STYLE_INPUT, Main_Color"Телепорт к дому", Color_White"Введите номер дома в поле ниже чтобы телепортироваться к нему\n"Color_Red"Такого дома не существует", Color_White"Далее", Color_White"Назад");
+			if(!Iter_Contains(Houses, HouseID)) return ShowDialog(playerid, D_TP_House, DIALOG_STYLE_INPUT, Main_Color"Телепорт к дому", Color_White"Введите номер дома в поле ниже чтобы телепортироваться к нему\n"Color_Red"Такого дома не существует", Color_White"Далее", Color_White"Назад");
 
 			if(GetPlayerState(playerid) == PLAYER_STATE_ONFOOT) SetPlayerPosition(playerid, hInfo[HouseID][hX], hInfo[HouseID][hY], hInfo[HouseID][hZ]+1.0);
 			else if(GetPlayerState(playerid) == PLAYER_STATE_DRIVER)
@@ -13624,6 +13609,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				format(str, sizeof(str), "(IP: %s | RegIP: %s) снял %s (IP: %s | RegIP: %s) с должности лидера организации %s", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp], FractionName[pInfo[id][pMembers]]);
 
 				AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
+
+				Iter_Remove(FractionMembers[pInfo[id][pMembers]], id);
 
 				pInfo[id][pMembers] = Fraction_None;
 				SavePlayerInt(id, "Members", pInfo[id][pMembers]);
@@ -13665,6 +13652,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				SavePlayerInt(id, "SpawnChange", pInfo[id][pSpawnChange]);
 				SetColor(id);
 
+				Iter_Add(FractionMembers[pInfo[id][pMembers]], id);
+
 				if(pInfo[id][pGender]) SetSkin(id, FractionSkinFemale[pInfo[id][pMembers]][pInfo[id][pRank]]);
 				else SetSkin(id, FractionSkinMale[pInfo[id][pMembers]][pInfo[id][pRank]]);
 
@@ -13693,6 +13682,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			pInfo[playerid][pSpawnChange] = SpawnChange_Fraction;
 			SavePlayerInt(playerid, "SpawnChange", pInfo[playerid][pSpawnChange]);
 			SetColor(playerid);
+
+			Iter_Add(FractionMembers[pInfo[playerid][pMembers]], playerid);
 
 			if(pInfo[playerid][pGender]) SetSkin(playerid, FractionSkinFemale[pInfo[playerid][pMembers]][pInfo[playerid][pRank]]);
 			else SetSkin(playerid, FractionSkinMale[pInfo[playerid][pMembers]][pInfo[playerid][pRank]]);
@@ -14814,7 +14805,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 		{
 			if(!response) return 1;
 
-			for(new i = 0; i < MAX_FRACTION; i++)
+			for(new i = 1; i < MAX_FRACTION; i++)
 			{
 				if(GangWarZone[i] == listitem+1 && GangWarStatus[i] == Gang_Status_War)
 				{
@@ -15778,7 +15769,7 @@ CMD:war(playerid)
 	{
 		new bool:Finded = false;
 
-		for(new j = 0; j < MAX_FRACTION; j++)
+		for(new j = 1; j < MAX_FRACTION; j++)
 		{
 			if(GangWarZone[j] == i && GangWarStatus[j] == Gang_Status_War)
 			{
@@ -15799,12 +15790,10 @@ CMD:gtime(playerid)
 
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(playerid, X, Y, Z);
-	new VW = GetPlayerVirtualWorld(playerid);
-	new Int = GetPlayerInterior(playerid);
 
 	foreach(new i:Player)
 	{
-		if(pInfo[i][pAuth] && IsPlayerInRangeOfPoint(i, 15.0, X, Y, Z) && GetPlayerVirtualWorld(i) == VW && GetPlayerInterior(i) == Int)
+		if(pInfo[i][pAuth] && IsPlayerInRangeOfPoint(i, 15.0, X, Y, Z) && (IsPlayerStreamedIn(playerid, i) || playerid == i))
 		{
 			PlayerPlaySound(i, 5205, 0.0, 0.0, 0.0);
 			SetPVarInt(i, "StreetRacersTime", 5);
@@ -17097,6 +17086,8 @@ stock UninvitePlayer(playerid)
 {
 	new members = pInfo[playerid][pMembers];
 
+	Iter_Remove(FractionMembers[members], playerid);
+
 	pInfo[playerid][pMembers] = Fraction_None;
 	SavePlayerInt(playerid, "Members", pInfo[playerid][pMembers]);
 
@@ -17229,9 +17220,9 @@ CMD:members(playerid)
 	if(pInfo[playerid][pMembers] == Fraction_None) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не состоите не в одной из организаций");
 	new str[1500];
 
-	foreach(new i: Player)
+	foreach(new i:FractionMembers[pInfo[playerid][pMembers]])
 	{
-		if(pInfo[i][pAuth] && pInfo[i][pMembers] == pInfo[playerid][pMembers]) format(str, sizeof(str), "%s%s %s[%d]\n", str, FractionRankName[pInfo[i][pMembers]][pInfo[i][pRank]], pInfo[i][pName], i);
+		if(pInfo[i][pAuth]) format(str, sizeof(str), "%s%s %s[%d]\n", str, FractionRankName[pInfo[i][pMembers]][pInfo[i][pRank]], pInfo[i][pName], i);
 	}
 	format(str, sizeof(str), Color_White"%s", str);
 	ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color"Члены организации онлайн", str, Color_White"Закрыть", "");
@@ -18965,15 +18956,22 @@ CMD:accept(playerid, params[])
 		new bool:FindedAcceptLeader = false;
 		new bool:FindedRequestLeader = false;
 
-		foreach(new i:Player)
+		foreach(new i:FractionMembers[GangWarOpponent[pInfo[playerid][pMembers]]])
 		{
-			if(pInfo[i][pAuth])
+			if(pInfo[i][pAuth] && pInfo[i][pRank] >= FractionMaxRank)
 			{
-				if(pInfo[i][pMembers] == GangWarOpponent[pInfo[playerid][pMembers]] && pInfo[i][pRank] >= FractionMaxRank) FindedRequestLeader = true;
-				if(pInfo[i][pMembers] == pInfo[playerid][pMembers] && pInfo[i][pRank] >= FractionMaxRank) FindedAcceptLeader = true;
+				FindedRequestLeader = true;
+				break;
 			}
+		}
 
-			if(FindedAcceptLeader && FindedRequestLeader) break;
+		foreach(new i:FractionMembers[pInfo[playerid][pMembers]])
+		{
+			if(pInfo[i][pAuth] && pInfo[i][pRank] >= FractionMaxRank)
+			{
+				FindedAcceptLeader = true;
+				break;
+			}
 		}
 
 		new FractionID = GangWarOpponent[pInfo[playerid][pMembers]];
@@ -19000,7 +18998,7 @@ CMD:accept(playerid, params[])
 			return 1;
 		}
 
-		for(new i = 0; i < MAX_FRACTION; i++)
+		for(new i = 1; i < MAX_FRACTION; i++)
 		{
 			if((GangWarZone[i] == GangWarZone[FractionID] || GangWarZone[i] == GangWarZone[pInfo[playerid][pMembers]]) && GangWarStatus[i] == Gang_Status_War)
 			{
@@ -20189,9 +20187,12 @@ CMD:leaders(playerid)
 {
 	new str[2500];
 	format(str, sizeof(str), Color_White"==========================================================\n");
-	foreach(new i: Player)
+	for(new i = 1; i < MAX_FRACTION; i++)
 	{
-		if(pInfo[i][pAuth] && pInfo[i][pMembers] != Fraction_None && pInfo[i][pRank] >= FractionMaxRank) format(str, sizeof(str), "%s"Color_White"%s[%d] ["Main_Color"%s"Color_White"]\n", str, pInfo[i][pName], i, FractionName[pInfo[i][pMembers]]);
+		foreach(new j:FractionMembers[i])
+		{
+			if(pInfo[j][pAuth] && pInfo[j][pRank] >= FractionMaxRank) format(str, sizeof(str), "%s"Color_White"%s[%d] ["Main_Color"%s"Color_White"]\n", str, pInfo[j][pName], i, FractionName[pInfo[j][pMembers]]);
+		}
 	}
 	format(str, sizeof(str), "%s==========================================================", str);
 
@@ -21710,8 +21711,7 @@ CMD:edithouse(playerid, params[])
 	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
 	new HouseID;
 	if(sscanf(params, "d", HouseID)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/edithouse [Номер дома]");
-	if(HouseID <= 0 || HouseID >= sizeof(hInfo)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный номер дома");
-	if(!hInfo[HouseID][hID]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Такой дом не существует");
+	if(!Iter_Contains(Houses, HouseID)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Такой дом не существует");
 
 	SetPVarInt(playerid, "House", HouseID);
 
@@ -21731,15 +21731,14 @@ CMD:deletehouse(playerid, params[])
 	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
 	new HouseID;
 	if(sscanf(params, "d", HouseID)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/deletehouse [Номер дома]");
-	if(HouseID <= 0 || HouseID >= sizeof(hInfo)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный номер дома");
-	if(!hInfo[HouseID][hID]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Такой дом не существует");
+	if(!Iter_Contains(Houses, HouseID)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Такой дом не существует");
 
 	new query[100];
 	mysql_format(DB, query, sizeof(query), "DELETE FROM `house` WHERE `ID` = '%d'", hInfo[HouseID][hID]);
 	mysql_tquery(DB, query);
 
 	new ID = hInfo[HouseID][hID];
-	for(new i = 1; i < sizeof(hInfo); i++)
+	foreach(new i: Houses)
 	{
 		if(hInfo[i][hID])
 		{
@@ -22815,12 +22814,33 @@ public GetCreateBusinessID(playerid)
 	return 1;
 }
 
-forward GetCreateHouseID(HouseID, playerid);
-public GetCreateHouseID(HouseID, playerid)
+forward GetCreateHouseID(playerid);
+public GetCreateHouseID(playerid)
 {
-	hInfo[HouseID][hID] = cache_insert_id();
-	UpdateHouse(HouseID);
+	new HouseID = cache_insert_id();
 
+	ClearHouse(HouseID);
+
+	hInfo[HouseID][hID] = HouseID;
+	hInfo[HouseID][hPrice] = GetPVarInt(playerid, "HousePrice");
+	hInfo[HouseID][hIsDonate] = bool:GetPVarInt(playerid, "HouseIsDonate");
+	hInfo[HouseID][hX] = GetPVarFloat(playerid, "HouseX");
+	hInfo[HouseID][hY] = GetPVarFloat(playerid, "HouseY");
+	hInfo[HouseID][hZ] = GetPVarFloat(playerid, "HouseZ");
+	hInfo[HouseID][hA] = GetPVarFloat(playerid, "HouseA");
+	hInfo[HouseID][hInterior] = GetPVarInt(playerid, "HouseInt");
+	hInfo[HouseID][hNeedLevel] = GetPVarInt(playerid, "HouseNeedLevel");
+	DeletePVar(playerid, "HouseX");
+	DeletePVar(playerid, "HouseY");
+	DeletePVar(playerid, "HouseZ");
+	DeletePVar(playerid, "HouseA");
+	DeletePVar(playerid, "HouseInt");
+	DeletePVar(playerid, "HouseIsDonate");
+	DeletePVar(playerid, "HouseNeedLevel");
+	DeletePVar(playerid, "HousePrice");
+
+	UpdateHouse(HouseID);
+	Iter_Add(Houses, HouseID);
 	SendClientMessage(playerid, -1, Main_Color"Дом создан. Для редактирования используйте /edithouse");
 	return 1;
 }
@@ -23430,6 +23450,7 @@ public LoadAccount(playerid)
 	cache_get_value_name_int(0, "JailedFraction", pInfo[playerid][pJailedFraction]);
 	cache_get_value_name_int(0, "Warn", pInfo[playerid][pWarn]);
 	cache_get_value_name_int(0, "Members", pInfo[playerid][pMembers]);
+	if(pInfo[playerid][pMembers] != Fraction_None) Iter_Add(FractionMembers[pInfo[playerid][pMembers]], playerid);
 	cache_get_value_name_int(0, "Rank", pInfo[playerid][pRank]);
 	cache_get_value_name_int(0, "MedCard", pInfo[playerid][pMedCard]);
 	cache_get_value_name_int(0, "LawyerLic", TempVar);
@@ -23922,7 +23943,7 @@ stock PayDay()
 
 stock PropertyTax()
 {
-	for(new i = 1; i < sizeof(hInfo); i++)
+	foreach(new i:Houses)
 	{
 		if(hInfo[i][hOwnerID] && hInfo[i][hTax] < gettime())
 		{
@@ -24130,7 +24151,7 @@ public SecondTimer()
         }
     }
 
-	for(new i = 0; i < MAX_FRACTION; i++)
+	for(new i = 1; i < MAX_FRACTION; i++)
 	{
 		if(GangWarTimer[i])
 		{
@@ -25308,14 +25329,14 @@ stock SendRMessage(playerid, const message[])
 	if(pInfo[playerid][pMembers] == Fraction_None || pInfo[playerid][pRank] <= 0) return 1;
 	if(CanUseRChat(pInfo[playerid][pMembers]))
 	{
-		foreach(new i: Player)
+		foreach(new i:FractionMembers[pInfo[playerid][pMembers]])
 		{
 			if(pInfo[i][pAuth] && pInfo[i][pMembers] == pInfo[playerid][pMembers]) SendClientMessage(i, BitColor_R, message);
 		}
 	}
 	else if(CanUseFChat(pInfo[playerid][pMembers]))
 	{
-		foreach(new i: Player)
+		foreach(new i:FractionMembers[pInfo[playerid][pMembers]])
 		{
 			if(pInfo[i][pAuth] && pInfo[i][pMembers] == pInfo[playerid][pMembers]) SendClientMessage(i, BitColor_F, message);
 		}
@@ -25328,14 +25349,14 @@ stock SendRMessageEx(members, const message[])
 	if(members == Fraction_None) return 1;
 	if(CanUseRChat(members))
 	{
-		foreach(new i: Player)
+		foreach(new i:FractionMembers[members])
 		{
 			if(pInfo[i][pAuth] && pInfo[i][pMembers] == members) SendClientMessage(i, BitColor_R, message);
 		}
 	}
 	else if(CanUseFChat(members))
 	{
-		foreach(new i: Player)
+		foreach(new i:FractionMembers[members])
 		{
 			if(pInfo[i][pAuth] && pInfo[i][pMembers] == members) SendClientMessage(i, BitColor_F, message);
 		}
@@ -25346,9 +25367,13 @@ stock SendRMessageEx(members, const message[])
 stock SendDMessage(playerid, const message[])
 {
 	if(pInfo[playerid][pMembers] == Fraction_None || pInfo[playerid][pRank] <= 0) return 1;
-	foreach(new i: Player)
+	for(new i = 1; i < MAX_FRACTION; i++)
 	{
-		if(pInfo[i][pAuth] && pInfo[i][pMembers] != Fraction_None && IsGovFraction(pInfo[i][pMembers])) SendClientMessage(i, BitColor_D, message);
+		if(!IsGovFraction(i)) continue;
+		foreach(new j:FractionMembers[i])
+		{
+			if(pInfo[j][pAuth]) SendClientMessage(j, BitColor_D, message);
+		}
 	}
 	return 1;
 }
@@ -29890,9 +29915,12 @@ stock FillLeaderBoard()
 {
 	new str[1000];
 	strcat(str, Main_Color"Лидеры онлайн\n"Color_White);
-	foreach(new i: Player)
+	for(new i = 1; i < MAX_FRACTION; i++)
 	{
-		if(pInfo[i][pAuth] && pInfo[i][pMembers] != Fraction_None && pInfo[i][pRank] >= FractionMaxRank) format(str, sizeof(str), "%s%s[%d] - %s\n", str, pInfo[i][pName], i, FractionName[pInfo[i][pMembers]]);
+		foreach(new j: FractionMembers[i])
+		{
+			if(pInfo[j][pAuth] && pInfo[j][pRank] >= FractionMaxRank) format(str, sizeof(str), "%s%s[%d] - %s\n", str, pInfo[j][pName], i, FractionName[pInfo[j][pMembers]]);
+		}
 	}
 	SetDynamicObjectMaterialText(LeaderBoard, 0, str, 140, "Calibri", 26, 1, 0xFFFFFFFF, 0, 1);
 	return 1;
