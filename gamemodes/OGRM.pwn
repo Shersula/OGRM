@@ -2266,7 +2266,8 @@ enum PlayerInfo
 	pStashDrugs,
 	pStashMaterials,
 	pKnockoutStatus,
-	bool:pStealSkin
+	bool:pStealSkin,
+	pDayPlayedTime
 };
 new pInfo[MAX_PLAYERS][PlayerInfo];
 new Iterator:Admins<MAX_PLAYERS>;
@@ -2395,6 +2396,7 @@ stock ClearAccount(playerid)
 	pInfo[playerid][pStashMaterials] = 0;
 	pInfo[playerid][pKnockoutStatus] = Player_No_Knockout;
 	pInfo[playerid][pStealSkin] = false;
+	pInfo[playerid][pDayPlayedTime] = 0;
 	UnloadHouseVehicle(playerid);
 
     if(Iter_Contains(Admins, playerid))
@@ -2420,6 +2422,7 @@ stock SaveAccount(playerid)
 	SavePlayerInt(playerid, "BloodCD", GetPVarInt(playerid, "BloodCD"));
 
 	SavePlayerInt(playerid, "PlayedTime", pInfo[playerid][pPlayedTime]);
+	SavePlayerInt(playerid, "DayPlayedTime", pInfo[playerid][pDayPlayedTime]);
 
 	AntiCheatGetHealth(playerid, pInfo[playerid][pHealth]);
 	SavePlayerFloat(playerid, "Health", pInfo[playerid][pHealth]);
@@ -2428,6 +2431,8 @@ stock SaveAccount(playerid)
 	SavePlayerFloat(playerid, "Armor", pInfo[playerid][pArmor]);
 
 	SavePlayerSkill(playerid);
+
+	if(Iter_Contains(Admins, playerid)) SaveAdminInfo(playerid);
 }
 
 ///////////////Tent/////////////////
@@ -2570,7 +2575,7 @@ public OnGameModeInit()
 	SetWorldTime(hour);
 	SetWeatherOfTime(hour);
 
-	PayDayCalled = false;
+	PayDayCalled = true;
 
 	LotteryMoney = 0;
 	LotteryStarted = false;
@@ -2967,7 +2972,7 @@ public OnPlayerDisconnect(playerid, reason)
 		StopSpectate(playerid);
 	}
 
-	if(pInfo[playerid][pAdmin] && GetPVarInt(playerid, "AdmAuth")) HideCheaterPanelTD(playerid);
+	if(Iter_Contains(Admins, playerid)) HideCheaterPanelTD(playerid);
 
 	if(GetPVarInt(playerid, "SpeedometrID")) HidePlayerSpeedometr(playerid);
 
@@ -10215,9 +10220,13 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			DeletePVar(Player, "ReportInWork");
 
 			ClearReportList(playerid);
+			AInfo[playerid][AdmReport][GetWeekDay()]++;
+
+			new str[150];
+			format(str, sizeof(str), Color_White"%s", inputtext);
 
 			format(SubStr, sizeof(SubStr), Color_White"Ответ %s"Main_Color"%s", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName]);
-			ShowDialog(Player, D_None, DIALOG_STYLE_MSGBOX, SubStr, inputtext, Color_White"Закрыть", "");
+			ShowDialog(Player, D_None, DIALOG_STYLE_MSGBOX, SubStr, str, Color_White"Закрыть", "");
 			return 1;
 		}
 		case D_Main_Menu:
@@ -12656,6 +12665,9 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 						format(str, sizeof(str), "%s"Color_White"/logs - Логи\n", str);
 						format(str, sizeof(str), "%s"Color_White"/bots - Настройки ботов\n", str);
 						format(str, sizeof(str), "%s"Color_White"/createicon - Создание иконки\n", str);
+						format(str, sizeof(str), "%s"Color_White"/rcmd - Отправить RCON команду серверу\n", str);
+						format(str, sizeof(str), "%s"Color_White"/adminfo - Информация о администраторе\n", str);
+						format(str, sizeof(str), "%s"Color_White"/offadmins - Список администрации\n", str);
 						format(SubStr, sizeof(SubStr), Main_Color"Админ панель ||"Color_White" Команды %s", AdminNames[4]);
 						ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, SubStr, str, Color_White"Закрыть", "");
 					}
@@ -15670,7 +15682,7 @@ public OnPlayerClickPlayer(playerid, clickedplayerid, source)
 public OnPlayerClickMap(playerid, Float:fX, Float:fY, Float:fZ)
 {
 	if(GetPVarInt(playerid, "TaxiPoint")) SetPlayerTaxiMarker(playerid, fX, fY, fZ);
-	else if(pInfo[playerid][pAdmin] >= 1 && GetPVarInt(playerid, "AdmAuth"))
+	else if(Iter_Contains(Admins, playerid))
 	{
 		if(GetPlayerState(playerid) == PLAYER_STATE_ONFOOT)
 		{
@@ -15696,16 +15708,6 @@ CMD:main(playerid)
 	return 1;
 }
 alias:main("mm", "menu");
-
-CMD:test(playerid)
-{
-	new str[20];
-	new year, month, day;
-	getdate(year, month, day);
-	format(str, sizeof(str), "%d", GetWeekDay(year, month, day));
-	SendClientMessage(playerid, -1, str);
-	return 1;
-}
 
 CMD:stealdress(playerid, params[])
 {
@@ -20274,7 +20276,7 @@ CMD:donate(playerid)
 }
 CMD:alogin(playerid)
 {
-	if(pInfo[playerid][pAdmin] < 1 || GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 1 || Iter_Contains(Admins, playerid)) return 1;
 	if(!strcmp(pInfo[playerid][pAdminPass], "None"))
 	{
 		ShowDialog(playerid, D_ACreatePass, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Создание пароля администратора", Color_White"Для того чтобы полочуть доступ к возможнлмтям администратора\n\
@@ -20293,7 +20295,7 @@ CMD:alogin(playerid)
 
 CMD:ahelp(playerid)
 {
-	if(pInfo[playerid][pAdmin] < 1 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 1 || !Iter_Contains(Admins, playerid)) return 1;
 	new str[300];
 
 	for(new i = 1; i < sizeof(AdminNames); i++)
@@ -20309,7 +20311,7 @@ CMD:ahelp(playerid)
 
 CMD:reportlist(playerid)
 {
-	if(pInfo[playerid][pAdmin] < 1 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 1 || !Iter_Contains(Admins, playerid)) return 1;
 	ClearReportList(playerid);
 
 	new str[2500];
@@ -20337,7 +20339,7 @@ CMD:reportlist(playerid)
 
 CMD:apanel(playerid)
 {
-	if(pInfo[playerid][pAdmin] < 1 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 1 || !Iter_Contains(Admins, playerid)) return 1;
 	if(pInfo[playerid][pAdmin]+1 == sizeof(AdminNames))
 	{
 		ShowDialog(playerid, D_APanel, DIALOG_STYLE_LIST, Main_Color"Админ панель", Main_Color"- "Color_White"Команды администратора\n\
@@ -20360,7 +20362,7 @@ CMD:apanel(playerid)
 
 CMD:a(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 1 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 1 || !Iter_Contains(Admins, playerid)) return 1;
 	new message[145];
 	if(sscanf(params, "s[145]", message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/a [Сообщение]");
 
@@ -20372,7 +20374,7 @@ alias:a("amsg", "amessage");
 
 CMD:mute(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 1 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 1 || !Iter_Contains(Admins, playerid)) return 1;
 
 	new id, time, message[145];
 	if(sscanf(params, "dds[145]", id, time, message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/mute [ID] [Время в минутах] [Причина]");
@@ -20382,6 +20384,8 @@ CMD:mute(playerid, params[])
 	if(time < 0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверное время");
 	if(time > 300) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете дать мут более чем на 300 минут");
 	if(playerid == id) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете дать мут самому себе");
+
+	AInfo[playerid][AdmMute][GetWeekDay()]++;
 
 	pInfo[id][pMute] = time*60;
 	SavePlayerInt(id, "Mute", pInfo[id][pMute]);
@@ -20406,7 +20410,7 @@ CMD:mute(playerid, params[])
 
 CMD:unmute(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 1 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 1 || !Iter_Contains(Admins, playerid)) return 1;
 
 	new id, message[145];
 	if(sscanf(params, "ds[145]", id, message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/mute [ID] [Текст]");
@@ -20435,7 +20439,7 @@ CMD:unmute(playerid, params[])
 
 CMD:jail(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 1 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 1 || !Iter_Contains(Admins, playerid)) return 1;
 
 	new id, time, message[145];
 	if(sscanf(params, "dds[145]", id, time, message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/jail [ID] [Время в минутах] [Причина]");
@@ -20445,6 +20449,8 @@ CMD:jail(playerid, params[])
 	if(time < 0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверное время");
 	if(time > 300) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете посадить игрока в деморган более чем на 300 минут");
 	if(playerid == id) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете посадить в деморган самого себя");
+
+	AInfo[playerid][AdmDemorgan][GetWeekDay()]++;
 
 	ChangePlayerJob(id, pInfo[id][pJob]);
 	ChangePlayerUnOfficialJob(id, Job_None);
@@ -20476,7 +20482,7 @@ CMD:jail(playerid, params[])
 
 CMD:unjail(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 1 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 1 || !Iter_Contains(Admins, playerid)) return 1;
 
 	new id, message[145];
 	if(sscanf(params, "ds[145]", id, message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/unjail [ID] [Текст]");
@@ -20507,7 +20513,7 @@ CMD:unjail(playerid, params[])
 
 CMD:warn(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 1 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 1 || !Iter_Contains(Admins, playerid)) return 1;
 
 	new id, message[145];
 	if(sscanf(params, "ds[145]", id, message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/warn [ID] [Причина]");
@@ -20566,7 +20572,7 @@ CMD:warn(playerid, params[])
 
 CMD:unwarn(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 1 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 1 || !Iter_Contains(Admins, playerid)) return 1;
 
 	new id, message[145];
 	if(sscanf(params, "ds[145]", id, message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/unwarn [ID] [Причина]");
@@ -20596,7 +20602,7 @@ CMD:unwarn(playerid, params[])
 
 CMD:kick(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 2 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 2 || !Iter_Contains(Admins, playerid)) return 1;
 
 	new id, message[145];
 	if(sscanf(params, "ds[145]", id, message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/kick [ID] [Причина]");
@@ -20614,6 +20620,7 @@ CMD:kick(playerid, params[])
 	"Color_White"Если вы не согласны с полученым наказанием оспорить вы его можете на форуме ogrm-project.ru", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], message);
 	ShowDialog(id, D_None, DIALOG_STYLE_MSGBOX, Color_Red"Вас кикнули с сервера", str, Color_White"Закрыть", "");
 
+	AInfo[playerid][AdmKick][GetWeekDay()]++;
 	KickPlayer(id);
 
 	str[0] = EOS;
@@ -20628,7 +20635,7 @@ CMD:kick(playerid, params[])
 
 CMD:ban(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 2 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 2 || !Iter_Contains(Admins, playerid)) return 1;
 
 	new id, time, message[145];
 	if(sscanf(params, "dds[145]", id, time, message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/ban [ID] [Количество дней] [Причина]");
@@ -20649,6 +20656,8 @@ CMD:ban(playerid, params[])
 
 	BanPlayer(id, message, gettime()+(time*86400), playerid);
 
+	AInfo[playerid][AdmBan][GetWeekDay()]++;
+
 	str[0] = EOS;
 	GetPlayerIp(playerid, str, 16);
 	new SubStr[20];
@@ -20661,7 +20670,7 @@ CMD:ban(playerid, params[])
 
 CMD:offban(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 2 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 2 || !Iter_Contains(Admins, playerid)) return 1;
 
 	new Name[MAX_PLAYER_NAME+1], time, message[145];
 	if(sscanf(params, "s[25]ds[145]", Name, time, message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/offban [Ник] [Количество дней] [Причина]");
@@ -20676,7 +20685,7 @@ CMD:offban(playerid, params[])
 
 CMD:baninfo(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 2 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 2 || !Iter_Contains(Admins, playerid)) return 1;
 
 	new Name[MAX_PLAYER_NAME+1];
 	if(sscanf(params, "s[25]", Name)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/baninfo [Ник]");
@@ -20690,7 +20699,7 @@ CMD:baninfo(playerid, params[])
 
 CMD:unban(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 2 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 2 || !Iter_Contains(Admins, playerid)) return 1;
 
 	new Name[MAX_PLAYER_NAME+1], message[145];
 	if(sscanf(params, "s[25]s[145]", Name, message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/unban [Имя игрока] [Причина]");
@@ -20704,7 +20713,7 @@ CMD:unban(playerid, params[])
 
 CMD:banip(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 2 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 2 || !Iter_Contains(Admins, playerid)) return 1;
 
 	new IP[17], message[145];
 	if(sscanf(params, "s[17]s[145]", IP, message))
@@ -20720,6 +20729,8 @@ CMD:banip(playerid, params[])
 	format(str, sizeof(str), Color_Red"%s %s забанил IP %s по причине %s", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], IP, message);
 	SendAdminMessage(str);
 
+	AInfo[playerid][AdmBan][GetWeekDay()]++;
+
 	BanIP(IP, playerid, message);
 
 	str[0] = EOS;
@@ -20732,7 +20743,7 @@ CMD:banip(playerid, params[])
 
 CMD:getip(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 2 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 2 || !Iter_Contains(Admins, playerid)) return 1;
 
 	new id;
 	if(sscanf(params, "d", id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/getip [ID]");
@@ -20752,7 +20763,7 @@ CMD:getip(playerid, params[])
 
 CMD:unbanip(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 2 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 2 || !Iter_Contains(Admins, playerid)) return 1;
 
 	new IP[17], message[145];
 	if(sscanf(params, "s[17]s[145]", IP, message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/unbanip [IP] [Причина]");
@@ -20768,7 +20779,7 @@ CMD:unbanip(playerid, params[])
 
 CMD:spec(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 2 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 2 || !Iter_Contains(Admins, playerid)) return 1;
 
 	new id;
 	if(sscanf(params, "d", id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/spec [ID]");
@@ -20802,7 +20813,7 @@ CMD:spec(playerid, params[])
 
 CMD:specoff(playerid)
 {
-	if(pInfo[playerid][pAdmin] < 2 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 2 || !Iter_Contains(Admins, playerid)) return 1;
 	if(!GetPVarInt(playerid, "Spec_Mode")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не в режиме слежки");
 	StopSpectate(playerid);
 	SendClientMessage(playerid, -1, Color_Yellow"Вы прекратили следить за игроком.");
@@ -20811,7 +20822,7 @@ CMD:specoff(playerid)
 
 CMD:gm(playerid, params[])
 {
-    if(pInfo[playerid][pAdmin] < 1 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+    if(pInfo[playerid][pAdmin] < 1 || !Iter_Contains(Admins, playerid)) return 1;
     new id;
 	if(sscanf(params, "d", id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/gm [ID]");
 	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
@@ -20884,7 +20895,7 @@ public GMCheck(playerid, AdminID, vehicleid, Float:LastHp)
 
 CMD:makeleader(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 3 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 3 || !Iter_Contains(Admins, playerid)) return 1;
 	new id;
 	if(sscanf(params, "d", id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/makeleader [ID]");
 	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
@@ -20900,7 +20911,7 @@ CMD:makeleader(playerid, params[])
 
 CMD:givemoney(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	new id, money;
 	if(sscanf(params, "dd", id, money)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/givemoney [ID] [Деньги]");
 	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
@@ -20928,7 +20939,7 @@ CMD:givemoney(playerid, params[])
 
 CMD:givedonatemoney(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	new id, money;
 	if(sscanf(params, "dd", id, money)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/givedonatemoney [ID] [Рубли]");
 	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
@@ -20957,7 +20968,7 @@ CMD:givedonatemoney(playerid, params[])
 
 CMD:giveskin(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	new id, skin;
 	if(sscanf(params, "dd", id, skin)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/giveskin [ID] [ID скина]");
 	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
@@ -20986,7 +20997,7 @@ CMD:giveskin(playerid, params[])
 
 CMD:slap(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 2 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 2 || !Iter_Contains(Admins, playerid)) return 1;
 	new id;
 	if(sscanf(params, "d", id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/slap [ID]");
 	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
@@ -21013,7 +21024,7 @@ CMD:slap(playerid, params[])
 
 CMD:aad(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 2 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 2 || !Iter_Contains(Admins, playerid)) return 1;
 	new message[145];
 	if(sscanf(params, "s[145]", message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/aad [Текст]");
 	format(message, sizeof(message), Color_Yellow"[%s %s]"Color_White": %s", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], message);
@@ -21023,7 +21034,7 @@ CMD:aad(playerid, params[])
 
 CMD:spall(playerid)
 {
-	if(pInfo[playerid][pAdmin] < 3 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 3 || !Iter_Contains(Admins, playerid)) return 1;
 
 	if(GetSVarInt("SpAllToggle")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Респавн всего транспорта уже запущен, ожидайте");
 
@@ -21040,7 +21051,7 @@ CMD:spall(playerid)
 
 CMD:cc(playerid)
 {
-	if(pInfo[playerid][pAdmin] < 3 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 3 || !Iter_Contains(Admins, playerid)) return 1;
 	for(new i = 0; i < 100; i++) SendAllMessage(" ");
 
 	new str[100];
@@ -21051,7 +21062,7 @@ CMD:cc(playerid)
 
 CMD:sethp(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 2 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 2 || !Iter_Contains(Admins, playerid)) return 1;
 	new id, health;
 	if(sscanf(params, "dd", id, health)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/sethp [ID] [Уровень здоровья]");
 	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
@@ -21082,14 +21093,14 @@ CMD:sethp(playerid, params[])
 
 CMD:tp(playerid)
 {
-	if(pInfo[playerid][pAdmin] < 2 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 2 || !Iter_Contains(Admins, playerid)) return 1;
 	ShowPlayerTPMenu(playerid);
 	return 1;
 }
 
 CMD:spawn(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 2 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 2 || !Iter_Contains(Admins, playerid)) return 1;
 	new id;
 	if(sscanf(params, "d", id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/spawn [ID]");
 	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
@@ -21117,7 +21128,7 @@ CMD:spawn(playerid, params[])
 
 CMD:goto(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 2 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 2 || !Iter_Contains(Admins, playerid)) return 1;
 	new id;
 	if(sscanf(params, "d", id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/goto [ID]");
 	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
@@ -21138,7 +21149,7 @@ CMD:goto(playerid, params[])
 
 CMD:gethere(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 2 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 2 || !Iter_Contains(Admins, playerid)) return 1;
 	new id;
 	if(sscanf(params, "d", id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/gethere [ID]");
 	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
@@ -21159,7 +21170,7 @@ CMD:gethere(playerid, params[])
 
 CMD:dveh(playerid)
 {
-	if(pInfo[playerid][pAdmin] < 2 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 2 || !Iter_Contains(Admins, playerid)) return 1;
 	if(GetPVarInt(playerid, "AdminCar"))
 	{
 		ClearVehicle(GetPVarInt(playerid, "AdminCar"));
@@ -21172,7 +21183,7 @@ CMD:dveh(playerid)
 
 CMD:veh(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 2 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 2 || !Iter_Contains(Admins, playerid)) return 1;
 	new model, color1, color2;
 	if(sscanf(params, "ddd", model, color1, color2)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/veh [Модель] [Цвет 1] [Цвет 2]");
 	if(color1 > 255 || color1 < 0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Цвет 1 может быть от 0 до 255");
@@ -21210,7 +21221,7 @@ CMD:veh(playerid, params[])
 
 CMD:fractionsettings(playerid)
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	new str[500];
 	for(new i = 1; i < MAX_FRACTION; i++) format(str, sizeof(str), "%s"Color_White"%s\n", str, FractionName[i]);
 	ShowDialog(playerid, D_Edit_Fraction, DIALOG_STYLE_LIST, Main_Color"Редактирование фракций", str, Color_White"Далее", Color_White"Закрыть");
@@ -21219,7 +21230,7 @@ CMD:fractionsettings(playerid)
 
 CMD:gpssettings(playerid)
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	ShowDialog(playerid, D_GPS_Settings, DIALOG_STYLE_LIST, Main_Color"Админ панель || "Color_White"Настройки GPS", Main_Color"- "Color_White"Добавить новый заголовок\n\
 	"Main_Color"- "Color_White"Удалить заголовок\n\
 	"Main_Color"- "Color_White"Добавить пункт\n\
@@ -21229,7 +21240,7 @@ CMD:gpssettings(playerid)
 
 CMD:iconsettings(playerid)
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	SetPVarInt(playerid, "Icons_List", 1);
 	ShowMapIconList(playerid);
 	return 1;
@@ -21237,7 +21248,7 @@ CMD:iconsettings(playerid)
 
 CMD:logs(playerid)
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	ShowDialog(playerid, D_Log_Type, DIALOG_STYLE_LIST, Main_Color"Админ панель || "Color_White"Логи", Main_Color"1"Color_White". Деньги\n\
 	"Main_Color"2"Color_White". Действия администраторов/модераторов\n\
 	"Main_Color"3"Color_White". Действия с аккаунтом\n\
@@ -21247,7 +21258,7 @@ CMD:logs(playerid)
 
 CMD:bots(playerid)
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	if(BotStatus)
 	{
 		ShowDialog(playerid, D_Bots_Settings, DIALOG_STYLE_LIST, Main_Color"Админ панель || "Color_White"Боты", Main_Color"1"Color_White". Ники ботов\n\
@@ -21265,9 +21276,171 @@ CMD:bots(playerid)
 	return 1;
 }
 
+CMD:offadmins(playerid)
+{
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
+	mysql_tquery(DB, "SELECT `account`.`Name`, `account`.`Admin` FROM `account` WHERE `Admin` > 0", "ShowOffAdmin", "d", playerid);
+	return 1;
+}
+
+forward ShowOffAdmin(playerid);
+public ShowOffAdmin(playerid)
+{
+	new row = cache_num_rows();
+	if(!row) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Список администрации пуст");
+
+	new str[1000];
+	for(new i = 0; i < row; i++)
+	{
+		new Admin = 0;
+		cache_get_value_name_int(i, "Admin", Admin);
+		new Name[MAX_PLAYER_NAME+1];
+		cache_get_value_name(i, "Name", Name);
+		format(str, sizeof(str), "%s"Color_White"%s(%d) "Main_Color"%s\n", str, AdminNames[Admin], Admin, Name);
+	}
+	ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color"Список администрации", str, "Закрыть", "");
+	return 1;
+}
+
+CMD:adminfo(playerid, params[])
+{
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
+
+	new Name[MAX_PLAYER_NAME+1];
+	if(sscanf(params, "s[*]", MAX_PLAYER_NAME+1, Name)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/adminfo [Ник администратора]");
+
+	foreach(new i:Admins)
+	{
+		if(!strcmp(Name, pInfo[i][pName]))
+		{
+			AInfo[i][AdmOnline][GetWeekDay()] = pInfo[i][pDayPlayedTime];
+
+			new ReportSum, BanSum, KickSum, MuteSum, DemorganSum, TimeSum;
+
+			new str[1000];
+			new SubStr[100];
+
+			for(new j = 0; j < 7; j++)
+			{
+				SubStr[0] = EOS;
+				GetWeekDayName(j, SubStr);
+				new TimeStr[100];
+				ConvertedSeconds(AInfo[i][AdmOnline][j], TimeStr);
+				format(str, sizeof(str), "%s"Main_Color"%s "Color_White"| Репорты: %d | Баны: %d | Kick: %d | Mute: %d | Jail: %d | Онлайн: %s\n\n", str, SubStr, AInfo[i][AdmReport][j], AInfo[i][AdmBan][j], AInfo[i][AdmKick][j], AInfo[i][AdmMute][j], AInfo[i][AdmDemorgan][j], TimeStr);
+
+				ReportSum += AInfo[i][AdmReport][j];
+				BanSum += AInfo[i][AdmBan][j];
+				KickSum += AInfo[i][AdmKick][j];
+				MuteSum += AInfo[i][AdmMute][j];
+				DemorganSum += AInfo[i][AdmDemorgan][j];
+				TimeSum += AInfo[i][AdmOnline][j];
+			}
+
+			SubStr[0] = EOS;
+			ConvertedSeconds(TimeSum, SubStr);
+			format(str, sizeof(str), "%s"Main_Color"Суммарно "Color_White"| Репорты: %d | Баны: %d | Kick: %d | Mute: %d | Jail: %d | Онлайн: %s", str, ReportSum, BanSum, KickSum, MuteSum, DemorganSum, SubStr);
+
+			SubStr[0] = EOS;
+			format(SubStr, sizeof(SubStr), Main_Color"%s %s", AdminNames[pInfo[i][pAdmin]], pInfo[i][pName]);
+
+			ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, SubStr, str, "Закрыть", "");
+
+			return 1;
+		}
+	}
+
+	new query[200];
+	mysql_format(DB, query, sizeof(query), "SELECT `admin_info`.*, `account`.`Name`, `account`.`Admin` FROM `admin_info` INNER JOIN `account` ON `account`.`ID` = `admin_info`.`ID` WHERE `Name` = '%s'", Name);
+	mysql_tquery(DB, query, "GetAdminInfo", "d", playerid);
+	return 1;
+}
+
+forward GetAdminInfo(playerid);
+public GetAdminInfo(playerid)
+{
+	new row = cache_num_rows();
+	if(row)
+	{
+		new Admin = 0;
+		cache_get_value_name_int(0, "Admin", Admin);
+		if(!Admin) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с этим ником не является администратором");
+
+		new ReportCount[7], BanCount[7], KickCount[7], MuteCount[7], DemorganCount[7], OnlineCount[7];
+		new ReportSum, BanSum, KickSum, MuteSum, DemorganSum, TimeSum;
+
+		new str[1000];
+		cache_get_value_name(0, "Report", str);
+		if(strlen(str)) sscanf(str, "p<,>a<i>[7]", ReportCount);
+
+		str[0] = EOS;
+		cache_get_value_name(0, "Ban", str);
+		if(strlen(str)) sscanf(str, "p<,>a<i>[7]", BanCount);
+
+		str[0] = EOS;
+		cache_get_value_name(0, "Kick", str);
+		if(strlen(str)) sscanf(str, "p<,>a<i>[7]", KickCount);
+
+		str[0] = EOS;
+		cache_get_value_name(0, "Mute", str);
+		if(strlen(str)) sscanf(str, "p<,>a<i>[7]", MuteCount);
+
+		str[0] = EOS;
+		cache_get_value_name(0, "Demorgan", str);
+		if(strlen(str)) sscanf(str, "p<,>a<i>[7]", DemorganCount);
+
+		str[0] = EOS;
+		cache_get_value_name(0, "Online", str);
+		if(strlen(str)) sscanf(str, "p<,>a<i>[7]", OnlineCount);
+
+		str[0] = EOS;
+		new SubStr[100];
+
+		for(new i = 0; i < 7; i++)
+		{
+			SubStr[0] = EOS;
+			GetWeekDayName(i, SubStr);
+			new TimeStr[100];
+			ConvertedSeconds(OnlineCount[i], TimeStr);
+			format(str, sizeof(str), "%s"Main_Color"%s "Color_White"| Репорты: %d | Баны: %d | Kick: %d | Mute: %d | Jail: %d | Онлайн: %s\n\n", str, SubStr, ReportCount[i], BanCount[i], KickCount[i], MuteCount[i], DemorganCount[i], TimeStr);
+
+			ReportSum += ReportCount[i];
+			BanSum += BanCount[i];
+			KickSum += KickCount[i];
+			MuteSum += MuteCount[i];
+			DemorganSum += DemorganCount[i];
+			TimeSum += OnlineCount[i];
+		}
+		SubStr[0] = EOS;
+		ConvertedSeconds(TimeSum, SubStr);
+		format(str, sizeof(str), "%s"Main_Color"Суммарно "Color_White"| Репорты: %d | Баны: %d | Kick: %d | Mute: %d | Jail: %d | Онлайн: %s", str, ReportSum, BanSum, KickSum, MuteSum, DemorganSum, SubStr);
+		format(str, sizeof(str), Color_White"%s", str);
+
+		SubStr[0] = EOS;
+		cache_get_value_name(0, "Name", SubStr);
+		format(SubStr, sizeof(SubStr), Main_Color"%s %s", AdminNames[Admin], SubStr);
+
+		ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, SubStr, str, "Закрыть", "");
+	}
+	else return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с этим ником не найден");
+	return 1;
+}
+
+CMD:rcmd(playerid, params[])
+{
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
+
+	new message[145];
+	if(sscanf(params, "s[145]", message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/rcmd [RCON Команда]");
+
+	SendRconCommand(message);
+
+	SendClientMessage(playerid, -1, Color_White"Команда отправлена серверу");
+	return 1;
+}
+
 CMD:createicon(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	new model, Color, Comment[100];
 	if(sscanf(params, "dds[100]", model, Color, Comment)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/createicon [Номер иконки] [Цвет иконки в формате(RGBA) 0xFFFFFFFF] [Комментарий к иконке]");
 	if(model < 0 || model > 63) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Номер иконки от 0 до 63");
@@ -21291,7 +21464,7 @@ CMD:createicon(playerid, params[])
 
 CMD:payday(playerid)
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	new str[145];
 	format(str, sizeof(str), Color_Yellow"%s %s запустил PayDay", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName]);
 	SendAllMessage(str);
@@ -21301,7 +21474,7 @@ CMD:payday(playerid)
 
 CMD:makeadmin(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	new id, AdmLevel;
 	if(sscanf(params, "dd", id, AdmLevel)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/makeadmin [ID] [Уровень(0 - Чтобы снять)]");
 	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
@@ -21321,6 +21494,11 @@ CMD:makeadmin(playerid, params[])
 		format(str, sizeof(str), Color_Yellow"%s %s снял с должности %s игрока %s", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], AdminNames[pInfo[id][pAdmin]], pInfo[id][pName]);
 		SendAdminMessage(str);
 
+		ClearAdminInfo(id);
+		str[0] = EOS;
+		mysql_format(DB, str, sizeof(str), "DELETE FROM `admin_info` WHERE `ID` = '%d')", pInfo[id][pID]);
+		mysql_tquery(DB, str);
+
 		str[0] = EOS;
 		GetPlayerIp(playerid, str, 16);
 		new SubStr[20];
@@ -21339,6 +21517,11 @@ CMD:makeadmin(playerid, params[])
 		format(str, sizeof(str), Color_Yellow"%s %s назначил на должность %s игрока %s", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], AdminNames[AdmLevel], pInfo[id][pName]);
 		SendAdminMessage(str);
 
+		ClearAdminInfo(id);
+		str[0] = EOS;
+		mysql_format(DB, str, sizeof(str), "INSERT INTO `admin_info` (`ID`) VALUES ('%d')", pInfo[id][pID]);
+		mysql_tquery(DB, str);
+
 		str[0] = EOS;
 		GetPlayerIp(playerid, str, 16);
 		new SubStr[20];
@@ -21356,7 +21539,7 @@ CMD:makeadmin(playerid, params[])
 
 CMD:settime(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	new time;
 	if(sscanf(params, "d", time)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/settime [Время]");
 	if(time < 0 || time > 23) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Время от 0 до 23");
@@ -21366,7 +21549,7 @@ CMD:settime(playerid, params[])
 
 CMD:setweather(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	new weatherid;
 	if(sscanf(params, "d", weatherid)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/setweather [id погоды]");
 	if(weatherid < 0 || weatherid > 22) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"ID погоды от 0 до 22");
@@ -21376,7 +21559,7 @@ CMD:setweather(playerid, params[])
 
 CMD:deletetent(playerid)
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	if(GetPlayerState(playerid) != PLAYER_STATE_ONFOOT) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть на ногах");
 
 	new indx = -1;
@@ -21411,7 +21594,7 @@ CMD:deletetent(playerid)
 
 CMD:createtent(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	new Type, Slots, Price;
 	if(sscanf(params, "ddd", Type, Slots, Price))
 	{
@@ -21470,7 +21653,7 @@ CMD:createtent(playerid, params[])
 
 CMD:deletetable(playerid)
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	if(GetPlayerState(playerid) != PLAYER_STATE_ONFOOT) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть на ногах");
 
 	new indx = -1;
@@ -21505,7 +21688,7 @@ CMD:deletetable(playerid)
 
 CMD:createtable(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	new TableType, MaxPlayer, Bet;
 	if(sscanf(params, "ddd", TableType, MaxPlayer, Bet))
 	{
@@ -21555,7 +21738,7 @@ CMD:createtable(playerid, params[])
 
 CMD:deletesprunk(playerid)
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	if(GetPlayerState(playerid != PLAYER_STATE_ONFOOT)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть на ногах");
 
 	new indx = -1;
@@ -21586,7 +21769,7 @@ CMD:deletesprunk(playerid)
 
 CMD:createsprunk(playerid)
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	if(GetPlayerState(playerid != PLAYER_STATE_ONFOOT)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть на ногах");
 	if(GetPVarInt(playerid, "EditSprunkMachine")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы уже редактируете автомат со Sprunk");
 	new indx = -1;
@@ -21621,7 +21804,7 @@ CMD:createsprunk(playerid)
 
 CMD:createbusiness(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	if(GetPlayerState(playerid) != PLAYER_STATE_ONFOOT) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны находиться на ногах");
 	if(GetPlayerInterior(playerid) != 0 || GetPlayerVirtualWorld(playerid) != 0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть на улице");
 	new BusinessTypes;
@@ -21652,7 +21835,7 @@ CMD:createbusiness(playerid, params[])
 
 CMD:editbusiness(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	new BusinessID;
 	if(sscanf(params, "d", BusinessID)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/editbusiness [Номер бизнеса]");
 	if(!Iter_Contains(Business, BusinessID)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Такой бизнес не существует");
@@ -21674,7 +21857,7 @@ CMD:editbusiness(playerid, params[])
 
 CMD:deletebusiness(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	new BusinessID;
 	if(sscanf(params, "d", BusinessID)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/deletebusiness [Номер бизнеса]");
 	if(!Iter_Contains(Business, BusinessID)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Такой бизнес не существует");
@@ -21732,7 +21915,7 @@ CMD:deletebusiness(playerid, params[])
 
 CMD:createhouse(playerid)
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	if(GetPlayerState(playerid) != PLAYER_STATE_ONFOOT) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны находиться на ногах");
 	if(GetPlayerInterior(playerid) != 0 || GetPlayerVirtualWorld(playerid) != 0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть на улице");
 	new Float:X, Float:Y, Float:Z, Float:A;
@@ -21751,7 +21934,7 @@ CMD:createhouse(playerid)
 
 CMD:edithouse(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	new HouseID;
 	if(sscanf(params, "d", HouseID)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/edithouse [Номер дома]");
 	if(!Iter_Contains(Houses, HouseID)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Такой дом не существует");
@@ -21771,7 +21954,7 @@ CMD:edithouse(playerid, params[])
 
 CMD:deletehouse(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	new HouseID;
 	if(sscanf(params, "d", HouseID)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/deletehouse [Номер дома]");
 	if(!Iter_Contains(Houses, HouseID)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Такой дом не существует");
@@ -21811,7 +21994,7 @@ CMD:deletehouse(playerid, params[])
 
 CMD:createvehicle(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	new model, color1, color2, type;
 	if(sscanf(params, "dddd", model, type, color1, color2))
 	{
@@ -21858,7 +22041,7 @@ CMD:createvehicle(playerid, params[])
 
 CMD:saveveh(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	new vehicleid = GetPlayerVehicleID(playerid);
 	if(!vehicleid) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны находится в машине которая редактируется");
 	if(!vInfo[vehicleid][vEdit]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта машина не редактировалась");
@@ -21962,7 +22145,7 @@ stock SaveCar(playerid, vehicleid, bool:msg = true, slot = 0)
 
 CMD:cancelveh(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	new vehicleid = GetPlayerVehicleID(playerid);
 	if(!vehicleid) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны находится в машине которая редактируется");
 	if(!vInfo[vehicleid][vEdit]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта машина не редактировалась");
@@ -21984,7 +22167,7 @@ CMD:cancelveh(playerid, params[])
 
 CMD:editvehicle(playerid, params[])
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	new model, color1, color2, type;
 	if(sscanf(params, "dddd", model, type, color1, color2))
 	{
@@ -22032,7 +22215,7 @@ CMD:editvehicle(playerid, params[])
 
 CMD:deletevehicle(playerid)
 {
-	if(pInfo[playerid][pAdmin] < 4 || !GetPVarInt(playerid, "AdmAuth")) return 1;
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
 	new vehicleid = GetPlayerVehicleID(playerid);
 	if(!vehicleid) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны находится в машине которую хотите удалить");
 	if(vInfo[vehicleid][vEdit]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта машина редактируется");
@@ -22045,6 +22228,16 @@ CMD:deletevehicle(playerid)
 ///////////////////////////////////////////////////////////////////////////////
 
 stock KickPlayer(playerid) {SetTimerEx("KickEx", 500, false, "d", playerid);}
+
+stock KickAll(const Message[])
+{
+	foreach(new i: Player)
+	{
+		if(strlen(Message)) SendClientMessage(i, -1, Message);
+		KickPlayer(i);
+	}
+	return 1;
+}
 
 stock StopBusinessThief(BusinessID)
 {
@@ -22657,8 +22850,11 @@ stock ShowPlayerStat(playerid, ShowID = -1)
 	if(pInfo[playerid][pVehicleID]) format(str, sizeof(str), "%s"Main_Color"Машина"Color_White": %s\n", str, CarName[vInfo[pInfo[playerid][pVehicleID]][vModel]-400]);
 	else format(str, sizeof(str), "%s"Main_Color"Машина"Color_White": Нет\n", str);
 	format(str, sizeof(str), "%s"Main_Color"Статус"Color_White": %s\n", str, status);
-
 	new SubStr[100];
+	ConvertedSeconds(pInfo[playerid][pDayPlayedTime], SubStr);
+	format(str, sizeof(str), "%s"Main_Color"Всего онлайн за весь день"Color_White": %s\n", str, SubStr);
+
+	SubStr[0] = EOS;
 	format(SubStr, sizeof(SubStr), Main_Color"Статистика персонажа "Color_White"%s", pInfo[playerid][pName]);
 
 	if(ShowID == -1) ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, SubStr, str, Color_White"Закрыть", "");
@@ -23159,6 +23355,8 @@ public OffBanCheckAlreadyBanned(const reason[], AdminID, time, Name[])
 		SendAllMessage(str);
 		BanPlayerOffline(Name, reason, gettime()+(time*86400), AdminID);
 
+		AInfo[AdminID][AdmBan][GetWeekDay()]++;
+
 		str[0] = EOS;
 		GetPlayerIp(AdminID, str, 16);
 		format(str, sizeof(str), "(IP: %s | RegIP: %s) забанил игрока %s (offline), на %d дней по причине: %s", str, pInfo[AdminID][pRegIp], Name, time, reason);
@@ -23506,6 +23704,7 @@ public LoadAccount(playerid)
 	cache_get_value_name_int(0, "Job", pInfo[playerid][pJob]);
 	cache_get_value_name_int(0, "PayDayMoney", pInfo[playerid][pPayDayMoney]);
 	cache_get_value_name_int(0, "PlayedTime", pInfo[playerid][pPlayedTime]);
+	cache_get_value_name_int(0, "DayPlayedTime", pInfo[playerid][pDayPlayedTime]);
 	cache_get_value_name_int(0, "SpawnChange", pInfo[playerid][pSpawnChange]);
 	cache_get_value_name_int(0, "TentCD", TempVar);
 	if(TempVar) SetPVarInt(playerid, "TentCD", TempVar);
@@ -24106,11 +24305,21 @@ public SecondTimer()
 
 	if(!minute && !PayDayCalled)
 	{
-		SetWorldTime(hour);
-		SetWeatherOfTime(hour);
-
 		PayDay();
 		PropertyTax();
+
+		if(!hour)
+		{
+			mysql_tquery(DB, "UPDATE `account` SET `DayPlayedTime` = default(`DayPlayedTime`) WHERE 1");
+			if(!GetWeekDay()) mysql_tquery(DB, "UPDATE `admin_info` SET `ID` = default(`ID`), `Report` = default(`Report`), `Ban` = default(`Ban`), `Kick` = default(`Kick`), `Mute` = default(`Mute`), `Demorgan` = default(`Demorgan`), `Online` = default(`Online`) WHERE 1");
+
+			KickAll(Main_Color"Сервер запустил планновую перезагрузку");
+			SendRconCommand("exit");
+			return 1;
+		}
+
+		SetWorldTime(hour);
+		SetWeatherOfTime(hour);
 
 		if(!LotteryStarted)
 		{
@@ -24475,8 +24684,6 @@ public SecondTimer()
 		}
 		if(!pInfo[i][pAuth]) continue;
 
-		pInfo[i][pPlayedTime]++;
-
 		if(GetPVarInt(i, "FirstSpawn"))
 		{
 			SetPVarInt(i, "FirstSpawn", GetPVarInt(i, "FirstSpawn")-1);
@@ -24496,6 +24703,11 @@ public SecondTimer()
 				UpdateDynamic3DTextLabelText(pInfo[i][pAFKText], -1, str);
 			}
 			else pInfo[i][pAFKText] = CreateDynamic3DTextLabel(str, -1, 0.0, 0.0, 0.3, 10.0, i, INVALID_VEHICLE_ID, 0, GetPlayerVirtualWorld(i), GetPlayerInterior(i));
+		}
+		else
+		{
+			pInfo[i][pPlayedTime]++;
+			pInfo[i][pDayPlayedTime]++;
 		}
 
         if(pInfo[i][pMembers] != Fraction_None && IsABand(pInfo[i][pMembers]) && GangWarStatus[pInfo[i][pMembers]] == Gang_Status_War)
@@ -25255,7 +25467,7 @@ public SecondTimer()
 			}
 		}
 	}
-
+	return 1;
 }
 
 stock RemoveRentedCar(playerid)
@@ -25317,7 +25529,6 @@ stock RemoveLoader(playerid)
 stock AuthAdmin(playerid)
 {
     Iter_Add(Admins, playerid);
-	SetPVarInt(playerid, "AdmAuth", 1);
 	new str[200];
 	GetPlayerIp(playerid, str, 16);
 	format(str, sizeof(str), "%s %s авторизировался в админ панели (RegIP: %s | IP: %s)", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], pInfo[playerid][pRegIp], str);
@@ -25332,14 +25543,91 @@ stock AuthAdmin(playerid)
     return 1;
 }
 
-stock GetWeekDay(year, month, day)
+stock GetWeekDay()
 {
+	new year, month, day;
+	getdate(year, month, day);
   	if (month < 3)
  	{
  		month += 12;
  		year--;
   	}
-  	return (((13*month+3)/5 + day + year + year/4 - year/100 + year/400) % 7)+1;
+	new WeekDay = (((13*month+3)/5 + day + year + year/4 - year/100 + year/400) % 7)+1;
+	WeekDay--;
+  	return WeekDay;
+}
+
+stock GetWeekDayName(WeekDay, const WeekDayName[], size = sizeof(WeekDayName))
+{
+	switch(WeekDay)
+	{
+		case 0: strcat(WeekDayName, "Понедельник", size);
+		case 1: strcat(WeekDayName, "Вторник", size);
+		case 2: strcat(WeekDayName, "Среда", size);
+		case 3: strcat(WeekDayName, "Четверг", size);
+		case 4: strcat(WeekDayName, "Пятница", size);
+		case 5: strcat(WeekDayName, "Суббота", size);
+		case 6: strcat(WeekDayName, "Воскресенье", size);
+	}
+	return 1;
+}
+stock SaveAdminInfo(playerid)
+{
+	new query[200];
+	for(new i = 0; i < 7; i++)
+	{
+		if(!i) format(query, sizeof(query), "%d", AInfo[playerid][AdmReport][i]);
+		else format(query, sizeof(query), "%s,%d", query, AInfo[playerid][AdmReport][i]);
+	}
+	mysql_format(DB, query, sizeof(query), "UPDATE `admin_info` SET `Report` = '%s' WHERE `ID` = '%d'", query, pInfo[playerid][pID]);
+	mysql_tquery(DB, query);
+
+	query[0] = EOS;
+	for(new i = 0; i < 7; i++)
+	{
+		if(!i) format(query, sizeof(query), "%d", AInfo[playerid][AdmBan][i]);
+		else format(query, sizeof(query), "%s,%d", query, AInfo[playerid][AdmBan][i]);
+	}
+	mysql_format(DB, query, sizeof(query), "UPDATE `admin_info` SET `Ban` = '%s' WHERE `ID` = '%d'", query, pInfo[playerid][pID]);
+	mysql_tquery(DB, query);
+
+	query[0] = EOS;
+	for(new i = 0; i < 7; i++)
+	{
+		if(!i) format(query, sizeof(query), "%d", AInfo[playerid][AdmKick][i]);
+		else format(query, sizeof(query), "%s,%d", query, AInfo[playerid][AdmKick][i]);
+	}
+	mysql_format(DB, query, sizeof(query), "UPDATE `admin_info` SET `Kick` = '%s' WHERE `ID` = '%d'", query, pInfo[playerid][pID]);
+	mysql_tquery(DB, query);
+
+	query[0] = EOS;
+	for(new i = 0; i < 7; i++)
+	{
+		if(!i) format(query, sizeof(query), "%d", AInfo[playerid][AdmMute][i]);
+		else format(query, sizeof(query), "%s,%d", query, AInfo[playerid][AdmMute][i]);
+	}
+	mysql_format(DB, query, sizeof(query), "UPDATE `admin_info` SET `Mute` = '%s' WHERE `ID` = '%d'", query, pInfo[playerid][pID]);
+	mysql_tquery(DB, query);
+
+	query[0] = EOS;
+	for(new i = 0; i < 7; i++)
+	{
+		if(!i) format(query, sizeof(query), "%d", AInfo[playerid][AdmDemorgan][i]);
+		else format(query, sizeof(query), "%s,%d", query, AInfo[playerid][AdmDemorgan][i]);
+	}
+	mysql_format(DB, query, sizeof(query), "UPDATE `admin_info` SET `Demorgan` = '%s' WHERE `ID` = '%d'", query, pInfo[playerid][pID]);
+	mysql_tquery(DB, query);
+
+	query[0] = EOS;
+	AInfo[playerid][AdmOnline][GetWeekDay()] = pInfo[playerid][pDayPlayedTime];
+	for(new i = 0; i < 7; i++)
+	{
+		if(!i) format(query, sizeof(query), "%d", AInfo[playerid][AdmOnline][i]);
+		else format(query, sizeof(query), "%s,%d", query, AInfo[playerid][AdmOnline][i]);
+	}
+	mysql_format(DB, query, sizeof(query), "UPDATE `admin_info` SET `Online` = '%s' WHERE `ID` = '%d'", query, pInfo[playerid][pID]);
+	mysql_tquery(DB, query);
+	return 1;
 }
 
 forward LoadAdminInfo(playerid);
@@ -25530,7 +25818,7 @@ stock SendAdminMessage(const message[])
 	format(FormatedMessage, sizeof(FormatedMessage), Main_Color"[A]"Color_Blue" %s", message);
 	foreach(new i: Admins)
 	{
-		if(pInfo[i][pAuth] && pInfo[i][pAdmin] && GetPVarInt(i, "AdmAuth")) SendClientMessage(i, -1, FormatedMessage);
+		if(pInfo[i][pAuth]) SendClientMessage(i, -1, FormatedMessage);
 	}
 	return 1;
 }
