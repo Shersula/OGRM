@@ -892,10 +892,10 @@ enum MaterialShipmentInfo
 };
 #define MAX_ShipmentMaterials	4
 new ShipmentMaterials[MAX_ShipmentMaterials][MaterialShipmentInfo] = {
-{0, 0, Text3D:0, 0, 2194.4670, -2231.1804, 13.5344}, // 0
-{0, 0, Text3D:0, 0, 2201.9011, -2223.8843, 13.5344}, // 1
-{0, 0, Text3D:0, 0, 2209.4985, -2216.4319, 13.5344}, // 2
-{0, 0, Text3D:0, 0, 2216.6521, -2210.0308, 13.5344} // 3
+{0, 0, Text3D:0, 0, -1296.8068,512.1161,11.1953}, // 0
+{0, 0, Text3D:0, 0, -1297.7362,498.8451,11.1953}, // 1
+{0, 0, Text3D:0, 0, -1308.2817,510.5305,11.1953}, // 2
+{0, 0, Text3D:0, 0, -1293.2781,495.7536,11.1953} // 3
 };
 ////////////////////////////////
 /////////////LIVE///////////////
@@ -1551,7 +1551,8 @@ enum AreaInfo
 	FishUnloadArea,
 	FarmDeliverUnloadArea,
 	LiveArea,
-	StashArea
+	StashArea,
+	KidnappingArea
 };
 new Areas[AreaInfo];
 
@@ -1575,7 +1576,9 @@ new Actors[ActorsInfo];*/
 #define GateTaxiFirst		12
 #define GateStreetRacers    13
 #define GateYakuza			14
-#define MAX_GATE 			15
+#define GateLaCosaNostra	15
+#define GateRussiaMafia		16
+#define MAX_GATE 			17
 enum GateInfo
 {
 	GateID,
@@ -8449,6 +8452,26 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 						}
 					}
 				}
+			}
+		}
+		else if(areaid == Areas[KidnappingArea] && IsAMafia(pInfo[playerid][pMembers]))
+		{
+			new vehicleid = GetPlayerVehicleID(playerid);
+			foreach(new i:Player)
+			{
+				if(GetPlayerVehicleID(i) == vehicleid && GetPVarInt(i, "Kidnapped"))
+				{
+					SetPlayerPosition(i, -128.5114,2256.5183,27.9542,190.5037, 0, 0);
+					if(!pInfo[i][pStealSkin])
+					{
+						if(!AddPlayerInventory(playerid, ItemDress)) SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+						pInfo[i][pStealSkin] = true;
+						SavePlayerBool(i, "StealSkin", pInfo[i][pStealSkin]);
+						SetSkin(i, pInfo[i][pSkins][pInfo[i][pSkin]]);
+					}
+					DeletePVar(i, "Kidnapped");
+				}
+
 			}
 		}
 		else if(areaid == Areas[FarmDeliverUnloadArea])
@@ -15708,6 +15731,37 @@ CMD:main(playerid)
 	return 1;
 }
 alias:main("mm", "menu");
+
+CMD:rape(playerid, params[])
+{
+	if(!IsAMafia(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только мафиям");
+	new id;
+	if(sscanf(params, "d", id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/rape [ID]");
+	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
+	if(!IsPlayerConnected(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не подключен");
+	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
+	if(id == playerid) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете похитить себя");
+	new vehicleid = GetPlayerVehicleID(playerid);
+	if(!vehicleid) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны находиться в машине");
+	new Float:X, Float:Y, Float:Z;
+	GetPlayerPos(id, X, Y, Z);
+	if(!IsPlayerInRangeOfPoint(playerid, 1.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, с которого хотите снять одежду");
+	new seat = GetFreeVehicleSeat(vehicleid);
+	if(seat == -1) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"В транспорте нет свободных мест");
+
+	ClearAnimations(id);
+	TogglePlayerControllable(id, false);
+	PutPlayerInVehicle(id, vehicleid, seat);
+
+	SetPVarInt(id, "Kidnapped", 1);
+	new str[100];
+	format(str, sizeof(str), "затащил(а) %s в машину", pInfo[id][pName]);
+	ProxDetector(playerid, MESSAGE_DIST, BitColor_Me, str);
+	SetPlayerRaceCheckpoint(playerid, 2, 2358.1138, -655.8890, 128.1294, 0.0, 0.0, 0.0, 12.0);
+	pInfo[playerid][pGPSType] = GPS_Type_Job;
+	return 1;
+
+}
 
 CMD:stealdress(playerid, params[])
 {
@@ -27872,6 +27926,9 @@ stock RemovePlayerObject(playerid)
 	//Ворота Yakuza
 	RemoveBuildingForPlayer(playerid, 3036, -2179.35352, 661.22162, 50.21000, 200.25);
 	////////////////////
+	//Ворота La Cosa Nostra
+	RemoveBuildingForPlayer(playerid, 2938, 1055.1447, 2086.0205, 10.8203, 200.25);
+	///////////////////
 	//Spawn
 	RemoveBuildingForPlayer(playerid, 18520, -2224.7109, -2288.4375, 29.6172, 0.25);
 	RemoveBuildingForPlayer(playerid, 18521, -2213.9688, -2295.9609, 29.6172, 0.25);
@@ -28933,6 +28990,7 @@ stock CreateAreas()
 	Areas[FarmDeliverUnloadArea] = CreateDynamicCircle(90.0994,-306.6081, 10.0, 0, 0);
 	Areas[LiveArea] = CreateDynamicRectangle(170.1479,-119.9004, 175.4543,-113.9935, 6, 6);
 	Areas[StashArea] = CreateDynamicSphere(-240.2665,-1.2341,1046.3240, 1.5, 1, 17);
+	Areas[KidnappingArea] = CreateDynamicCircle(2358.1138, -655.8890, 12, 0, 0);
 	return 1;
 }
 
@@ -29129,6 +29187,33 @@ stock CreateGates()
 	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White"H"Main_Color"]\n\
 	"Color_White"или "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateYakuza][GateClose][0]+2.3, Gate[GateYakuza][GateClose][1], Gate[GateYakuza][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Gate[GateYakuza][GateStatus] = false;
+
+	Gate[GateLaCosaNostra][GateFraction] = Fraction_LaCosaNostra;
+	Gate[GateLaCosaNostra][GateClose] = Float:{1017.6072, 2133.2324, 12.0001, 0.0, 0.0, -90.0};
+	Gate[GateLaCosaNostra][GateOpen] = Float:{1017.6072, 2133.2324, 8.0641, 0.0, 0.0, -90.0};
+	Gate[GateLaCosaNostra][GateSpeed] = 2;
+	Gate[GateLaCosaNostra][GateID] = CreateDynamicObject(7657, Gate[GateLaCosaNostra][GateClose][0], Gate[GateLaCosaNostra][GateClose][1], Gate[GateLaCosaNostra][GateClose][2], Gate[GateLaCosaNostra][GateClose][3], Gate[GateLaCosaNostra][GateClose][4], Gate[GateLaCosaNostra][GateClose][5], 0, 0);
+	Gate[GateLaCosaNostra][GateArea] = CreateDynamicSphere(Gate[GateLaCosaNostra][GateClose][0]+2.3, Gate[GateLaCosaNostra][GateClose][1], Gate[GateLaCosaNostra][GateClose][2], 5.0, 0, 0);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateLaCosaNostra][GateArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Gate);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateLaCosaNostra][GateArea],  E_STREAMER_INDX, GateLaCosaNostra);
+	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White"H"Main_Color"]\n\
+	"Color_White"или "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateLaCosaNostra][GateClose][0]+2.3, Gate[GateLaCosaNostra][GateClose][1], Gate[GateLaCosaNostra][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Gate[GateLaCosaNostra][GateStatus] = false;
+
+	Gate[GateRussiaMafia][GateFraction] = Fraction_RussiaMafia;
+	Gate[GateRussiaMafia][GateClose] = Float:{2242.4646, -2223.4629, 13.3894, 180.5660, 0.0000, -45.0000};
+	Gate[GateRussiaMafia][GateOpen] = Float:{2247.1873, -2228.3948, 13.3894, 180.5660, 0.0000, -45.0000};
+	Gate[GateRussiaMafia][GateSpeed] = 1.5;
+	Gate[GateRussiaMafia][GateID] = CreateDynamicObject(19912, Gate[GateRussiaMafia][GateClose][0], Gate[GateRussiaMafia][GateClose][1], Gate[GateRussiaMafia][GateClose][2], Gate[GateRussiaMafia][GateClose][3], Gate[GateRussiaMafia][GateClose][4], Gate[GateRussiaMafia][GateClose][5], 0, 0);
+	Gate[GateRussiaMafia][GateCloseTwo] = Float:{2226.1208, -2207.1919, 13.3894, 180.5660, 0.0000, -225.0000};
+	Gate[GateRussiaMafia][GateOpenTwo] = Float:{2221.4255, -2202.6414, 13.3894, 180.5660, 0.0000, -225.0000};
+	Gate[GateRussiaMafia][GateIDTwo] = CreateDynamicObject(19912, Gate[GateRussiaMafia][GateCloseTwo][0], Gate[GateRussiaMafia][GateCloseTwo][1], Gate[GateRussiaMafia][GateCloseTwo][2], Gate[GateRussiaMafia][GateCloseTwo][3], Gate[GateRussiaMafia][GateCloseTwo][4], Gate[GateRussiaMafia][GateCloseTwo][5], 0, 0);
+	Gate[GateRussiaMafia][GateArea] = CreateDynamicSphere(Gate[GateRussiaMafia][GateClose][0]-9.0, Gate[GateRussiaMafia][GateClose][1]+7.5, Gate[GateRussiaMafia][GateClose][2], 5.0, 0, 0);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateRussiaMafia][GateArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Gate);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateRussiaMafia][GateArea],  E_STREAMER_INDX, GateRussiaMafia);
+	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White"H"Main_Color"]\n\
+	"Color_White"или "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateRussiaMafia][GateClose][0]-7.8, Gate[GateRussiaMafia][GateClose][1]+8.6, Gate[GateRussiaMafia][GateClose][2]+0.6, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Gate[GateRussiaMafia][GateStatus] = false;
 }
 
 forward CloseGate(GatesID);
@@ -30224,10 +30309,10 @@ stock CreatePickups()
 
 	Pickups[RussiaMafiaEnter][PickJob] = Job_None;
 	Pickups[RussiaMafiaEnter][PickFraction] = Fraction_RussiaMafia;
-	Pickups[RussiaMafiaEnter][PickID] = CreateDynamicPickup(1318, 1, -683.9308,939.5360,13.6328, 0, 0);
-	Pickups[RussiaMafiaEnter][PickAreaID] = CreateDynamicSphere(-683.9308,939.5360,13.6328, 2.0, 0, 0);
-	Pickups[RussiaMafiaEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -683.9308,939.5360,13.6328+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
-	Pickups[RussiaMafiaEnter][PickAngle] = 93.9074;
+	Pickups[RussiaMafiaEnter][PickID] = CreateDynamicPickup(1318, 1, 2137.5657,-2282.5322,20.6719, 0, 0);
+	Pickups[RussiaMafiaEnter][PickAreaID] = CreateDynamicSphere(2137.5657,-2282.5322,20.6719, 2.0, 0, 0);
+	Pickups[RussiaMafiaEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 2137.5657,-2282.5322,20.6719+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[RussiaMafiaEnter][PickAngle] = 320.4562;
 	Pickups[RussiaMafiaEnter][IsPickTP] = true;
 	Pickups[RussiaMafiaEnter][PickTpPickID] = RussiaMafiaExit;
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[RussiaMafiaEnter][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
@@ -30246,10 +30331,10 @@ stock CreatePickups()
 
 	Pickups[LaCosaNostraEnter][PickJob] = Job_None;
 	Pickups[LaCosaNostraEnter][PickFraction] = Fraction_LaCosaNostra;
-	Pickups[LaCosaNostraEnter][PickID] = CreateDynamicPickup(1318, 1,1456.1329,2773.3433,10.8203, 0, 0);
-	Pickups[LaCosaNostraEnter][PickAreaID] = CreateDynamicSphere(1456.1329,2773.3433,10.8203, 2.0, 0, 0);
-	Pickups[LaCosaNostraEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 1456.1329,2773.3433,10.8203+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
-	Pickups[LaCosaNostraEnter][PickAngle] = 251.8455;
+	Pickups[LaCosaNostraEnter][PickID] = CreateDynamicPickup(1318, 1,1091.6683,2121.7529,15.3504, 0, 0);
+	Pickups[LaCosaNostraEnter][PickAreaID] = CreateDynamicSphere(1091.6683,2121.7529,15.3504, 2.0, 0, 0);
+	Pickups[LaCosaNostraEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 1091.6683,2121.7529,15.3504+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[LaCosaNostraEnter][PickAngle] = 181.9271;
 	Pickups[LaCosaNostraEnter][IsPickTP] = true;
 	Pickups[LaCosaNostraEnter][PickTpPickID] = LaCosaNostraExit;
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[LaCosaNostraEnter][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
