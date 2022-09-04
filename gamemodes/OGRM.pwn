@@ -926,7 +926,7 @@ new bool:HangarStatus[6] = {false, ...};
 new Iterator:FractionMembers[MAX_FRACTION]<MAX_PLAYERS>;
 
 new FractionName[MAX_FRACTION][] = {
-	"",
+	"Никто",
 	"Полиция",
 	"Армия",
 	"ФБР",
@@ -1119,7 +1119,8 @@ enum BusinessInfo
 	bThiefPickup,
 	bThiefArea,
 	Text3D:bThiefText,
-	bThiefZoneArea
+	bThiefZoneArea,
+	bMafiaOwner
 };
 new bInfo[MAX_BUSINESS+1][BusinessInfo]; //+1 - на 0 индекс который не используется
 new Iterator:Business<MAX_BUSINESS+1>; //+1 - на 0 индекс который не используется
@@ -1201,6 +1202,8 @@ stock ClearBusiness(BusinessID)
 
 	if(bInfo[BusinessID][bThiefPickup] && IsValidDynamicPickup(bInfo[BusinessID][bThiefPickup])) DestroyDynamicPickup(bInfo[BusinessID][bThiefPickup]);
 	bInfo[BusinessID][bThiefPickup] = 0;
+
+	bInfo[BusinessID][bMafiaOwner] = Fraction_None;
 	return 1;
 }
 //////////House/////////////////
@@ -1815,6 +1818,7 @@ enum
 	D_EditBusiness_MoneyType,
 	D_EditBusiness_Price,
 	D_EditBusiness_NeedLevel,
+	D_EditBusiness_MafiaOwner,
 	D_Inventory,
 	D_Inventory_SubMenu,
 	D_Inventory_Drop,
@@ -2265,8 +2269,7 @@ enum PlayerInfo
 	bool:pStealSkin
 };
 new pInfo[MAX_PLAYERS][PlayerInfo];
-#define MAX_ADMINS  100
-new Iterator:Admins<MAX_ADMINS>;
+new Iterator:Admins<MAX_PLAYERS>;
 
 enum SpikeInfo
 {
@@ -2282,6 +2285,31 @@ enum BarrierInfo
 	BarrierTime
 }
 new FBIBarrier[MAX_PLAYERS][BarrierInfo] = {{0, 0}, ...};
+
+enum AdminInfo
+{
+	AdmReport[7],
+	AdmBan[7],
+	AdmKick[7],
+	AdmMute[7],
+	AdmDemorgan[7],
+	AdmOnline[7]
+}
+new AInfo[MAX_PLAYERS][AdminInfo];
+
+stock ClearAdminInfo(playerid)
+{
+	for(new i = 0; i < 7; i++)
+	{
+		AInfo[playerid][AdmReport][i] = 0;
+		AInfo[playerid][AdmBan][i] = 0;
+		AInfo[playerid][AdmKick][i] = 0;
+		AInfo[playerid][AdmMute][i] = 0;
+		AInfo[playerid][AdmDemorgan][i] = 0;
+		AInfo[playerid][AdmOnline][i] = 0;
+	}
+	return 1;
+}
 
 stock ClearAccount(playerid)
 {
@@ -2369,7 +2397,11 @@ stock ClearAccount(playerid)
 	pInfo[playerid][pStealSkin] = false;
 	UnloadHouseVehicle(playerid);
 
-    if(Iter_Contains(Admins, playerid)) Iter_Remove(Admins, playerid);
+    if(Iter_Contains(Admins, playerid))
+	{
+		ClearAdminInfo(playerid);
+		Iter_Remove(Admins, playerid);
+	}
 
 	IsBot[playerid] = false;
 	ActivateAntiCheat(playerid);
@@ -4316,6 +4348,7 @@ public LoadBusiness()
 			cache_get_value_name_int(i, "Type", bInfo[indx][bType]);
 			cache_get_value_name_int(i, "Tax", bInfo[indx][bTax]);
 			cache_get_value_name_int(i, "Money", bInfo[indx][bMoney]);
+			cache_get_value_name_int(i, "MafiaOwner", bInfo[indx][bMafiaOwner]);
 
 			cache_get_value_name_bool(i, "IsDonate", bInfo[indx][bIsDonate]);
 
@@ -4421,12 +4454,14 @@ stock UpdateBusiness(BusinessID)
 			"Main_Color"Бизнес №"Color_White"%d\n\
 			"Main_Color"Продается\n\
 			"Main_Color"Цена"Color_White": "Color_Green"%d%s\n\
-			"Main_Color"Требуемый уровень"Color_White": %d",
+			"Main_Color"Требуемый уровень"Color_White": %d\n\
+			"Main_Color"Крышует"Color_White": %s",
 			BusinessType[bInfo[BusinessID][bType]][bName],
 			bInfo[BusinessID][bID],
 			bInfo[BusinessID][bPrice],
 			(bInfo[BusinessID][bIsDonate]) ? (" донат рублей"):("$"),
-			bInfo[BusinessID][bNeedLevel]);
+			bInfo[BusinessID][bNeedLevel],
+			FractionName[bInfo[BusinessID][bMafiaOwner]]);
 		}
 
 		if(BusinessType[bInfo[BusinessID][bType]][bInt])
@@ -4530,10 +4565,12 @@ public GetBusinesOwnerName(BusinessID)
 		{
 			format(str, sizeof(str), Main_Color"%s\n\
 			"Main_Color"Бизнес №"Color_White"%d\n\
-			"Main_Color"Владелец"Color_White": %s",
+			"Main_Color"Владелец"Color_White": %s\n\
+			"Main_Color"Крышует"Color_White": %s",
 			BusinessType[bInfo[BusinessID][bType]][bName],
 			bInfo[BusinessID][bID],
-			bInfo[BusinessID][bOwnerName]);
+			bInfo[BusinessID][bOwnerName],
+			FractionName[bInfo[BusinessID][bMafiaOwner]]);
 		}
 
 		if(BusinessType[bInfo[BusinessID][bType]][bInt])
@@ -7616,12 +7653,14 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 						"Main_Color"Бизнес №"Color_White"%d\n\
 						"Main_Color"Продается\n\
 						"Main_Color"Цена"Color_White": "Color_Green"%d%s\n\
-						"Main_Color"Требуемый уровень"Color_White": %d",
+						"Main_Color"Требуемый уровень"Color_White": %d\n\
+						"Main_Color"Крышует"Color_White": %s",
 						BusinessType[bInfo[indx][bType]][bName],
 						bInfo[indx][bID],
 						bInfo[indx][bPrice],
 						(bInfo[indx][bIsDonate]) ? (" донат рублей"):("$"),
-						bInfo[indx][bNeedLevel]);
+						bInfo[indx][bNeedLevel],
+						FractionName[bInfo[indx][bMafiaOwner]]);
 
 						SetPVarInt(playerid, "Business", indx);
 
@@ -10979,7 +11018,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 				GivePlayerMoneyEx(playerid, -CarUpgrade[indx][cuCarPrice]);
 
-				GiveCompanyPay(playerid, BusinessCarDelivery, CarUpgrade[indx][cuCarPrice]);
+				GiveCompanyMoney(playerid, BusinessCarDelivery, CarUpgrade[indx][cuCarPrice]);
 
 				str[0] = EOS;
 				format(str, sizeof(str), Color_White"Вы приобрели "Main_Color"%s "Color_White"за "Color_Green"%d$", CarName[CarUpgrade[indx][cuCarModel]-400], CarUpgrade[indx][cuCarPrice]);
@@ -11150,7 +11189,36 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					}
 					else return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Для этого бизнеса не установлено место обслуживания для транспорта");
 				}
+				case 7:
+				{
+					SetPVarInt(playerid, "Business", BusinessID);
+					new str[200];
+					strcat(str, "Никто\n");
+					for(new i = Fraction_RussiaMafia; i <= Fraction_Yakuza; i++)
+					{
+						format(str, sizeof(str), "%s%s\n", str, FractionName[i]);
+					}
+					format(str, sizeof(str), Color_White"%s", str);
+
+					ShowDialog(playerid, D_EditBusiness_MafiaOwner, DIALOG_STYLE_LIST, Main_Color"Выберите кто будет крышевать этот бизнес", str, Color_White"Далее", Color_White"Закрыть");
+				}
 			}
+			return 1;
+		}
+		case D_EditBusiness_MafiaOwner:
+		{
+			if(!response) return DeletePVar(playerid, "Business");
+			new BusinessID = GetPVarInt(playerid, "Business");
+			DeletePVar(playerid, "Business");
+
+			if(!listitem) bInfo[BusinessID][bMafiaOwner] = Fraction_None;
+			else
+			{
+				bInfo[BusinessID][bMafiaOwner] = Fraction_RussiaMafia+(listitem-1);
+			}
+			SaveBusinessInt(BusinessID, "MafiaOwner", bInfo[BusinessID][bMafiaOwner]);
+			UpdateBusiness(BusinessID);
+			SendClientMessage(playerid, -1, Main_Color"Крыша бизнеса изменена");
 			return 1;
 		}
 		case D_EditBusiness_Type:
@@ -11711,12 +11779,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для аренды");
 				}
 				GivePlayerMoneyEx(playerid, -vInfo[vehicleid][vPrice]);
+				GiveBusinessMoney(vInfo[vehicleid][vOwner], vInfo[vehicleid][vPrice]);
 
-				if(bInfo[vInfo[vehicleid][vOwner]][bOwnerID])
-				{
-					bInfo[vInfo[vehicleid][vOwner]][bMoney] += vInfo[vehicleid][vPrice];
-					SaveBusinessInt(bInfo[vInfo[vehicleid][vOwner]][bID], "Money", bInfo[vInfo[vehicleid][vOwner]][bMoney]);
-				}
 			}
 			vInfo[vehicleid][vRenter] = playerid;
 			SetPVarInt(playerid, "RentedCar", vInfo[vehicleid][vServerID]);
@@ -12106,11 +12170,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 					new BusinessID = GetPVarInt(playerid, "InBusiness");
 					ActivateBusinessActors(playerid, BusinessID);
-					if(bInfo[BusinessID][bOwnerID])
-					{
-						bInfo[BusinessID][bMoney] += 2300;
-						SaveBusinessInt(bInfo[BusinessID][bID], "Money", bInfo[BusinessID][bMoney]);
-					}
+					GiveBusinessMoney(BusinessID, 2300);
 				}
 				case 1:
 				{
@@ -12125,11 +12185,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 					new BusinessID = GetPVarInt(playerid, "InBusiness");
 					ActivateBusinessActors(playerid, BusinessID);
-					if(bInfo[BusinessID][bOwnerID])
-					{
-						bInfo[BusinessID][bMoney] += 3500;
-						SaveBusinessInt(bInfo[BusinessID][bID], "Money", bInfo[BusinessID][bMoney]);
-					}
+					GiveBusinessMoney(BusinessID, 3500);
 				}
 				case 2:
 				{
@@ -12144,11 +12200,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 					new BusinessID = GetPVarInt(playerid, "InBusiness");
 					ActivateBusinessActors(playerid, BusinessID);
-					if(bInfo[BusinessID][bOwnerID])
-					{
-						bInfo[BusinessID][bMoney] += 3100;
-						SaveBusinessInt(bInfo[BusinessID][bID], "Money", bInfo[BusinessID][bMoney]);
-					}
+					GiveBusinessMoney(BusinessID, 3100);
 				}
 				case 3:
 				{
@@ -12163,11 +12215,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 					new BusinessID = GetPVarInt(playerid, "InBusiness");
 					ActivateBusinessActors(playerid, BusinessID);
-					if(bInfo[BusinessID][bOwnerID])
-					{
-						bInfo[BusinessID][bMoney] += 5100;
-						SaveBusinessInt(bInfo[BusinessID][bID], "Money", bInfo[BusinessID][bMoney]);
-					}
+					GiveBusinessMoney(BusinessID, 5100);
 				}
 				case 4:
 				{
@@ -12182,11 +12230,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 					new BusinessID = GetPVarInt(playerid, "InBusiness");
 					ActivateBusinessActors(playerid, BusinessID);
-					if(bInfo[BusinessID][bOwnerID])
-					{
-						bInfo[BusinessID][bMoney] += 5600;
-						SaveBusinessInt(bInfo[BusinessID][bID], "Money", bInfo[BusinessID][bMoney]);
-					}
+					GiveBusinessMoney(BusinessID, 5600);
 				}
 			}
 			return 1;
@@ -12202,7 +12246,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					if(!AddPlayerInventory(playerid, ItemFrenchFries)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
 
 					GivePlayerMoneyEx(playerid, -300);
-					GiveCompanyPay(playerid, BusinessKFCCompany, 300);
+					GiveCompanyMoney(playerid, BusinessKFCCompany, 300);
 
 					new str[100];
 					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemFrenchFries][ItemName]);
@@ -12217,7 +12261,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					if(!AddPlayerInventory(playerid, ItemNuggets)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
 
 					GivePlayerMoneyEx(playerid, -500);
-					GiveCompanyPay(playerid, BusinessKFCCompany, 500);
+					GiveCompanyMoney(playerid, BusinessKFCCompany, 500);
 
 					new str[100];
 					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemNuggets][ItemName]);
@@ -12232,7 +12276,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					if(!AddPlayerInventory(playerid, ItemWing)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
 
 					GivePlayerMoneyEx(playerid, -500);
-					GiveCompanyPay(playerid, BusinessKFCCompany, 500);
+					GiveCompanyMoney(playerid, BusinessKFCCompany, 500);
 
 					new str[100];
 					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemWing][ItemName]);
@@ -12247,7 +12291,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					if(!AddPlayerInventory(playerid, ItemBurger)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
 
 					GivePlayerMoneyEx(playerid, -800);
-					GiveCompanyPay(playerid, BusinessKFCCompany, 800);
+					GiveCompanyMoney(playerid, BusinessKFCCompany, 800);
 
 					new str[100];
 					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemBurger][ItemName]);
@@ -12262,7 +12306,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					if(!AddPlayerInventory(playerid, ItemBigBurger)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
 
 					GivePlayerMoneyEx(playerid, -900);
-					GiveCompanyPay(playerid, BusinessKFCCompany, 900);
+					GiveCompanyMoney(playerid, BusinessKFCCompany, 900);
 
 					new str[100];
 					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemBigBurger][ItemName]);
@@ -12286,7 +12330,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					if(!AddPlayerInventory(playerid, ItemWatch)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
 
 					GivePlayerMoneyEx(playerid, -1500);
-					GiveCompanyPay(playerid, BusinessGeneralStoreCompany, 1500);
+					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 1500);
 
 					new str[100];
 					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemWatch][ItemName]);
@@ -12301,7 +12345,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					if(!AddPlayerInventory(playerid, ItemPhotos)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
 
 					GivePlayerMoneyEx(playerid, -1200);
-					GiveCompanyPay(playerid, BusinessGeneralStoreCompany, 1200);
+					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 1200);
 
 					new str[100];
 					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemPhotos][ItemName]);
@@ -12316,7 +12360,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					if(!AddPlayerInventory(playerid, ItemFlowers)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
 
 					GivePlayerMoneyEx(playerid, -1000);
-					GiveCompanyPay(playerid, BusinessGeneralStoreCompany, 1000);
+					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 1000);
 
 					new str[100];
 					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemFlowers][ItemName]);
@@ -12331,7 +12375,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					if(!AddPlayerInventory(playerid, ItemsGolfClub)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
 
 					GivePlayerMoneyEx(playerid, -1000);
-					GiveCompanyPay(playerid, BusinessGeneralStoreCompany, 1000);
+					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 1000);
 
 					new str[100];
 					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemsGolfClub][ItemName]);
@@ -12346,7 +12390,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					if(!AddPlayerInventory(playerid, ItemBaseballBat)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
 
 					GivePlayerMoneyEx(playerid, -1500);
-					GiveCompanyPay(playerid, BusinessGeneralStoreCompany, 1500);
+					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 1500);
 
 					new str[100];
 					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemBaseballBat][ItemName]);
@@ -12361,7 +12405,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					if(!AddPlayerInventory(playerid, ItemShovel)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
 
 					GivePlayerMoneyEx(playerid, -1000);
-					GiveCompanyPay(playerid, BusinessGeneralStoreCompany, 1000);
+					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 1000);
 
 					new str[100];
 					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemShovel][ItemName]);
@@ -12376,7 +12420,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					if(!AddPlayerInventory(playerid, ItemCue)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
 
 					GivePlayerMoneyEx(playerid, -1000);
-					GiveCompanyPay(playerid, BusinessGeneralStoreCompany, 1000);
+					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 1000);
 
 					new str[100];
 					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemCue][ItemName]);
@@ -12391,7 +12435,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					if(!AddPlayerInventory(playerid, ItemWalkingStick)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
 
 					GivePlayerMoneyEx(playerid, -800);
-					GiveCompanyPay(playerid, BusinessGeneralStoreCompany, 800);
+					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 800);
 
 					new str[100];
 					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemWalkingStick][ItemName]);
@@ -12406,7 +12450,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					if(!AddPlayerInventory(playerid, ItemRoller)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
 
 					GivePlayerMoneyEx(playerid, -3000);
-					GiveCompanyPay(playerid, BusinessGeneralStoreCompany, 3000);
+					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 3000);
 
 					new str[100];
 					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemRoller][ItemName]);
@@ -12421,7 +12465,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					if(!AddPlayerInventory(playerid, ItemChainsaw)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
 
 					GivePlayerMoneyEx(playerid, -3000);
-					GiveCompanyPay(playerid, BusinessGeneralStoreCompany, 3000);
+					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 3000);
 
 					new str[100];
 					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemChainsaw][ItemName]);
@@ -12436,7 +12480,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					if(!AddPlayerInventory(playerid, ItemKatana)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
 
 					GivePlayerMoneyEx(playerid, -3000);
-					GiveCompanyPay(playerid, BusinessGeneralStoreCompany, 3000);
+					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 3000);
 
 					new str[100];
 					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemKatana][ItemName]);
@@ -12451,7 +12495,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					if(!AddPlayerInventory(playerid, ItemParchament)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
 
 					GivePlayerMoneyEx(playerid, -800);
-					GiveCompanyPay(playerid, BusinessGeneralStoreCompany, 800);
+					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 800);
 
 					new str[100];
 					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemParchament][ItemName]);
@@ -12466,7 +12510,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					if(!AddPlayerInventory(playerid, ItemEmptyBarrel)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
 
 					GivePlayerMoneyEx(playerid, -1000);
-					GiveCompanyPay(playerid, BusinessGeneralStoreCompany, 1000);
+					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 1000);
 
 					new str[100];
 					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemEmptyBarrel][ItemName]);
@@ -12509,7 +12553,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			vInfo[vehicleid][vFuel] += Fuel;
 			SaveCarFloat(vehicleid, "Fuel", vInfo[vehicleid][vFuel]);
 
-			GiveCompanyPay(playerid, BusinessOilDepot, strval(inputtext)*10);
+			GiveCompanyMoney(playerid, BusinessOilDepot, strval(inputtext)*10);
 
 			SendClientMessage(playerid, -1, Color_White"Транспорт заправлен");
 			return 1;
@@ -12726,7 +12770,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			new BusinessID = GetPVarInt(playerid, "InBusiness");
 			ActivateBusinessActors(playerid, BusinessID);
 
-			GiveCompanyPay(playerid, BusinessBank, floatround(BankTax));
+			GiveCompanyMoney(playerid, BusinessBank, floatround(BankTax));
 
 			str[0] = EOS;
 			GetPlayerIp(playerid, str, 16);
@@ -12837,7 +12881,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			new BusinessID = GetPVarInt(playerid, "InBusiness");
 			ActivateBusinessActors(playerid, BusinessID);
 
-			GiveCompanyPay(playerid, BusinessBank, floatround(BankTax));
+			GiveCompanyMoney(playerid, BusinessBank, floatround(BankTax));
 
 			str[0] = EOS;
 			GetPlayerIp(playerid, str, 16);
@@ -12935,7 +12979,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			new BusinessID = GetPVarInt(playerid, "InBusiness");
 			ActivateBusinessActors(playerid, BusinessID);
 
-			GiveCompanyPay(playerid, BusinessElectricity, floatround(money));
+			GiveCompanyMoney(playerid, BusinessElectricity, floatround(money));
 			return 1;
 		}
 		case D_Bank_Tax_Business:
@@ -12986,7 +13030,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			new BusinessID = GetPVarInt(playerid, "InBusiness");
 			ActivateBusinessActors(playerid, BusinessID);
 
-			GiveCompanyPay(playerid, BusinessElectricity, floatround(money));
+			GiveCompanyMoney(playerid, BusinessElectricity, floatround(money));
 			return 1;
 		}
 		case D_Bank_Buy_Card:
@@ -12994,7 +13038,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			if(!response) return 1;
 			if(pInfo[playerid][pMoney] < 5000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки банковской карты");
 			GivePlayerMoneyEx(playerid, -5000);
-			GiveCompanyPay(playerid, BusinessBank, 5000);
+			GiveCompanyMoney(playerid, BusinessBank, 5000);
 			pInfo[playerid][pCard] = true;
 			SavePlayerBool(playerid, "Card", pInfo[playerid][pCard]);
 			SendClientMessage(playerid, -1, Color_White"Вы приобрели банковскую карту. Теперь вы можете пользоваться услугами банка");
@@ -13061,11 +13105,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					new BusinessID = GetPVarInt(playerid, "InBusiness");
 					ActivateBusinessActors(playerid, BusinessID);
 
-					if(bInfo[BusinessID][bOwnerID])
-					{
-						bInfo[BusinessID][bMoney] += 5000;
-						SaveBusinessInt(bInfo[BusinessID][bID], "Money", bInfo[BusinessID][bMoney]);
-					}
+					GiveBusinessMoney(BusinessID, 5000);
 
 					UsePlayerInventory(playerid, ItemDress);
 				}
@@ -13104,12 +13144,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 						HideSkinSelect(playerid);
 						new BusinessID = GetPVarInt(playerid, "InBusiness");
 						ActivateBusinessActors(playerid, BusinessID);
-
-						if(bInfo[BusinessID][bOwnerID])
-						{
-							bInfo[BusinessID][bMoney] += SkinFemale[indx][1];
-							SaveBusinessInt(bInfo[BusinessID][bID], "Money", bInfo[BusinessID][bMoney]);
-						}
+						GiveBusinessMoney(BusinessID, SkinFemale[indx][1]);
 					}
 					else
 					{
@@ -13123,12 +13158,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 						HideSkinSelect(playerid);
 						new BusinessID = GetPVarInt(playerid, "InBusiness");
 						ActivateBusinessActors(playerid, BusinessID);
-
-						if(bInfo[BusinessID][bOwnerID])
-						{
-							bInfo[BusinessID][bMoney] += SkinMale[indx][1];
-							SaveBusinessInt(bInfo[BusinessID][bID], "Money", bInfo[BusinessID][bMoney]);
-						}
+						GiveBusinessMoney(BusinessID, SkinMale[indx][1]);
 					}
 				}
 
@@ -13238,7 +13268,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно средств");
 				}
 				GivePlayerMoneyEx(playerid, -money);
-				GiveCompanyPay(playerid, BusinessTuningCompany, money);
+				GiveCompanyMoney(playerid, BusinessTuningCompany, money);
 
 				if(componenttype == CARMODTYPE_PAINTJOB) PlayerPlaySound(playerid, 1134, 0.0, 0.0, 0.0);
 				else PlayerPlaySound(playerid, 1133, 0.0, 0.0, 0.0);
@@ -13292,12 +13322,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			GivePlayerMoneyEx(playerid, -Price);
 			new BusinessID = GetPVarInt(playerid, "InBusiness");
 			ActivateBusinessActors(playerid, BusinessID);
-
-			if(bInfo[BusinessID][bOwnerID])
-			{
-				bInfo[BusinessID][bMoney] += Price;
-				SaveBusinessInt(bInfo[BusinessID][bID], "Money", bInfo[BusinessID][bMoney]);
-			}
+			GiveBusinessMoney(BusinessID, Price);
 			return 1;
 		}
 		case D_Tent_Rent:
@@ -13311,7 +13336,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				if(pInfo[playerid][pMoney] < Tent[indx][TentPrice]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно средств");
 				if(GetPVarInt(playerid, "TentCD")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Палатку можно арендовать 1 раз в час");
 				GivePlayerMoneyEx(playerid, -Tent[indx][TentPrice]);
-				GiveCompanyPay(playerid, BusinessMarketplace, Tent[indx][TentPrice]);
+				GiveCompanyMoney(playerid, BusinessMarketplace, Tent[indx][TentPrice]);
 
 				Tent[indx][TentTime] = gettime()+3600;
 
@@ -15214,7 +15239,7 @@ public OnPlayerClickPlayerTextDraw(playerid, PlayerText:playertextid)
 							AddHouseVehicle(playerid, CarUpgrade[indx][cuCarModel], i+1);
 							GivePlayerMoneyEx(playerid, -CarUpgrade[indx][cuCarPrice]);
 
-							GiveCompanyPay(playerid, BusinessCarDelivery, CarUpgrade[indx][cuCarPrice]);
+							GiveCompanyMoney(playerid, BusinessCarDelivery, CarUpgrade[indx][cuCarPrice]);
 
 							format(str, sizeof(str), Color_White"Вы приобрели "Main_Color"%s "Color_White"за "Color_Green"%d$", CarName[CarUpgrade[indx][cuCarModel]-400], CarUpgrade[indx][cuCarPrice]);
 							SendClientMessage(playerid, -1, str);
@@ -15672,6 +15697,16 @@ CMD:main(playerid)
 }
 alias:main("mm", "menu");
 
+CMD:test(playerid)
+{
+	new str[20];
+	new year, month, day;
+	getdate(year, month, day);
+	format(str, sizeof(str), "%d", GetWeekDay(year, month, day));
+	SendClientMessage(playerid, -1, str);
+	return 1;
+}
+
 CMD:stealdress(playerid, params[])
 {
 	if(!IsABand(pInfo[playerid][pMembers]) && !IsAMafia(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам и мафиям");
@@ -15752,7 +15787,14 @@ CMD:robbery(playerid)
     bInfo[BusinessID][bThiefCount] = 0;
 	bInfo[BusinessID][bThiefPlayer] = playerid;
 	SetPVarInt(playerid, "ThiefBusiness", BusinessID);
-    return 1;
+
+	if(bInfo[BusinessID][bType] == BusinessGeneralStore1 || bInfo[BusinessID][bType] == BusinessGeneralStore2 || bInfo[BusinessID][bType] == BusinessGeneralStore3) FractionThiefCD[pInfo[playerid][pMembers]] = gettime()+5400; //1.5 Часа
+	else if(bInfo[BusinessID][bType] == BusinessBankFillial) FractionThiefCD[pInfo[playerid][pMembers]] = gettime()+10800; //3 Часа
+
+	str[0] = EOS;
+	mysql_format(DB, str, sizeof(str), "UPDATE `fraction_info` SET `Thief_CD` = '%d' WHERE `ID` = '%d'", FractionThiefCD[pInfo[playerid][pMembers]], pInfo[playerid][pMembers]);
+	mysql_tquery(DB, str);
+	return 1;
 }
 
 CMD:war(playerid)
@@ -17513,7 +17555,7 @@ CMD:towcar(playerid)
 	if(pInfo[playerid][pMoney] < 1000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Буксировка стоит 1.000$ у вас недостаточно средств");
 	GivePlayerMoneyEx(playerid, -1000);
 
-	GiveCompanyPay(playerid, BusinessTowCar, 1000);
+	GiveCompanyMoney(playerid, BusinessTowCar, 1000);
 
 	new panels, doors, lights, tires, Float:Health;
 	GetVehicleDamageStatus(pInfo[playerid][pVehicleID], panels, doors, lights, tires);
@@ -17540,7 +17582,7 @@ CMD:fixcar(playerid)
 	if(pInfo[playerid][pMoney] < 1000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Буксировка стоит 1.000$ у вас недостаточно средств");
 	GivePlayerMoneyEx(playerid, -1000);
 
-	GiveCompanyPay(playerid, BusinessTowCar, 1000);
+	GiveCompanyMoney(playerid, BusinessTowCar, 1000);
 
 	SetVehicleToRespawn(pInfo[playerid][pVehicleID]);
 	SendClientMessage(playerid, -1, Color_White"Транспорт успешно отбуксирован к месту стоянки");
@@ -19864,7 +19906,7 @@ CMD:ad(playerid, params[])
 	if(pInfo[playerid][pMoney] < 2000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Подача объявления стоит 2000$ у вас недостаточно средств");
 	GivePlayerMoneyEx(playerid, -2000);
 
-	GiveCompanyPay(playerid, BusinessCNN, 2000);
+	GiveCompanyMoney(playerid, BusinessCNN, 2000);
 
 	format(message, sizeof(message), Color_Green"[Реклама] %s. Отправлено: %s[%d]", message, pInfo[playerid][pName], playerid);
 	SendADMessage(message);
@@ -21625,7 +21667,8 @@ CMD:editbusiness(playerid, params[])
 	"Main_Color"- "Color_White"Цена\n\
 	"Main_Color"- "Color_White"Минимальный уровень для покупки\n\
 	"Main_Color"- "Color_White"Место обслуживания на машине(Заправки/KFC)\n\
-	"Main_Color"- "Color_White"Удалить место обслуживания на машине", Color_White"Далее", Color_White"Закрыть");
+	"Main_Color"- "Color_White"Удалить место обслуживания на машине\n\
+	"Main_Color"- "Color_White"Изменить крышу", Color_White"Далее", Color_White"Закрыть");
 	return 1;
 }
 
@@ -22545,13 +22588,15 @@ stock ShowBusinessInfo(playerid)
 	"Main_Color"Бизнес №"Color_White"%d\n\
 	"Main_Color"Гос.цена"Color_White": "Color_Green"%d%s\n\
 	"Main_Color"Требуемый уровень"Color_White": %d\n\
-	"Main_Color"Оплачен до"Color_White": %s",
+	"Main_Color"Оплачен до"Color_White": %s\n\
+	"Main_Color"Крышует"Color_White": %s",
 	BusinessType[bInfo[BusinessID][bType]][bName],
 	bInfo[BusinessID][bID],
 	bInfo[BusinessID][bPrice],
 	(bInfo[BusinessID][bIsDonate]) ? (" донат рублей"):("$"),
 	bInfo[BusinessID][bNeedLevel],
-	date(bInfo[BusinessID][bTax], 3, "%dd.%mm.%yyyy %hh:%ii"));
+	date(bInfo[BusinessID][bTax], 3, "%dd.%mm.%yyyy %hh:%ii"),
+	FractionName[bInfo[BusinessID][bMafiaOwner]]);
 	ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color"Информация о бизнесе", str, Color_White"Закрыть", "");
 	return 1;
 }
@@ -23243,7 +23288,7 @@ public AnimSpurnkTake(playerid)
 	SetTimerEx("Drink", 500, false, "dfs", playerid, 5.0, "Sprunk");
 
 	GivePlayerMoneyEx(playerid, -15);
-	GiveCompanyPay(playerid, BusinessSprunk, 15);
+	GiveCompanyMoney(playerid, BusinessSprunk, 15);
 	return 1;
 }
 
@@ -23871,6 +23916,13 @@ stock PayDay()
 {
 	PayDayCalled = true;
 
+	foreach(new i: Business)
+	{
+		if(!bInfo[i][bID] || bInfo[i][bMafiaOwner] == Fraction_None) continue;
+		FractionWare[bInfo[i][bMafiaOwner]][FractionWareMoney] += 5000;
+		SaveFractionWare(bInfo[i][bMafiaOwner]);
+	}
+
 	foreach(new i : Player)
 	{
 		if(!pInfo[i][pAuth]) continue;
@@ -23885,7 +23937,7 @@ stock PayDay()
 		format(string, sizeof(string), Color_White"|---------- Банковский чек на имя "Color_Green"%s"Color_White" ----------|", pInfo[i][pName]);
 		SendClientMessage(i, -1, string);
 		new LenghtCheck = strlen(string);
-		LenghtCheck -= 9; // Удаляем левей HEX цвет и нуль символ
+		LenghtCheck -= 9; // Удаляем левый HEX цвет и нуль символ
 		//////PayDay Start
 
 		string[0] = EOS;
@@ -24673,7 +24725,7 @@ public SecondTimer()
 					else
 					{
 						GivePlayerMoneyEx(i, -Tent[indx][TentPrice]);
-						GiveCompanyPay(i, BusinessMarketplace, Tent[indx][TentPrice]);
+						GiveCompanyMoney(i, BusinessMarketplace, Tent[indx][TentPrice]);
 
 						Tent[indx][TentTime] = gettime()+3600;
 						Tent[indx][TentPlayer] = i;
@@ -25264,7 +25316,6 @@ stock RemoveLoader(playerid)
 
 stock AuthAdmin(playerid)
 {
-    if(Iter_Count(Admins) >= MAX_ADMINS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Авторизировано максимальное количество администраторов. Обратитесь в технический раздел");
     Iter_Add(Admins, playerid);
 	SetPVarInt(playerid, "AdmAuth", 1);
 	new str[200];
@@ -25274,7 +25325,67 @@ stock AuthAdmin(playerid)
 	DeactivateAntiCheat(playerid);
 	RemovePlayerOnCheaterPanel(playerid);
 	ShowCheaterPanelTD(playerid);
+
+	str[0] = EOS;
+	mysql_format(DB, str, sizeof(str), "SELECT * FROM `admin_info` WHERE `ID` = '%d'", pInfo[playerid][pID]);
+	mysql_tquery(DB, str, "LoadAdminInfo", "d", playerid);
     return 1;
+}
+
+stock GetWeekDay(year, month, day)
+{
+  	if (month < 3)
+ 	{
+ 		month += 12;
+ 		year--;
+  	}
+  	return (((13*month+3)/5 + day + year + year/4 - year/100 + year/400) % 7)+1;
+}
+
+forward LoadAdminInfo(playerid);
+public LoadAdminInfo(playerid)
+{
+	new row = cache_num_rows();
+	if(row)
+	{
+		new str[200];
+		cache_get_value_name(0, "Report", str);
+		if(!strlen(str)) for(new i = 0; i < 7; i++) AInfo[playerid][AdmReport][i] = 0;
+		else sscanf(str, "p<,>a<i>[7]", AInfo[playerid][AdmReport]);
+
+		str[0] = EOS;
+		cache_get_value_name(0, "Ban", str);
+		if(!strlen(str)) for(new i = 0; i < 7; i++) AInfo[playerid][AdmBan][i] = 0;
+		else sscanf(str, "p<,>a<i>[7]", AInfo[playerid][AdmBan]);
+
+		str[0] = EOS;
+		cache_get_value_name(0, "Kick", str);
+		if(!strlen(str)) for(new i = 0; i < 7; i++) AInfo[playerid][AdmKick][i] = 0;
+		else sscanf(str, "p<,>a<i>[7]", AInfo[playerid][AdmKick]);
+
+		str[0] = EOS;
+		cache_get_value_name(0, "Mute", str);
+		if(!strlen(str)) for(new i = 0; i < 7; i++) AInfo[playerid][AdmMute][i] = 0;
+		else sscanf(str, "p<,>a<i>[7]", AInfo[playerid][AdmMute]);
+
+		str[0] = EOS;
+		cache_get_value_name(0, "Demorgan", str);
+		if(!strlen(str)) for(new i = 0; i < 7; i++) AInfo[playerid][AdmDemorgan][i] = 0;
+		else sscanf(str, "p<,>a<i>[7]", AInfo[playerid][AdmDemorgan]);
+
+		str[0] = EOS;
+		cache_get_value_name(0, "Online", str);
+		if(!strlen(str)) for(new i = 0; i < 7; i++) AInfo[playerid][AdmOnline][i] = 0;
+		else sscanf(str, "p<,>a<i>[7]", AInfo[playerid][AdmOnline]);
+	}
+	else
+	{
+		ClearAdminInfo(playerid);
+		new query[100];
+		mysql_format(DB, query, sizeof(query), "INSERT INTO `admin_info` (`ID`) VALUES ('%d')", pInfo[playerid][pID]);
+		mysql_tquery(DB, query);
+	}
+	return 1;
 }
 
 stock IsSecurityAgency(FractionID)
@@ -25575,12 +25686,7 @@ stock AddPlayerSkins(playerid, SkinID)
 					HideSkinSelect(playerid);
 					new BusinessID = GetPVarInt(playerid, "InBusiness");
 					ActivateBusinessActors(playerid, BusinessID);
-
-					if(bInfo[BusinessID][bOwnerID])
-					{
-						bInfo[BusinessID][bMoney] += SkinFemale[indx][1];
-						SaveBusinessInt(bInfo[BusinessID][bID], "Money", bInfo[BusinessID][bMoney]);
-					}
+					GiveBusinessMoney(BusinessID, SkinFemale[indx][1]);
 				}
 				else
 				{
@@ -25598,12 +25704,7 @@ stock AddPlayerSkins(playerid, SkinID)
 					HideSkinSelect(playerid);
 					new BusinessID = GetPVarInt(playerid, "InBusiness");
 					ActivateBusinessActors(playerid, BusinessID);
-
-					if(bInfo[BusinessID][bOwnerID])
-					{
-						bInfo[BusinessID][bMoney] += SkinMale[indx][1];
-						SaveBusinessInt(bInfo[BusinessID][bID], "Money", bInfo[BusinessID][bMoney]);
-					}
+					GiveBusinessMoney(BusinessID, SkinMale[indx][1]);
 				}
 			}
 			else
@@ -26255,7 +26356,17 @@ stock SaveBusinessNull(BusinessID, const ColumnName[])
 	return 1;
 }
 
-stock GiveCompanyPay(playerid, BusinessTypes, money)
+stock GiveBusinessMoney(BusinessID, money)
+{
+	if(bInfo[BusinessID][bOwnerID])
+	{
+		bInfo[BusinessID][bMoney] += money;
+		SaveBusinessInt(bInfo[BusinessID][bID], "Money", bInfo[BusinessID][bMoney]);
+	}
+	return 1;
+}
+
+stock GiveCompanyMoney(playerid, BusinessTypes, money)
 {
 	new Float:dist, BusinessID = 0;
 	foreach(new i:Business)
