@@ -1545,7 +1545,8 @@ enum AreaInfo
 	FishUnloadArea,
 	FarmDeliverUnloadArea,
 	LiveArea,
-	StashArea
+	StashArea,
+	KidnappingArea
 };
 new Areas[AreaInfo];
 
@@ -8396,6 +8397,26 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 						}
 					}
 				}
+			}
+		}
+		else if(areaid == Areas[KidnappingArea] && IsAMafia(pInfo[playerid][pMembers]))
+		{
+			new vehicleid = GetPlayerVehicleID(playerid);
+			foreach(new i:Player)
+			{
+				if(GetPlayerVehicleID(i) == vehicleid && GetPVarInt(i, "Kidnapped"))
+				{
+					SetPlayerPosition(i, -128.5114,2256.5183,27.9542,190.5037, 0, 0);
+					if(!pInfo[i][pStealSkin])
+					{
+						if(!AddPlayerInventory(playerid, ItemDress)) SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+						pInfo[i][pStealSkin] = true;
+						SavePlayerBool(i, "StealSkin", pInfo[i][pStealSkin]);
+						SetSkin(i, pInfo[i][pSkins][pInfo[i][pSkin]]);
+					}
+					DeletePVar(i, "Kidnapped");
+				}
+
 			}
 		}
 		else if(areaid == Areas[FarmDeliverUnloadArea])
@@ -15682,6 +15703,37 @@ CMD:main(playerid)
 	return 1;
 }
 alias:main("mm", "menu");
+
+CMD:rape(playerid, params[])
+{
+	if(!IsAMafia(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только мафиям");
+	new id;
+	if(sscanf(params, "d", id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/rape [ID]");
+	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
+	if(!IsPlayerConnected(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не подключен");
+	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
+	if(id == playerid) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете похитить себя");
+	new vehicleid = GetPlayerVehicleID(playerid);
+	if(!vehicleid) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны находиться в машине");
+	new Float:X, Float:Y, Float:Z;
+	GetPlayerPos(id, X, Y, Z);
+	if(!IsPlayerInRangeOfPoint(playerid, 1.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, с которого хотите снять одежду");
+	new seat = GetFreeVehicleSeat(vehicleid);
+	if(seat == -1) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"В транспорте нет свободных мест");
+
+	ClearAnimations(id);
+	TogglePlayerControllable(id, false);
+	PutPlayerInVehicle(id, vehicleid, seat);
+
+	SetPVarInt(id, "Kidnapped", 1);
+	new str[100];
+	format(str, sizeof(str), "затащил(а) %s в машину", pInfo[id][pName]);
+	ProxDetector(playerid, MESSAGE_DIST, BitColor_Me, str);
+	SetPlayerRaceCheckpoint(playerid, 2, 2358.1138, -655.8890, 128.1294, 0.0, 0.0, 0.0, 12.0);
+	pInfo[playerid][pGPSType] = GPS_Type_Job;
+	return 1;
+
+}
 
 CMD:stealdress(playerid, params[])
 {
@@ -28514,6 +28566,7 @@ stock CreateAreas()
 	Areas[FarmDeliverUnloadArea] = CreateDynamicCircle(90.0994,-306.6081, 10.0, 0, 0);
 	Areas[LiveArea] = CreateDynamicRectangle(170.1479,-119.9004, 175.4543,-113.9935, 6, 6);
 	Areas[StashArea] = CreateDynamicSphere(-240.2665,-1.2341,1046.3240, 1.5, 1, 17);
+	Areas[KidnappingArea] = CreateDynamicCircle(2358.1138, -655.8890, 12, 0, 0);
 	return 1;
 }
 
