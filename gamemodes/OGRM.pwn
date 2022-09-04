@@ -7484,6 +7484,7 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 					}
 					else if(indx == RawMateriallTransfer)
 					{
+						if(!IsABand(pInfo[playerid][pMembers]) && !IsAMafia(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам и мафиям");
 						if(!GetItemCountInInventory(playerid, ItemOilCan) || !GetItemCountInInventory(playerid, ItemMetall)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Для обмена нужна 1 масленка и 1 металл");
 
 						new count = 0;
@@ -7513,6 +7514,7 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 					}
 					else if(indx == MateriallTransfer)
 					{
+						if(!IsABand(pInfo[playerid][pMembers]) && !IsAMafia(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам и мафиям");
 						new count = GetItemCountInInventory(playerid, ItemRawMaterial);
 						if(!count) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас нет необработанных материалов для обмена");
 
