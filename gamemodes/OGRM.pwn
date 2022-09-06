@@ -1723,7 +1723,10 @@ new Gate[MAX_GATE][GateInfo];
 #define CommandHelpStreetRacers	114
 #define CommandHelpBikers		115
 #define CommandHelpFarmOfTruth	116
-#define MAX_PICK 				117
+#define CommandHelpRussianMafia	117
+#define CommandHelpLCN			118
+#define CommandHelpYakuza		119
+#define MAX_PICK 				120
 
 enum PickupInfo
 {
@@ -3005,26 +3008,43 @@ public OnPlayerDisconnect(playerid, reason)
 		DeletePVar(playerid, "ReportedID");
 	}
 
-	if(GetPVarInt(playerid, "Spec_Admin_ID"))
+	if(GetPVarInt(playerid, "UnderSpec"))
 	{
-		SendClientMessage(GetPVarInt(playerid, "Spec_Admin_ID")-1, -1, Color_Yellow"Игрок вышел из игры. Вы прекратили следить за игроком.");
-		StopSpectate(GetPVarInt(playerid, "Spec_Admin_ID")-1);
-		DeletePVar(playerid, "Spec_Admin_ID");
+		foreach(new i:Admins)
+		{
+			if(GetPVarInt(i, "Spec_ID") == playerid+1)
+			{
+				SendClientMessage(i, -1, Color_Yellow"Игрок вышел из игры. Вы прекратили следить за игроком.");
+				StopSpectate(i);
+			}
+		}
 	}
 
-	if(GetPVarInt(playerid, "Spec_Mode"))
+	if(GetPVarInt(playerid, "Spec_ID"))
 	{
+		new id = GetPVarInt(playerid, "Spec_ID");
 		DeletePVar(playerid, "Spec_X");
 		DeletePVar(playerid, "Spec_Y");
 		DeletePVar(playerid, "Spec_Z");
 		DeletePVar(playerid, "Spec_A");
 		DeletePVar(playerid, "Spec_VW");
 		DeletePVar(playerid, "Spec_INT");
-
-		DeletePVar(GetPVarInt(playerid, "Spec_ID"), "Spec_Admin_ID");
-
 		DeletePVar(playerid, "Spec_ID");
-		DeletePVar(playerid, "Spec_Mode");
+
+		new Finded = false;
+		foreach(new i:Admins)
+		{
+			if(GetPVarInt(i, "Spec_ID") == id)
+			{
+				Finded = true;
+				break;
+			}
+		}
+		if(!Finded)
+		{
+			id--;
+			DeletePVar(id, "UnderSpec");
+		}
 		StopSpectate(playerid);
 	}
 
@@ -3198,8 +3218,6 @@ public OnPlayerSpawn(playerid)
 		}
 	}
 
-	if(GetPVarInt(playerid, "Spec_Admin_ID")) SpectatePlayer(GetPVarInt(playerid, "Spec_Admin_ID")-1, playerid);
-
 	if(pInfo[playerid][pDemorgan])
 	{
 		ResetPlayerWeapons(playerid);
@@ -3215,9 +3233,12 @@ public OnPlayerSpawn(playerid)
 		SetPlayerPosition(playerid, 234.3806, 1957.0878, 18.3294, 89.9933, 0, 0);
 		SetSkin(playerid, pInfo[playerid][pSkins][pInfo[playerid][pSkin]]);
 	}
-	else if(GetPVarInt(playerid, "Spec_Mode"))
+	else if(GetPVarInt(playerid, "Spec_ID"))
 	{
+
 		SetPlayerPosition(playerid, GetPVarFloat(playerid, "Spec_X"), GetPVarFloat(playerid, "Spec_Y"), GetPVarFloat(playerid, "Spec_Z"), GetPVarFloat(playerid, "Spec_A"), GetPVarInt(playerid, "Spec_VW"), GetPVarInt(playerid, "Spec_INT"));
+
+		new id = GetPVarInt(playerid, "Spec_ID");
 
 		DeletePVar(playerid, "Spec_X");
 		DeletePVar(playerid, "Spec_Y");
@@ -3225,11 +3246,23 @@ public OnPlayerSpawn(playerid)
 		DeletePVar(playerid, "Spec_A");
 		DeletePVar(playerid, "Spec_VW");
 		DeletePVar(playerid, "Spec_INT");
-
-		DeletePVar(GetPVarInt(playerid, "Spec_ID"), "Spec_Admin_ID");
-
 		DeletePVar(playerid, "Spec_ID");
-		DeletePVar(playerid, "Spec_Mode");
+
+		new Finded = false;
+		foreach(new i:Admins)
+		{
+			if(GetPVarInt(i, "Spec_ID") == id)
+			{
+				Finded = true;
+				break;
+			}
+		}
+		if(!Finded)
+		{
+			id--;
+			DeletePVar(id, "UnderSpec");
+		}
+
 		GiveAllGun(playerid);
 		SetSkin(playerid, pInfo[playerid][pSkins][pInfo[playerid][pSkin]]);
 	}
@@ -6219,9 +6252,12 @@ public OnPlayerExitVehicle(playerid, vehicleid)
 public OnPlayerStateChange(playerid, newstate, oldstate)
 {
 	RemoveCarriedObj(playerid, true);
-	if(GetPVarInt(playerid, "Spec_Admin_ID"))
+	if(GetPVarInt(playerid, "UnderSpec"))
 	{
-		SpectatePlayer(GetPVarInt(playerid, "Spec_Admin_ID")-1, playerid);
+		foreach(new i:Admins)
+		{
+			if(GetPVarInt(i, "Spec_ID") == playerid+1) SpectatePlayer(i, playerid);
+		}
 	}
 
 	if(oldstate == PLAYER_STATE_DRIVER)
@@ -7103,6 +7139,18 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 				}
 			}
 			return 1;
+		}
+	}
+	else if(newstate == PLAYER_STATE_SPECTATING)
+	{
+		if(newkeys & KEY_YES)
+		{
+			if(GetPVarInt(playerid, "Spec_ID"))
+			{
+				new id = GetPVarInt(playerid, "Spec_ID");
+				id--;
+				SpectatePlayer(playerid, id);
+			}
 		}
 	}
 	return 1;
@@ -8383,7 +8431,9 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 		|| areaid == Pickups[CommandHelpVagos][PickAreaID] || areaid == Pickups[CommandHelpBallas][PickAreaID]
 		|| areaid == Pickups[CommandHelpAztecas][PickAreaID] || areaid == Pickups[CommandHelpGrove][PickAreaID]
 		|| areaid == Pickups[CommandHelpRifa][PickAreaID] || areaid == Pickups[CommandHelpStreetRacers][PickAreaID]
-		|| areaid == Pickups[CommandHelpBikers][PickAreaID] || areaid == Pickups[CommandHelpFarmOfTruth][PickAreaID])
+		|| areaid == Pickups[CommandHelpBikers][PickAreaID] || areaid == Pickups[CommandHelpFarmOfTruth][PickAreaID]
+		|| areaid == Pickups[CommandHelpRussianMafia][PickAreaID] || areaid == Pickups[CommandHelpLCN][PickAreaID]
+		|| areaid == Pickups[CommandHelpYakuza][PickAreaID])
 		{
 			ShowFractionCommand(playerid);
 		}
@@ -10625,7 +10675,14 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					"Main_Color"/(en)gine "Color_White"- Завести/Загулишть транспорт\n\
 					"Main_Color"/light "Color_White"- Включить фары", Color_White"Закрыть", "");
 				}
-				case 5: ShowFractionCommand(playerid);
+				case 5:
+				{
+					if(!pInfo[playerid][pBusinessID]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас нет бизнеса");
+					ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Бизнес", Main_Color"/sellbusiness "Color_White"- Продать бизнес штату\n\
+					"Main_Color"/sellbusiness [id] [цена] "Color_White"- Продать бизнес игроку\n\
+					"Main_Color"/exchangebusiness [id] "Color_White"- Обменяться бизнесами", Color_White"Закрыть", "");
+				}
+				case 6: ShowFractionCommand(playerid);
 			}
 		}
 		case D_Main_Menu_Player:
@@ -10916,20 +10973,25 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				return 1;
 			}
 			new string[250];
-			if(GetPVarInt(playerid, "AdminPanelType") == 1)
+			new id = GetPVarInt(playerid, "Spec_ID");
+			if(id)
 			{
-				format(string, sizeof(string), "%d %d %s", GetPVarInt(playerid, "Spec_ID"), GetPVarInt(playerid, "AdminPanelTime"), inputtext);
-				pc_cmd_jail(playerid, string);
-			}
-			else if(GetPVarInt(playerid, "AdminPanelType") == 2)
-			{
-				format(string, sizeof(string), "%d %s", GetPVarInt(playerid, "Spec_ID"), inputtext);
-				pc_cmd_warn(playerid, string);
-			}
-			else if(GetPVarInt(playerid, "AdminPanelType") == 3)
-			{
-				format(string, sizeof(string), "%d %d %s", GetPVarInt(playerid, "Spec_ID"), GetPVarInt(playerid, "AdminPanelTime"), inputtext);
-				pc_cmd_ban(playerid, string);
+				id--;
+				if(GetPVarInt(playerid, "AdminPanelType") == 1)
+				{
+					format(string, sizeof(string), "%d %d %s", id, GetPVarInt(playerid, "AdminPanelTime"), inputtext);
+					pc_cmd_jail(playerid, string);
+				}
+				else if(GetPVarInt(playerid, "AdminPanelType") == 2)
+				{
+					format(string, sizeof(string), "%d %s", id, inputtext);
+					pc_cmd_warn(playerid, string);
+				}
+				else if(GetPVarInt(playerid, "AdminPanelType") == 3)
+				{
+					format(string, sizeof(string), "%d %d %s", id, GetPVarInt(playerid, "AdminPanelTime"), inputtext);
+					pc_cmd_ban(playerid, string);
+				}
 			}
 			DeletePVar(playerid, "AdminPanelType");
 			DeletePVar(playerid, "AdminPanelTime");
@@ -16001,39 +16063,50 @@ public OnPlayerClickPlayerTextDraw(playerid, PlayerText:playertextid)
 
 public OnPlayerClickTextDraw(playerid, Text:clickedid)
 {
-	if(GetPVarInt(playerid, "Spec_Mode"))
+	if(GetPVarInt(playerid, "Spec_ID"))
 	{
+		new id = GetPVarInt(playerid, "Spec_ID");
+		id--;
+
 		if(clickedid == Text:INVALID_TEXT_DRAW)
 		{
-			return SpectatePlayer(playerid, GetPVarInt(playerid, "Spec_ID"));
+			SendClientMessage(playerid, BitColor_Yellow, "Курсор выключен. Если вы хотите снова показать курсор, нажмите ~k~~CONVERSATION_YES~");
 		}
-		else if(clickedid == SpecPanelTD[9]) return SpectatePlayer(playerid, GetPVarInt(playerid, "Spec_ID"));
+		else if(clickedid == SpecPanelTD[9]) return SpectatePlayer(playerid, id);
 		else if(clickedid == SpecPanelTD[10])
 		{
 			new FindedID = -1;
 			foreach(new i: Player)
 			{
-				if(i == playerid || i <= GetPVarInt(playerid, "Spec_ID") || GetPVarInt(i, "Spec_Mode")) continue;
+				if(i == playerid || i <= id || GetPVarInt(i, "Spec_ID")) continue;
 				FindedID = i;
 			}
 
 			if(FindedID == -1) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Больше нет игроков на которых можно было бы переключится");
 			else
 			{
-				DeletePVar(GetPVarInt(playerid, "Spec_ID"), "Spec_Admin_ID");
-				DeletePVar(playerid, "Spec_ID");
+				new Finded = false;
+				foreach(new i:Admins)
+				{
+					if(GetPVarInt(i, "Spec_ID") == id+1 && i != playerid)
+					{
+						Finded = true;
+						break;
+					}
+				}
+				if(!Finded) DeletePVar(id, "UnderSpec");
 
-				SetPVarInt(playerid, "Spec_ID", FindedID);
-				SetPVarInt(FindedID, "Spec_Admin_ID", playerid+1);
+				SetPVarInt(playerid, "Spec_ID", FindedID+1);
+				SetPVarInt(FindedID, "UnderSpec", 1);
 				SpectatePlayer(playerid, FindedID);
 			}
 			return 1;
 		}
-		else if(clickedid == SpecPanelTD[11])return ShowPlayerStat(GetPVarInt(playerid, "Spec_ID"), playerid);
+		else if(clickedid == SpecPanelTD[11])return ShowPlayerStat(id, playerid);
 		else if(clickedid == SpecPanelTD[12])
 		{
 			new str[20];
-			format(str, sizeof(str), "%d", GetPVarInt(playerid, "Spec_ID"));
+			format(str, sizeof(str), "%d", id);
 			pc_cmd_gm(playerid, str);
 			return 1;
 		}
@@ -21308,7 +21381,7 @@ CMD:spec(playerid, params[])
 	if(!IsPlayerConnected(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не подключен");
 	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
 	if(playerid == id) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ввели свой ID");
-	if(GetPVarInt(id, "Spec_Mode")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок находится в режиме слежки");
+	if(GetPVarInt(id, "Spec_ID")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок находится в режиме слежки");
 
 	new Float:X, Float:Y, Float:Z, Float:A;
 	GetPlayerPos(playerid, X, Y, Z);
@@ -21321,21 +21394,18 @@ CMD:spec(playerid, params[])
 	SetPVarInt(playerid, "Spec_VW", GetPlayerVirtualWorld(playerid));
 	SetPVarInt(playerid, "Spec_INT", GetPlayerInterior(playerid));
 
-	SetPVarInt(playerid, "Spec_ID", id);
-	SetPVarInt(id, "Spec_Admin_ID", playerid+1);
-	SetPVarInt(playerid, "Spec_Mode", 1);
-
+	SetPVarInt(playerid, "Spec_ID", id+1);
+	SetPVarInt(id, "UnderSpec", 1);
 
 	TogglePlayerSpectating(playerid, true);
 	SpectatePlayer(playerid, id);
-
 	return 1;
 }
 
 CMD:specoff(playerid)
 {
 	if(pInfo[playerid][pAdmin] < 2 || !Iter_Contains(Admins, playerid)) return 1;
-	if(!GetPVarInt(playerid, "Spec_Mode")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не в режиме слежки");
+	if(!GetPVarInt(playerid, "Spec_ID")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не в режиме слежки");
 	StopSpectate(playerid);
 	SendClientMessage(playerid, -1, Color_Yellow"Вы прекратили следить за игроком.");
 	return 1;
@@ -23075,7 +23145,8 @@ stock ShowPlayerCommandMenu(playerid)
 	"Main_Color"3. "Color_White"Анимации\n\
 	"Main_Color"4. "Color_White"Дом\n\
 	"Main_Color"5. "Color_White"Транспорт\n\
-	"Main_Color"6. "Color_White"Организации", Color_White"Далее", Color_White"Назад");
+	"Main_Color"6. "Color_White"Бизнес\n\
+	"Main_Color"7. "Color_White"Организации", Color_White"Далее", Color_White"Назад");
 	return 1;
 }
 
@@ -23244,6 +23315,17 @@ stock ShowFractionCommand(playerid)
 			"Main_Color"/gtime "Color_White"- Начать отсчет\n\
 			"Main_Color"/neon "Color_White"- Установить неон\n\
 			"Main_Color"/paint "Color_White"- Нанести винил\n\
+			"Main_Color"/invite [ID] "Color_White"- Пригласить в банду\n\
+			"Main_Color"/uninvite [ID] "Color_White"- Выгнать из банды\n\
+			"Main_Color"/giverank [ID] "Color_White"- Изменить звание члена банды", Color_White"Закрыть", "");
+		}
+		case Fraction_RussiaMafia, Fraction_LaCosaNostra, Fraction_Yakuza:
+		{
+			ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Организации", Main_Color"/members "Color_White"- Члены мафии онлайн\n\
+			"Main_Color"/f "Color_White"- Чат банды\n\
+			"Main_Color"/bizzwar "Color_White"- Начать войну за бизнес\n\
+			"Main_Color"/stealdress "Color_White"- Украсть одежду\n\
+			"Main_Color"/rape "Color_White"- Похитить игрока\n\
 			"Main_Color"/invite [ID] "Color_White"- Пригласить в банду\n\
 			"Main_Color"/uninvite [ID] "Color_White"- Выгнать из банды\n\
 			"Main_Color"/giverank [ID] "Color_White"- Изменить звание члена банды", Color_White"Закрыть", "");
@@ -23995,7 +24077,14 @@ stock ProxDetector(playerid, Float:max_range, color, const string[], bool:Adding
         SendClientMessage(i, color, FormatedMessage);
     }
 
-    if(GetPVarInt(playerid, "Spec_Admin_ID")) SendClientMessage(GetPVarInt(playerid, "Spec_Admin_ID")-1, color, FormatedMessage);
+    if(GetPVarInt(playerid, "UnderSpec"))
+    {
+		foreach(new i:Admins)
+		{
+			if(GetPVarInt(i, "Spec_ID") == playerid+1) SendClientMessage(i, color, FormatedMessage);
+		}
+    }
+
     SendClientMessage(playerid, color, FormatedMessage);
     if(AddingName)
     {
@@ -24488,6 +24577,25 @@ stock SetPlayerPosition(playerid, Float:x, Float:y, Float:z, Float:a=0.0, virtua
 	}
 
 	if(UnFreeze) SetPVarInt(playerid, "UnFreezePlayerTimer", SetTimerEx("UnFreezePlayer", 1000+(GetPlayerPing(playerid)*20), false, "d", playerid));
+
+	if(GetPVarInt(playerid, "UnderSpec"))
+    {
+		foreach(new i:Admins)
+		{
+			if(GetPVarInt(i, "Spec_ID") == playerid+1) SpectatePlayer(i, playerid);
+		}
+    }
+	return 1;
+}
+
+forward UnFreezePlayer(playerid);
+public UnFreezePlayer(playerid)
+{
+	DeletePVar(playerid, "UnFreezePlayerTimer");
+
+	TogglePlayerControllable(playerid, true);
+
+	if(GetPVarInt(playerid, "AmmoBox")) ApplyAnimation(playerid,"CARRY","crry_prtial", 4.0, true, false, false, true, 1, true);
 	return 1;
 }
 
@@ -24511,22 +24619,6 @@ stock SetSkin(playerid, Skin, bool:IgnoredFractionSkin = false)
 	}
 
 	SetPlayerSkin(playerid, Skin);
-	return 1;
-}
-
-forward UnFreezePlayer(playerid);
-public UnFreezePlayer(playerid)
-{
-	DeletePVar(playerid, "UnFreezePlayerTimer");
-
-	if(GetPVarInt(playerid, "Spec_Admin_ID"))
-	{
-		SpectatePlayer(GetPVarInt(playerid, "Spec_Admin_ID")-1, playerid);
-	}
-
-	TogglePlayerControllable(playerid, true);
-
-	if(GetPVarInt(playerid, "AmmoBox")) ApplyAnimation(playerid,"CARRY","crry_prtial", 4.0, true, false, false, true, 1, true);
 	return 1;
 }
 
@@ -30874,6 +30966,14 @@ stock CreatePickups()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[RussiaMafiaEnter][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[RussiaMafiaEnter][PickAreaID],  E_STREAMER_INDX, RussiaMafiaEnter);
 
+	Pickups[CommandHelpRussianMafia][PickJob] = Job_None;
+	Pickups[CommandHelpRussianMafia][PickID] = CreateDynamicPickup(1239, 1, -218.6819,1406.4198,27.7734, 5, 18);
+	Pickups[CommandHelpRussianMafia][PickAreaID] = CreateDynamicSphere(-218.6819,1406.4198,27.7734, 1.0, 5, 18);
+	Pickups[CommandHelpRussianMafia][PickTextID] = CreateDynamic3DTextLabel(Main_Color"Команды организации", -1, -218.6819,1406.4198,27.7734+0.5, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 5, 18);
+	Pickups[CommandHelpRussianMafia][IsPickTP] = false;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpRussianMafia][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpRussianMafia][PickAreaID],  E_STREAMER_INDX, CommandHelpRussianMafia);
+
     Pickups[LaCosaNostraExit][PickJob] = Job_None;
 	Pickups[LaCosaNostraExit][PickFraction] = Fraction_None;
 	Pickups[LaCosaNostraExit][PickID] = CreateDynamicPickup(1318, 1, 140.2926,1365.9287,1083.8594, 1, 5);
@@ -30896,6 +30996,14 @@ stock CreatePickups()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[LaCosaNostraEnter][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[LaCosaNostraEnter][PickAreaID],  E_STREAMER_INDX, LaCosaNostraEnter);
 
+	Pickups[CommandHelpLCN][PickJob] = Job_None;
+	Pickups[CommandHelpLCN][PickID] = CreateDynamicPickup(1239, 1, 147.1234,1372.7108,1083.8594, 1, 5);
+	Pickups[CommandHelpLCN][PickAreaID] = CreateDynamicSphere(147.1234,1372.7108,1083.8594, 1.0, 1, 5);
+	Pickups[CommandHelpLCN][PickTextID] = CreateDynamic3DTextLabel(Main_Color"Команды организации", -1, 147.1234,1372.7108,1083.8594+0.5, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 5);
+	Pickups[CommandHelpLCN][IsPickTP] = false;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpLCN][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpLCN][PickAreaID],  E_STREAMER_INDX, CommandHelpLCN);
+
     Pickups[YakuzaExit][PickJob] = Job_None;
 	Pickups[YakuzaExit][PickFraction] = Fraction_None;
 	Pickups[YakuzaExit][PickID] = CreateDynamicPickup(1318, 1, -2158.6958,643.1111,1052.3750, 3, 1);
@@ -30917,6 +31025,14 @@ stock CreatePickups()
 	Pickups[YakuzaEnter][PickTpPickID] = YakuzaExit;
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[YakuzaEnter][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[YakuzaEnter][PickAreaID],  E_STREAMER_INDX, YakuzaEnter);
+
+	Pickups[CommandHelpYakuza][PickJob] = Job_None;
+	Pickups[CommandHelpYakuza][PickID] = CreateDynamicPickup(1239, 1, -2160.0823,646.5538,1057.5861, 3, 1);
+	Pickups[CommandHelpYakuza][PickAreaID] = CreateDynamicSphere(-2160.0823,646.5538,1057.5861, 1.0, 3, 1);
+	Pickups[CommandHelpYakuza][PickTextID] = CreateDynamic3DTextLabel(Main_Color"Команды организации", -1, -2160.0823,646.5538,1057.5861+0.5, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 3, 1);
+	Pickups[CommandHelpYakuza][IsPickTP] = false;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpYakuza][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpYakuza][PickAreaID],  E_STREAMER_INDX, CommandHelpYakuza);
 	return 1;
 }
 
