@@ -49,6 +49,7 @@
 #define BitColor_Main	0xD8816EFF
 #define BitColor_Green	0x2ED13EFF
 #define BitColor_Yellow	0xFFFF00FF
+#define BitColor_Grey	0xAFAFAFFF
 #define BitColor_Me		0xC2A2DAFF
 #define BitColor_White	0xFFFFFFFF
 #define BitColor_Do		0x2273b5FF
@@ -3768,7 +3769,7 @@ public OnVehicleDeath(vehicleid, killerid)
 	return 1;
 }
 
-public OnPlayerText(playerid, text[])
+stock bool:IsMuted(playerid)
 {
 	if(pInfo[playerid][pMute])
 	{
@@ -3781,8 +3782,17 @@ public OnPlayerText(playerid, text[])
 		else if(time == 1) format(str, sizeof(str), Color_Grey"До конца мута осталось "Main_Color"%d "Color_Grey"минута", time);
 		else format(str, sizeof(str), Color_Grey"До конца мута осталось "Main_Color"меньше "Color_Grey"минуты");
 		SendClientMessage(playerid, -1, str);
-		return 0;
+
+		SetPlayerChatBubble(playerid, "Что-то промычал", BitColor_Grey, MESSAGE_DIST, 5000);
+		return true;
 	}
+	else return false;
+}
+
+public OnPlayerText(playerid, text[])
+{
+	if(IsMuted(playerid)) return 0;
+
 	if(GetPlayerState(playerid) == PLAYER_STATE_ONFOOT && AntiCheatGetSpecialAction(playerid) == SPECIAL_ACTION_NONE && !GetPVarInt(playerid, "DisableTextAnim"))
 	{
 		ApplyAnimation(playerid,"PED","IDLE_chat",4.1,0,1,1,1,1, true);
@@ -17874,6 +17884,8 @@ CMD:m(playerid, params[])
 	if(!IsSecurityAgency(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не являетесь членом силовой структуры");
 	new vehicleid = GetPlayerVehicleID(playerid);
 	if(!vehicleid || vInfo[vehicleid][vType] != VehicleTypeFraction || vInfo[vehicleid][vOwner] != pInfo[playerid][pMembers]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны находиться в машине вашей организации");
+
+	if(IsMuted(playerid)) return 1;
 	new message[145];
 	if(sscanf(params, "s[145]", message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/m [Сообщение]");
 
@@ -17887,6 +17899,8 @@ CMD:r(playerid, params[])
 {
 	if(pInfo[playerid][pMembers] == Fraction_None) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не состоите не в одной из организаций");
 	if(!CanUseRChat(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас нет доступа к этому чату");
+
+	if(IsMuted(playerid)) return 1;
 	new message[145];
 	if(sscanf(params, "s[145]", message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/r [Сообщение]");
 
@@ -17900,6 +17914,8 @@ CMD:f(playerid, params[])
 {
 	if(pInfo[playerid][pMembers] == Fraction_None) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не состоите не в одной из организаций");
 	if(!CanUseFChat(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас нет доступа к этому чату");
+
+	if(IsMuted(playerid)) return 1;
 	new message[145];
 	if(sscanf(params, "s[145]", message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/f [Сообщение]");
 
@@ -17914,6 +17930,7 @@ CMD:d(playerid, params[])
 	if(pInfo[playerid][pMembers] == Fraction_None) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не состоите не в одной из организаций");
 	if(!IsGovFraction(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступ к этому чату есть только у государственных организаций");
 
+	if(IsMuted(playerid)) return 1;
 	new message[145];
 	if(sscanf(params, "s[145]", message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/d [Сообщение]");
 
@@ -17930,6 +17947,8 @@ CMD:gov(playerid, params[])
 	if(pInfo[playerid][pRank] < 5) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно с 5 ранга");
 
 	if(GetPVarInt(playerid, "GovCD") > gettime()) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Гос.новости можно использовать раз в 3 минуты");
+
+	if(IsMuted(playerid)) return 1;
 	new message[145];
 	if(sscanf(params, "s[145]", message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/gov [Сообщение]");
 
@@ -18054,6 +18073,8 @@ CMD:news(playerid, params[])
 	if(pInfo[playerid][pMembers] != Fraction_SanNews) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только сотрудникам San News");
 	new vehicleid = GetPlayerVehicleID(playerid);
 	if(GetPVarInt(playerid, "InPickup")-1 != SanNewsEnter && (!vehicleid || vInfo[vehicleid][vType] != VehicleTypeFraction || vInfo[vehicleid][vOwner] != pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только в офисе San News либо в фургоне");
+
+	if(IsMuted(playerid)) return 1;
 	new message[145];
 	if(sscanf(params, "s[145]", message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/news [Сообщение]");
 
@@ -20133,6 +20154,8 @@ CMD:togpm(playerid)
 CMD:pm(playerid, params[])
 {
 	if(!pInfo[playerid][pTogglePM]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас выключены личные сообщения");
+
+	if(IsMuted(playerid)) return 1;
 	new id, message[145];
 	if(sscanf(params, "ds[145]", id, message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/pm [ID] [Сообщение]");
 	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
@@ -20366,6 +20389,7 @@ public UnWhiteListCheck(playerid, id)
 
 CMD:me(playerid, params[])
 {
+	if(IsMuted(playerid)) return 1;
 	new message[145];
 	if(sscanf(params, "s[145]", message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/me [Текст]");
 
@@ -20375,6 +20399,7 @@ CMD:me(playerid, params[])
 
 CMD:do(playerid, params[])
 {
+	if(IsMuted(playerid)) return 1;
 	new message[145];
 	if(sscanf(params, "s[145]", message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/do [Текст]");
 
@@ -20393,6 +20418,7 @@ CMD:do(playerid, params[])
 
 CMD:try(playerid, params[])
 {
+	if(IsMuted(playerid)) return 1;
 	new message[145];
 	if(sscanf(params, "s[145]", message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/try [Текст]");
 
@@ -20413,6 +20439,7 @@ CMD:try(playerid, params[])
 
 CMD:s(playerid, params[])
 {
+	if(IsMuted(playerid)) return 1;
 	new message[145];
 	if(sscanf(params, "s[145]", message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/s [Текст]");
 
@@ -20432,6 +20459,7 @@ CMD:s(playerid, params[])
 
 CMD:todo(playerid, params[])
 {
+	if(IsMuted(playerid)) return 1;
 	new message[300], action[145];
 	if(sscanf(params, "p<*>s[300]s[145]", message, action)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/todo [Текст]*[Действие]");
 
