@@ -13,6 +13,7 @@
 #include <timerfix>
 #include <zvehcomp>
 #include <Pawn.RakNet>
+#include <MessageSeparation>
 #include <mapping/mapfix>
 
 #define E_STREAMER_CUSTOM(%0) ((%0) | 0x40000000 & ~0x80000000)
@@ -10006,7 +10007,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				Color_White"Далее", Color_White"Отмена");
 				return 1;
 			}
-			new Regex:rg_passwordcheck = Regex_New("^[a-z,A-Z,0-9]*$");
+			new Regex:rg_passwordcheck = Regex_New("^[a-zA-Z0-9]*$");
 			if (!Regex_Check(inputtext, rg_passwordcheck))
 			{
 				ShowDialog(playerid, D_Reg_Pass, DIALOG_STYLE_INPUT,  Main_Color Project_Name " || "Color_White"Регистрация",
@@ -10193,7 +10194,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				"Main_Color"- "Color_White"Пароль можеть содержать только латиницу и числа", Color_White"Далее", Color_White"Отмена");
 				return 1;
 			}
-			new Regex:rg_passwordcheck = Regex_New("^[a-z,A-Z,0-9]*$");
+			new Regex:rg_passwordcheck = Regex_New("^[a-zA-Z0-9]*$");
 			if (!Regex_Check(inputtext, rg_passwordcheck))
 			{
 				ShowDialog(playerid, D_ACreatePass, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Создание пароля администратора", Color_White"Для того чтобы получить доступ к возможностям администратора\n\
@@ -10275,7 +10276,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				return 1;
 			}
 
-			new Regex:rg_namecheck = Regex_New("^[a-z,A-Z,0-9,_,-]*$");
+			new Regex:rg_namecheck = Regex_New("^[a-zA-Z0-9_-]*$");
 			if (!Regex_Check(inputtext, rg_namecheck))
 			{
 				ShowDialog(playerid, D_Donate_Change_Name, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Смена ника", Color_White"Введите новый ник на который вы хотите сменить ваш ник\n\n"Color_White"Смена ника - 100р\n\n"Color_Red"Ник может состоять только из латиницы и цифр", Color_White"Далее", Color_White"Отмена");
@@ -10910,7 +10911,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				ShowDialog(playerid, D_Change_Pass, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Смена пароля", Color_White"Введите свой новый пароль в поле ниже.\n"Color_Red"- "Color_White"Пароль должен быть не больше 32 символов\n"Main_Color"- "Color_White"Пароль можеть содержать только латиницу и числа", Color_White"Далее", Color_White"Назад");
 				return 1;
 			}
-			new Regex:rg_passwordcheck = Regex_New("^[a-z,A-Z,0-9]*$");
+			new Regex:rg_passwordcheck = Regex_New("^[a-zA-Z0-9]*$");
 			if (!Regex_Check(inputtext, rg_passwordcheck))
 			{
 				ShowDialog(playerid, D_Change_Pass, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Смена пароля", Color_White"Введите свой новый пароль в поле ниже.\n"Main_Color"- "Color_White"Пароль должен быть не больше 32 символов\n"Color_Red"- "Color_White"Пароль можеть содержать только латиницу и числа", Color_White"Далее", Color_White"Назад");
