@@ -20922,7 +20922,7 @@ CMD:ahelp(playerid)
 
 	for(new i = 1; i < sizeof(AdminNames); i++)
 	{
-		if(pInfo[playerid][pAdmin] >= i) format(str, sizeof(str), "%s\n"Main_Color"%s\n", str, AdminNames[i]);
+		if(pInfo[playerid][pAdmin] >= i) format(str, sizeof(str), "%s"Main_Color"%s\n", str, AdminNames[i]);
 		else break;
 	}
 
