@@ -20926,7 +20926,7 @@ CMD:ahelp(playerid)
 		else break;
 	}
 
-	ShowDialog(playerid, D_AHelp, DIALOG_STYLE_LIST, Main_Color"Админ панель ||"Color_White" Команды администратора", str, Color_White"Закрыть", "");
+	ShowDialog(playerid, D_AHelp, DIALOG_STYLE_LIST, Main_Color"Админ панель ||"Color_White" Команды администратора", str, Color_White"Далее", Color_White"Закрыть");
 
 	return 1;
 }
