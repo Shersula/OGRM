@@ -10091,7 +10091,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
         	new query[700];
         	pInfo[playerid][pRegDate] = gettime();
         	GetPlayerIp(playerid, pInfo[playerid][pRegIp], 16);
-			mysql_format(DB, query, sizeof(query), "INSERT INTO `account` (`Name`, `Password`, `Mail`, `Gender`, `Skin`, `RegIP`, `RegDate`) VALUES ('%e', '%e', '%e', '%d', '%d', '%s', '%d')", pInfo[playerid][pName], pInfo[playerid][pPassword], pInfo[playerid][pMail], pInfo[playerid][pGender], pInfo[playerid][pSkin], pInfo[playerid][pRegIp], pInfo[playerid][pRegDate]);
+			mysql_format(DB, query, sizeof(query), "INSERT INTO `account` (`Name`, `Password`, `Mail`, `Gender`, `Skin`, `RegIP`, `RegDate`) VALUES ('%e', md5('%e'), '%e', '%d', '%d', '%s', '%d')", pInfo[playerid][pName], pInfo[playerid][pPassword], pInfo[playerid][pMail], pInfo[playerid][pGender], pInfo[playerid][pSkin], pInfo[playerid][pRegIp], pInfo[playerid][pRegDate]);
 			pInfo[playerid][pHealth] = 100.0;
 			pInfo[playerid][pLevel] = 0;
 			pInfo[playerid][pExp] = 0;
@@ -10122,33 +10122,13 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				KickPlayer(playerid);
 				return 1;
 			}
-			if (!strcmp(pInfo[playerid][pPassword], inputtext))
-			{
-				DeletePVar(playerid, "AuthTry");
-				if(pInfo[playerid][pPinCode])
-				{
-					SetPVarInt(playerid, "AuthTry", 3);
-					ShowDialog(playerid, D_PinCode_Check, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Авторизация", Color_White"На вашем аккаунте установлен пин-код\nЧтобы зайти на сервер введите его в поле ниже", Color_White"Далее", Color_White"Отмена");
-				}
-				else
-				{
-					new query[200];
-					mysql_format(DB, query, sizeof(query), "SELECT * FROM `account` WHERE `Name`='%s'", pInfo[playerid][pName]);
-					mysql_tquery(DB, query, "LoadAccount", "d", playerid);
-				}
-			}
-			else
-			{
-				SetPVarInt(playerid, "AuthTry", GetPVarInt(playerid, "AuthTry")-1);
-				if(GetPVarInt(playerid, "AuthTry") <= 0)
-				{
-					SendClientMessage(playerid, -1, Color_Red"- "Color_White"Вы 3 раза ввели не верный пароль и были кикнуты");
-					KickPlayer(playerid);
-				}
-				new string[250];
-				format(string, sizeof(string),Color_White"Ваш аккаунт уже зарегестрирован в базе данных сервера\nДля продолжения введите пароль от вашего аккаунта\n"Color_Red"- "Color_White"Вы ввели неверный пароль, попыток авторизации осталось %d/3", GetPVarInt(playerid, "AuthTry"));
-				ShowDialog(playerid, D_Auth, DIALOG_STYLE_PASSWORD, Main_Color Project_Name " || "Color_White"Авторизация", string, Color_White"Далее", Color_White"Отмена");
-			}
+
+			if(!strlen(inputtext)) return ShowDialog(playerid, D_Auth, DIALOG_STYLE_PASSWORD, Main_Color Project_Name " ||"Color_White" Авторизация", Color_White"Ваш аккаунт уже зарегестрирован в базе данных сервера\nДля продолжения введите пароль от вашего аккаунта\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Отмена");
+
+			strmid(pInfo[playerid][pPassword], inputtext, 0, strlen(inputtext));
+			new query[200];
+			mysql_format(DB, query, sizeof(query), "SELECT * FROM `account` WHERE `Name`='%s' AND `Password` = md5('%s')", pInfo[playerid][pName], inputtext);
+			mysql_tquery(DB, query, "LoadAccount", "d", playerid);
 			return 1;
 		}
 		case D_PinCode_Check:
@@ -10161,31 +10141,32 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			}
 			if(strval(inputtext) == pInfo[playerid][pPinCode])
 			{
-				DeletePVar(playerid, "AuthTry");
+				DeletePVar(playerid, "PinCodeTry");
 				new query[200];
-				mysql_format(DB, query, sizeof(query), "SELECT * FROM `account` WHERE `Name`='%s'", pInfo[playerid][pName]);
+				mysql_format(DB, query, sizeof(query), "SELECT * FROM `account` WHERE `Name`='%s' AND `Password` = md5('%s') AND `PinCode` = '%d'", pInfo[playerid][pName], pInfo[playerid][pPassword], strval(inputtext));
 				mysql_tquery(DB, query, "LoadAccount", "d", playerid);
 			}
 			else
 			{
-				SetPVarInt(playerid, "AuthTry", GetPVarInt(playerid, "AuthTry")-1);
-				if(GetPVarInt(playerid, "AuthTry") <= 0)
+				SetPVarInt(playerid, "PinCodeTry", GetPVarInt(playerid, "PinCodeTry")-1);
+				if(GetPVarInt(playerid, "PinCodeTry") <= 0)
 				{
 					SendClientMessage(playerid, -1, Color_Red"- "Color_White"Вы 3 раза ввели не верный пин-код и были кикнуты");
 					KickPlayer(playerid);
 				}
 
 				new string[250];
-				format(string, sizeof(string), Color_White"На вашем аккаунте установлен пин-код\nЧтобы зайти на сервер введите его в поле ниже\n"Color_Red"- "Color_White"Вы ввели неверный пин-код, попыток авторизации осталось %d/3", GetPVarInt(playerid, "AuthTry"));
+				format(string, sizeof(string), Color_White"На вашем аккаунте установлен пин-код\nЧтобы зайти на сервер введите его в поле ниже\n"Color_Red"- "Color_White"Вы ввели неверный пин-код, попыток авторизации осталось %d/3", GetPVarInt(playerid, "PinCodeTry"));
 				ShowDialog(playerid, D_PinCode_Check, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Авторизация", string, Color_White"Далее", Color_White"Отмена");
 			}
+			return 1;
 		}
 		case D_ACreatePass:
 		{
 			if(!response) return 1;
 			if (!strlen(inputtext))
 			{
-				ShowDialog(playerid, D_ACreatePass, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Создание пароля администратора", Color_White"Для того чтобы полочуть доступ к возможнлмтям администратора\n\
+				ShowDialog(playerid, D_ACreatePass, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Создание пароля администратора", Color_White"Для того чтобы получить доступ к возможностям администратора\n\
 				необходимо придумать пароль от админ панели.\n\
 				Введите пароль в поле ниже и запомните его.\n\n\
 				"Color_Red"- "Color_White"Вы не ввели пароль\n\
@@ -10195,7 +10176,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			}
 			if (strlen(inputtext) >  32)
 			{
-				ShowDialog(playerid, D_ACreatePass, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Создание пароля администратора", Color_White"Для того чтобы полочуть доступ к возможнлмтям администратора\n\
+				ShowDialog(playerid, D_ACreatePass, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Создание пароля администратора", Color_White"Для того чтобы получить доступ к возможностям администратора\n\
 				необходимо придумать пароль от админ панели.\n\
 				Введите пароль в поле ниже и запомните его.\n\n\
 				"Color_Red"- "Color_White"Пароль должен быть не больше 32 символов\n\
@@ -10204,7 +10185,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			}
 			if(!strcmp(inputtext, "None"))
 			{
-				ShowDialog(playerid, D_ACreatePass, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Создание пароля администратора", Color_White"Для того чтобы полочуть доступ к возможнлмтям администратора\n\
+				ShowDialog(playerid, D_ACreatePass, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Создание пароля администратора", Color_White"Для того чтобы получить доступ к возможностям администратора\n\
 				необходимо придумать пароль от админ панели.\n\
 				Введите пароль в поле ниже и запомните его.\n\n\
 				"Color_Red"- "Color_White"Данный пароль запрещен\n\
@@ -10215,7 +10196,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			new Regex:rg_passwordcheck = Regex_New("^[a-z,A-Z,0-9]*$");
 			if (!Regex_Check(inputtext, rg_passwordcheck))
 			{
-				ShowDialog(playerid, D_ACreatePass, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Создание пароля администратора", Color_White"Для того чтобы полочуть доступ к возможнлмтям администратора\n\
+				ShowDialog(playerid, D_ACreatePass, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Создание пароля администратора", Color_White"Для того чтобы получить доступ к возможностям администратора\n\
 				необходимо придумать пароль от админ панели.\n\
 				Введите пароль в поле ниже и запомните его.\n\n\
 				"Main_Color"- "Color_White"Пароль должен быть не больше 32 символов\n\
@@ -10938,9 +10919,13 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			}
 			Regex_Delete(rg_passwordcheck);
 			strmid(pInfo[playerid][pPassword], inputtext, 0, strlen(inputtext));
-			SavePlayerStr(playerid, "Password", pInfo[playerid][pPassword]);
 
 			new str[300];
+
+			mysql_format(DB, str, sizeof(str), "UPDATE `account` SET `Password` = md5('%e') WHERE `ID` = '%d'", pInfo[playerid][pPassword], pInfo[playerid][pID]);
+			mysql_tquery(DB, str);
+
+			str[0] = EOS;
 			format(str, sizeof(str), Color_Yellow"Ваш пароль изменен на %s не забудьте его!", pInfo[playerid][pPassword]);
 			SendClientMessage(playerid, -1, str);
 
@@ -20901,7 +20886,7 @@ CMD:alogin(playerid)
 	if(pInfo[playerid][pAdmin] < 1 || Iter_Contains(Admins, playerid)) return 1;
 	if(!strcmp(pInfo[playerid][pAdminPass], "None"))
 	{
-		ShowDialog(playerid, D_ACreatePass, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Создание пароля администратора", Color_White"Для того чтобы полочуть доступ к возможнлмтям администратора\n\
+		ShowDialog(playerid, D_ACreatePass, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Создание пароля администратора", Color_White"Для того чтобы получить доступ к возможностям администратора\n\
 		необходимо придумать пароль от админ панели.\n\
 		Введите пароль в поле ниже и запомните его.\n\n\
 		"Main_Color"- "Color_White"Пароль должен быть не больше 32 символов\n\
@@ -20909,7 +20894,7 @@ CMD:alogin(playerid)
 	}
 	else
 	{
-		ShowDialog(playerid, D_Alogin, DIALOG_STYLE_PASSWORD, Main_Color Project_Name " || "Color_White"Вход в панель администратора", Color_White"Для того чтобы полочуть доступ к возможнлмтям администратора\n\
+		ShowDialog(playerid, D_Alogin, DIALOG_STYLE_PASSWORD, Main_Color Project_Name " || "Color_White"Вход в панель администратора", Color_White"Для того чтобы получить доступ к возможностям администратора\n\
 		введите ваш пароль от админ панели в поле ниже.", Color_White"Далее", Color_White"Отмена");
 	}
 	return 1;
@@ -24240,8 +24225,6 @@ public CheckReg(playerid)
 	}
 	else
 	{
-		cache_get_value_name(0, "Password", pInfo[playerid][pPassword], 33);
-		cache_get_value_name_int(0, "PinCode", pInfo[playerid][pPinCode]);
 		new query[80];
 		mysql_format(DB, query, sizeof(query), "SELECT * FROM `bans` WHERE `Name` = '%s'", pInfo[playerid][pName]);
 		mysql_tquery(DB, query, "CheckAccountBan", "d", playerid);
@@ -24324,6 +24307,36 @@ public GetRegID(playerid)
 forward LoadAccount(playerid);
 public LoadAccount(playerid)
 {
+	if(GetPVarInt(playerid, "AuthTry")) //Авторизация - пароль
+	{
+		new row = cache_num_rows();
+		if(row)
+		{
+			DeletePVar(playerid, "AuthTry");
+			cache_get_value_name_int(0, "PinCode", pInfo[playerid][pPinCode]);
+			if(pInfo[playerid][pPinCode])
+			{
+				SetPVarInt(playerid, "PinCodeTry", 3);
+				ShowDialog(playerid, D_PinCode_Check, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Авторизация", Color_White"На вашем аккаунте установлен пин-код\nЧтобы зайти на сервер введите его в поле ниже", Color_White"Далее", Color_White"Отмена");
+				return 1;
+			}
+		}
+		else
+		{
+			pInfo[playerid][pPassword][0] = EOS;
+			SetPVarInt(playerid, "AuthTry", GetPVarInt(playerid, "AuthTry")-1);
+			if(GetPVarInt(playerid, "AuthTry") <= 0)
+			{
+				SendClientMessage(playerid, -1, Color_Red"- "Color_White"Вы 3 раза ввели не верный пароль и были кикнуты");
+				KickPlayer(playerid);
+			}
+			new string[250];
+			format(string, sizeof(string),Color_White"Ваш аккаунт уже зарегестрирован в базе данных сервера\nДля продолжения введите пароль от вашего аккаунта\n"Color_Red"- "Color_White"Вы ввели неверный пароль, попыток авторизации осталось %d/3", GetPVarInt(playerid, "AuthTry"));
+			ShowDialog(playerid, D_Auth, DIALOG_STYLE_PASSWORD, Main_Color Project_Name " || "Color_White"Авторизация", string, Color_White"Далее", Color_White"Отмена");
+			return 1;
+		}
+	}
+
 	new TempVar = 0;
 
 	cache_get_value_name_int(0, "ID", pInfo[playerid][pID]);
@@ -24480,6 +24493,7 @@ public LoadAccount(playerid)
 
 	SetPVarInt(playerid, "FirstSpawn", 10);
 	TogglePlayerSpectating(playerid, false);
+	return 1;
 }
 
 stock AddLog(Type, MysqlID, const Info[])
