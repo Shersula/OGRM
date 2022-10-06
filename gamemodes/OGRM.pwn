@@ -13,7 +13,7 @@
 #include <timerfix>
 #include <zvehcomp>
 #include <Pawn.RakNet>
-#include <MessageSeparation>
+//#include <MessageSeparation>
 #include <mapping/mapfix>
 
 #define E_STREAMER_CUSTOM(%0) ((%0) | 0x40000000 & ~0x80000000)
@@ -3792,7 +3792,7 @@ stock bool:IsMuted(playerid)
 
 public OnPlayerText(playerid, text[])
 {
-	if(IsMuted(playerid)) return 0;
+	if(IsMuted(playerid) || !pInfo[playerid][pAuth]) return 0;
 
 	if(GetPlayerState(playerid) == PLAYER_STATE_ONFOOT && AntiCheatGetSpecialAction(playerid) == SPECIAL_ACTION_NONE && !GetPVarInt(playerid, "DisableTextAnim"))
 	{
@@ -16238,6 +16238,25 @@ CMD:main(playerid)
 	return 1;
 }
 alias:main("mm", "menu");
+
+CMD:test(playerid)
+{
+	// Len == 445
+	SendClientMessage(playerid, BitColor_Yellow, "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n\
+	Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\
+	Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.\n\
+	Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.");
+
+	SendClientMessage(playerid, -1, "Конец строки без HEX цветов");
+
+	SendClientMessage(playerid, BitColor_Yellow, "{ff0000}Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n\
+	{8b00ff}Ut enim {FFFFFF}ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\
+	Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.\n\
+	{0000ff}Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.");
+
+
+	SendClientMessage(playerid, -1, "Конец строки с HEX цветами");
+}
 
 CMD:upgrade(playerid)
 {
