@@ -5623,6 +5623,8 @@ stock UpdateHouse(HouseID)
 		hInfo[HouseID][hMapIcon] = CreateDynamicMapIcon(hInfo[HouseID][hX], hInfo[HouseID][hY], hInfo[HouseID][hZ], 31, 0, 0, 0);
 
 		hInfo[HouseID][hExitArea] = CreateDynamicSphere(HouseInterior[hInfo[HouseID][hInterior]][hIntX], HouseInterior[hInfo[HouseID][hInterior]][hIntY], HouseInterior[hInfo[HouseID][hInterior]][hIntZ], 2.0, House_World+hInfo[HouseID][hID], HouseInterior[hInfo[HouseID][hInterior]][hInt]);
+		Streamer_SetIntData(STREAMER_TYPE_AREA, hInfo[HouseID][hExitArea],  E_STREAMER_ARRAY_TYPE, Array_Type_House);
+		Streamer_SetIntData(STREAMER_TYPE_AREA, hInfo[HouseID][hExitArea],  E_STREAMER_INDX, HouseID);
 		hInfo[HouseID][hExitPickup] = CreateDynamicPickup(1318, 1, HouseInterior[hInfo[HouseID][hInterior]][hIntX], HouseInterior[hInfo[HouseID][hInterior]][hIntY], HouseInterior[hInfo[HouseID][hInterior]][hIntZ], House_World+hInfo[HouseID][hID], HouseInterior[hInfo[HouseID][hInterior]][hInt]);
 		hInfo[HouseID][hExitText] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, HouseInterior[hInfo[HouseID][hInterior]][hIntX], HouseInterior[hInfo[HouseID][hInterior]][hIntY], HouseInterior[hInfo[HouseID][hInterior]][hIntZ], 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, House_World+hInfo[HouseID][hID], HouseInterior[hInfo[HouseID][hInterior]][hInt]);
 
@@ -5680,6 +5682,8 @@ public GetHouseOwnerName(HouseID)
 		hInfo[HouseID][hMapIcon] = CreateDynamicMapIcon(hInfo[HouseID][hX], hInfo[HouseID][hY], hInfo[HouseID][hZ], 32, 0, 0, 0);
 
 		hInfo[HouseID][hExitArea] = CreateDynamicSphere(HouseInterior[hInfo[HouseID][hInterior]][hIntX], HouseInterior[hInfo[HouseID][hInterior]][hIntY], HouseInterior[hInfo[HouseID][hInterior]][hIntZ], 2.0, House_World+hInfo[HouseID][hID], HouseInterior[hInfo[HouseID][hInterior]][hInt]);
+		Streamer_SetIntData(STREAMER_TYPE_AREA, hInfo[HouseID][hExitArea],  E_STREAMER_ARRAY_TYPE, Array_Type_House);
+		Streamer_SetIntData(STREAMER_TYPE_AREA, hInfo[HouseID][hExitArea],  E_STREAMER_INDX, HouseID);
 		hInfo[HouseID][hExitPickup] = CreateDynamicPickup(1318, 1, HouseInterior[hInfo[HouseID][hInterior]][hIntX], HouseInterior[hInfo[HouseID][hInterior]][hIntY], HouseInterior[hInfo[HouseID][hInterior]][hIntZ], House_World+hInfo[HouseID][hID], HouseInterior[hInfo[HouseID][hInterior]][hInt]);
 		hInfo[HouseID][hExitText] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, HouseInterior[hInfo[HouseID][hInterior]][hIntX], HouseInterior[hInfo[HouseID][hInterior]][hIntY], HouseInterior[hInfo[HouseID][hInterior]][hIntZ], 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, House_World+hInfo[HouseID][hID], HouseInterior[hInfo[HouseID][hInterior]][hInt]);
 
