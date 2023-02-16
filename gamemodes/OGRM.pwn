@@ -2555,8 +2555,8 @@ public OnGameModeInit()
 	SetGameModeText(Short_Project_Name);
 	AddPlayerClass(0, 1958.3783, 1343.1572, 15.3746, 269.1425, 0, 0, 0, 0, 0, 0);
 
-	DB = mysql_connect("triniti.ru-hoster.com", "scu", "3w9bW65Rfx", "scu");
-	//DB = mysql_connect("26.33.112.138", "root", "", "olrm");
+	//DB = mysql_connect("localhost", "mysql", "mysql", "ogrm");
+	DB = mysql_connect("46.174.50.7", "u33233_ogrm", "3610584So", "u33233_ogrm");
 
 	new error = mysql_errno();
 	switch(error)
@@ -21686,8 +21686,7 @@ CMD:sethp(playerid, params[])
 	{
 		ClearAnimations(id, true);
 		TogglePlayerControllable(id, true);
-		pInfo[id][pKnockoutStatus] = Player_No_Knockout;
-		DeletePVar(id, "DisableTextAnim");
+		KnockoutPlayer(id);
 	}
 
     new str[200];
@@ -21719,8 +21718,7 @@ CMD:spawn(playerid, params[])
 	{
 		ClearAnimations(id, true);
 		TogglePlayerControllable(id, true);
-		pInfo[id][pKnockoutStatus] = Player_No_Knockout;
-		DeletePVar(id, "DisableTextAnim");
+		KnockoutPlayer(id);
 	}
 
 	SpawnPlayer(id);
