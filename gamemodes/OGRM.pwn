@@ -15,6 +15,8 @@
 #include <Pawn.RakNet>
 #include <mapping/mapfix>
 
+#pragma dynamic 5000
+
 #define E_STREAMER_CUSTOM(%0) ((%0) | 0x40000000 & ~0x80000000)
 #define Array_Type_Spike			1
 #define Array_Type_Pickups			2
@@ -26,6 +28,7 @@
 #define Array_Type_Car				8
 #define E_STREAMER_ARRAY_TYPE 	E_STREAMER_CUSTOM(0xFE)
 #define E_STREAMER_INDX 		E_STREAMER_CUSTOM(0xFF)
+
 //////////////////////COLOR////////////////////////////////////////////////////
 #define Main_Color 		"{D8816E}"
 #define Color_Blue		"{29CDDF}"
@@ -60,10 +63,20 @@
 #define BitColor_GOV	0x2E35FEFF
 #define BitColor_Live	0xC1DC8FFF
 ///////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////Other//////////////////////////////////////////
+#define MAX_LEVEL				50
+///////////////////////////////////////////////////////////////////////////////
+
 //////////////////////////////Anim Indx////////////////////////////////////////
 #define Animation_Wank_Loop		993
 #define Animation_Dance_1 		403
 #define Animation_Dance_13		415
+///////////////////////////////////////////////////////////////////////////////
+
+/////////////////////////////Car Respawn///////////////////////////////////////
+#define CarDelayPlayer			-1
+#define CarDelayOther			120
 ///////////////////////////////////////////////////////////////////////////////
 
 #define LogTypeMoney	1
@@ -799,8 +812,7 @@ stock ClearVending(VendingID)
 //////////Bots//////////////////////
 new BotTime[24] = {0, ...};
 new bool:BotStatus = false;
-new BotCount = 0;
-new bool:IsBot[MAX_PLAYERS] = {false, ...};
+new Iterator:Bots<MAX_PLAYERS>;
 ////////////////////////////////////
 //////////CasinoTable///////////////
 #define MAX_CASINOTABLE			100
@@ -2356,6 +2368,16 @@ stock ClearAdminInfo(playerid)
 	return 1;
 }
 
+stock ClearAFKText(playerid)
+{
+	if(pInfo[playerid][pAFKText] && IsValidDynamic3DTextLabel(pInfo[playerid][pAFKText]))
+	{	
+		DestroyDynamic3DTextLabel(pInfo[playerid][pAFKText]);
+		pInfo[playerid][pAFKText] = Text3D:0;
+	}
+	return 1;
+}
+
 stock ClearAccount(playerid)
 {
 	pInfo[playerid][pID] = 0;
@@ -2396,8 +2418,7 @@ stock ClearAccount(playerid)
 	pInfo[playerid][pMembers] = Fraction_None;
 	pInfo[playerid][pRank] = 0;
 	pInfo[playerid][pAFK] = 0;
-	if(pInfo[playerid][pAFKText] && IsValidDynamic3DTextLabel(pInfo[playerid][pAFKText])) DestroyDynamic3DTextLabel(pInfo[playerid][pAFKText]);
-	pInfo[playerid][pAFKText] = Text3D:0;
+	ClearAFKText(playerid);
 	pInfo[playerid][pTogglePM] = true;
 	pInfo[playerid][pToggleOOC] = true;
 	pInfo[playerid][pToggleAD] = true;
@@ -2450,10 +2471,10 @@ stock ClearAccount(playerid)
 		ToggleAntiCheat(playerid, true);
 	}
 
-	if(IsBot[playerid])
+	if(Iter_Contains(Bots, playerid))
 	{
 		ToggleAntiCheat(playerid, true);
-		IsBot[playerid] = false;
+		Iter_Remove(Bots, playerid);
 	}
 	return 1;
 }
@@ -2552,6 +2573,7 @@ main()
 
 public OnGameModeInit()
 {
+	DisableCrashDetectLongCall();
 	SetGameModeText(Short_Project_Name);
 	AddPlayerClass(0, 1958.3783, 1343.1572, 15.3746, 269.1425, 0, 0, 0, 0, 0, 0);
 
@@ -2732,8 +2754,7 @@ public OnPlayerConnect(playerid)
 	if(!strcmp(query, "176.32.39.2"))
 	{
 		ToggleAntiCheat(playerid, false);
-		IsBot[playerid] = true;
-		BotCount++;
+		Iter_Add(Bots, playerid);
 		SetPlayerScore(playerid, random(51));
 		pInfo[playerid][pClist] = -1;
 	}
@@ -2750,11 +2771,7 @@ public OnPlayerConnect(playerid)
 
 public OnPlayerDisconnect(playerid, reason)
 {
-	if(IsBot[playerid])
-	{
-		BotCount--;
-		return ClearAccount(playerid);
-	}
+	if(Iter_Contains(Bots, playerid)) return ClearAccount(playerid);
 
 	ChangePlayerJob(playerid, pInfo[playerid][pJob]);
 	ChangePlayerUnOfficialJob(playerid, Job_None);
@@ -2768,9 +2785,8 @@ public OnPlayerDisconnect(playerid, reason)
 		new id = GetPVarInt(playerid, "Kidnapped_Player");
 		id--;
 		SendClientMessage(id, -1, Color_White"Похититель покинул игру, вы свободны!");
-		DeletePVar(id, "Kidnapped_ID");
-		ClearAnimations(id);
-		TogglePlayerControllable(id, true);
+		FreeKidnapedPlayer(id);
+		FreeKidnapingPlayer(playerid);
 	}
 
 	if(GetPVarInt(playerid, "Kidnapped_ID"))
@@ -2778,7 +2794,8 @@ public OnPlayerDisconnect(playerid, reason)
 		new id = GetPVarInt(playerid, "Kidnapped_ID");
 		id--;
 		SendClientMessage(id, -1, Color_White"Игрок которого вы похители покинул игру!");
-		DeletePVar(id, "Kidnapped_Player");
+		FreeKidnapedPlayer(playerid);
+		FreeKidnapingPlayer(id);
 	}
 
 	if(GetPVarInt(playerid, "ThiefBusiness"))
@@ -3122,20 +3139,20 @@ stock KnockoutPlayer(playerid)
 		{
 			new id = GetPVarInt(playerid, "Kidnapped_Player");
 			id--;
-			DeletePVar(playerid, "Kidnapped_Player");
 			SendClientMessage(id, -1, Color_White"Похититель ранен, вы свободны!");
-			DeletePVar(id, "Kidnapped_ID");
-			ClearAnimations(id);
-			TogglePlayerControllable(id, true);
+
+			FreeKidnapedPlayer(id);
+			FreeKidnapingPlayer(playerid);
 		}
 
 		if(GetPVarInt(playerid, "Kidnapped_ID"))
 		{
 			new id = GetPVarInt(playerid, "Kidnapped_ID");
 			id--;
-			DeletePVar(playerid, "Kidnapped_ID");
 			SendClientMessage(id, -1, Color_White"Игрок которого вы похители ранен!");
-			DeletePVar(id, "Kidnapped_Player");
+
+			FreeKidnapedPlayer(playerid);
+			FreeKidnapingPlayer(id);
 		}
 
 		SetPlayerPosition(playerid, GetPVarFloat(playerid, "PlayerKnockoutX"), GetPVarFloat(playerid, "PlayerKnockoutY"), GetPVarFloat(playerid, "PlayerKnockoutZ"), 0.0, GetPVarInt(playerid, "PlayerKnockoutVW"), GetPVarInt(playerid, "PlayerKnockoutInt"), false);
@@ -3469,20 +3486,20 @@ public OnPlayerDeath(playerid, killerid, reason)
 	{
 		new id = GetPVarInt(playerid, "Kidnapped_Player");
 		id--;
-		DeletePVar(playerid, "Kidnapped_Player");
 		SendClientMessage(id, -1, Color_White"Похититель погиб, вы свободны!");
-		DeletePVar(id, "Kidnapped_ID");
-		ClearAnimations(id);
-		TogglePlayerControllable(id, true);
+		
+		FreeKidnapedPlayer(id);
+		FreeKidnapingPlayer(playerid);
 	}
 
 	if(GetPVarInt(playerid, "Kidnapped_ID"))
 	{
 		new id = GetPVarInt(playerid, "Kidnapped_ID");
 		id--;
-		DeletePVar(playerid, "Kidnapped_ID");
 		SendClientMessage(id, -1, Color_White"Игрок которого вы похители погиб!");
-		DeletePVar(id, "Kidnapped_Player");
+		
+		FreeKidnapedPlayer(playerid);
+		FreeKidnapingPlayer(id);
 	}
 
 	if(killerid != INVALID_PLAYER_ID)
@@ -3491,7 +3508,7 @@ public OnPlayerDeath(playerid, killerid, reason)
 		{
 			new money = (pInfo[killerid][pRank] * (10000*pInfo[playerid][pLevel]))+(10000*pInfo[playerid][pWanted]);
 
-			SetPVarInt(playerid, "JailCD", 5);
+			SetPVarInt(playerid, "JailCD", gettime()+5);
 
 			switch(pInfo[playerid][pWanted])
 			{
@@ -4010,7 +4027,7 @@ public ConnectBots()
 	new row = cache_num_rows();
 	if(row)
 	{
-		if(BotCount >= row) return 1;
+		if(Iter_Count(Bots) >= row) return 1;
 		for(new i = 0; i < row; i++)
 		{
 			new bool:NickBusy = false;
@@ -5736,8 +5753,8 @@ stock AddHouseVehicle(playerid, vehiclemodel, slot)
 	vInfo[vehicleid][vPrice] = 0;
 
 	new respawn_delay = 0;
-	if(vInfo[vehicleid][vType] == VehicleTypePlayer) respawn_delay = -1;
-	else respawn_delay = 600;
+	if(vInfo[vehicleid][vType] == VehicleTypePlayer) respawn_delay = CarDelayPlayer;
+	else respawn_delay = CarDelayOther;
 	vInfo[vehicleid][vServerID] = CreateVehicle(vInfo[vehicleid][vModel], vInfo[vehicleid][vX], vInfo[vehicleid][vY], vInfo[vehicleid][vZ], vInfo[vehicleid][vA], vInfo[vehicleid][vColor1], vInfo[vehicleid][vColor2], respawn_delay);
 	SetVehicleParamsEx(vInfo[vehicleid][vServerID], false, false, false, false, false, false, false);
 
@@ -5866,8 +5883,8 @@ public LoadVehicle(playerid)
 			cache_get_value_name(i, "PlateNumber", vInfo[indx][vPlateNumber]);
 
 			new respawn_delay = 0;
-			if(vInfo[indx][vType] == VehicleTypePlayer) respawn_delay = -1;
-			else respawn_delay = 600;
+			if(vInfo[indx][vType] == VehicleTypePlayer) respawn_delay = CarDelayPlayer;
+			else respawn_delay = CarDelayOther;
 
 			vInfo[indx][vServerID] = CreateVehicle(vInfo[indx][vModel], vInfo[indx][vX], vInfo[indx][vY], vInfo[indx][vZ], vInfo[indx][vA], vInfo[indx][vColor1], vInfo[indx][vColor2], respawn_delay);
 			if(vInfo[indx][vType] == VehicleTypePlayer)
@@ -6515,7 +6532,7 @@ public OnPlayerStateChange(playerid, newstate, oldstate)
 			SendClientMessage(vInfo[vehicleid][vRenter], -1, str);
 			GivePlayerMoneyInPayDay(vInfo[vehicleid][vRenter], pInfo[vInfo[vehicleid][vRenter]][pSkill][Job_Bus]*1000);
 
-			SetPVarInt(playerid, "BusPassengerCD", gettime()+300);
+			SetPVarInt(playerid, "BusPassengerCD", gettime()+60);
 		}
 		else if(vInfo[vehicleid][vType] == VehicleTypeFraction)
 		{
@@ -6670,7 +6687,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 								if(!pInfo[playerid][pJail]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Войти могут только те кто сидит в тюрьме");
 								else
 								{
-									SetPVarInt(playerid, "JailCD", 2);
+									SetPVarInt(playerid, "JailCD", gettime()+2);
 									SetPlayerAttachedObject(playerid, AttachSlotJob, 18634, 14, 0.333391, 0.000000, 0.042249, 358.219909, 268.014739, 170.032974, 2.003867, 1.764811, 1.579773);
 								}
 							}
@@ -6697,7 +6714,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 
 							if(indx == PrisonExit && pInfo[playerid][pJail])
 							{
-								SetPVarInt(playerid, "JailCD", 2);
+								SetPVarInt(playerid, "JailCD", gettime()+2);
 								if(IsPlayerAttachedObjectSlotUsed(playerid, AttachSlotJob))
 								{
 									if(GetPVarInt(playerid, "MetallCount")) ApplyAnimation(playerid,"CARRY","crry_prtial", 4.0, true, false, false, true, 1, true);
@@ -6717,7 +6734,12 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 				{
 					if(Vending[i][VendID] && IsPlayerInDynamicArea(playerid, Vending[i][VendArea]) && Vending[i][VendInt] == Int && Vending[i][VendVW] == VW)
 					{
+						if(pInfo[playerid][pMoney] < 15) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Sprunk стоит 15$ у вас недостаточно средств");
 						if(pInfo[playerid][pHealth] >= 100.0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы здоровы");
+
+						GivePlayerMoneyEx(playerid, -15);
+						GiveCompanyMoney(playerid, BusinessSprunk, 15);
+
 						ApplyAnimation(playerid, "VENDING", "VEND_USE", 4.1, false, false, false, false, 0, 1);
 						SetTimerEx("AnimSpurnkTake", 1400, false, "d", playerid);
 						return 1;
@@ -8603,6 +8625,7 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 			SendClientMessage(playerid, -1, Color_White"Вы положили руду на склад, можете продолжать работать или забрать награду");
 			ApplyAnimation(playerid, "CARRY", "PUTDWN", 4.1, false, false, false, false, 0, true);
 		}
+		else if(areaid == Areas[KidnappingArea] && IsAMafia(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы и похищеный игрок должны находится в транспорте");
 	}
 	else if(GetPlayerState(playerid) == PLAYER_STATE_DRIVER)
 	{
@@ -9946,7 +9969,7 @@ public OnPlayerUpdate(playerid)
 {
 	if(pInfo[playerid][pAFK] > 2)
 	{
-		if(pInfo[playerid][pAuth] && !GetPVarInt(playerid, "FirstSpawn"))
+		if(pInfo[playerid][pAuth] && GetPVarInt(playerid, "FirstSpawn") <= gettime())
 		{
 			new str[100];
 			ConvertedSeconds(pInfo[playerid][pAFK], str);
@@ -9954,11 +9977,7 @@ public OnPlayerUpdate(playerid)
 			SendClientMessage(playerid, -1, str);
 		}
 
-		if(pInfo[playerid][pAFKText] && IsValidDynamic3DTextLabel(pInfo[playerid][pAFKText]))
-		{
-			DestroyDynamic3DTextLabel(pInfo[playerid][pAFKText]);
-			pInfo[playerid][pAFKText] = Text3D:0;
-		}
+		ClearAFKText(playerid);
 	}
 	pInfo[playerid][pAFK] = 0;
 	return 1;
@@ -10112,7 +10131,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			}
 			if(GetPVarInt(playerid, "LoginCamera")) DeletePVar(playerid, "LoginCamera");
 
-			SetPVarInt(playerid, "FirstSpawn", 10);
+			SetPVarInt(playerid, "FirstSpawn", gettime()+10);
 			TogglePlayerSpectating(playerid, false);
 
 			mysql_tquery(DB, query, "GetRegID", "d", playerid);
@@ -10347,7 +10366,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 			new lvl = strval(inputtext);
 
-			if(strval(inputtext)+pInfo[playerid][pLevel] > 50) return ShowDialog(playerid, D_Donate_Buy_Level, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Покупка уровня", Color_White"Введите количество уровней которые вы хотите купить\n\n"Color_White"1 уровень - 100р\n\n"Color_Red"Максимальное количество уровней 50", Color_White"Далее", Color_White"Отмена");
+			if(strval(inputtext)+pInfo[playerid][pLevel] > MAX_LEVEL) return ShowDialog(playerid, D_Donate_Buy_Level, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Покупка уровня", Color_White"Введите количество уровней которые вы хотите купить\n\n"Color_White"1 уровень - 100р\n\n"Color_Red"Максимальное количество уровней "#MAX_LEVEL, Color_White"Далее", Color_White"Отмена");
 
 			if(pInfo[playerid][pDonateMoney] < lvl*100) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно донат рублей");
 
@@ -10516,7 +10535,9 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			new SubStr[100], Player;
 			format(SubStr, sizeof(SubStr), "ReportList_%d", listitem);
 			Player = GetPVarInt(playerid, SubStr);
+			if(!IsPlayerConnected(Player)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок написавший репорт, покинул сервер.");
 			if(GetPVarInt(Player, "ReportInWork")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Кто-то из администраторов уже взял этот репорт.");
+			if(!GetPVarInt(Player, "ReportLenght")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"На этот репорт уже был дан ответ.");
 
 			new str[300];
 			format(str, sizeof(str), Main_Color"%s "Color_White"%s "Main_Color"принялся за ваш репорт.", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName]);
@@ -10597,7 +10618,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			{
 				case 0:
 				{
-					ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Основные команды", Main_Color"/showstats [id] "Color_White"- Показать свою статистику другому игроку\n\
+					ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Основные команды", Main_Color"/main(/mm, /menu) "Color_White"- Меню сервера\n\
+					"Main_Color"/showstats [id] "Color_White"- Показать свою статистику другому игроку\n\
 					"Main_Color"/pay [id] [сумма] "Color_White"- Передать наличные деньги другому игроку\n\
 					"Main_Color"/time "Color_White"- Узнать время(Заключения/Мута/Сервера)\n\
 					"Main_Color"/lotto [0-80] "Color_White"- Купить лотерейный билет\n\
@@ -10945,17 +10967,17 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			if(!response) return 1;
 			if(!strlen(inputtext))
 			{
-				if(GetPVarInt(playerid, "AdminPanelType") == 1) ShowDialog(playerid, D_Admin_Panel_Time, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Посадить игрока в деморган", Color_White"Укажите количество минут на которые хотите посадить игрока в деморган\n"Color_Red"Вы ничего не ввели!", Color_White"Далее", Color_White"Отмена");
+				if(GetPVarInt(playerid, "AdminPanelType") == 1) ShowDialog(playerid, D_Admin_Panel_Time, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Посадить игрока в психушку", Color_White"Укажите количество минут на которые хотите посадить игрока в психушку\n"Color_Red"Вы ничего не ввели!", Color_White"Далее", Color_White"Отмена");
 				else if(GetPVarInt(playerid, "AdminPanelType") == 3) ShowDialog(playerid, D_Admin_Panel_Time, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Забанить игрока", Color_White"Укажите количество дней на которые хотите забанить игрока\n"Color_Red"Вы ничего не ввели!", Color_White"Далее", Color_White"Отмена");
 				return 1;
 			}
 			if(strval(inputtext) <= 0)
 			{
-				if(GetPVarInt(playerid, "AdminPanelType") == 1) ShowDialog(playerid, D_Admin_Panel_Time, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Посадить игрока в деморган", Color_White"Укажите количество минут на которые хотите посадить игрока в деморган\n"Color_Red"Неверное количество минут!", Color_White"Далее", Color_White"Отмена");
+				if(GetPVarInt(playerid, "AdminPanelType") == 1) ShowDialog(playerid, D_Admin_Panel_Time, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Посадить игрока в психушку", Color_White"Укажите количество минут на которые хотите посадить игрока в психушку\n"Color_Red"Неверное количество минут!", Color_White"Далее", Color_White"Отмена");
 				else if(GetPVarInt(playerid, "AdminPanelType") == 3) ShowDialog(playerid, D_Admin_Panel_Time, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Забанить игрока", Color_White"Укажите количество дней на которые хотите забанить игрока\n"Color_Red"Неверное количество дней!", Color_White"Далее", Color_White"Отмена");
 				return 1;
 			}
-			if(GetPVarInt(playerid, "AdminPanelType") == 1) ShowDialog(playerid, D_Admin_Panel_Reason, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Посадить игрока в деморган", Color_White"Укажите причину по которой вы хотите посадить игрока в деморган", Color_White"Далее", Color_White"Отмена");
+			if(GetPVarInt(playerid, "AdminPanelType") == 1) ShowDialog(playerid, D_Admin_Panel_Reason, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Посадить игрока в психушку", Color_White"Укажите причину по которой вы хотите посадить игрока в психушку", Color_White"Далее", Color_White"Отмена");
 			else if(GetPVarInt(playerid, "AdminPanelType") == 3) ShowDialog(playerid, D_Admin_Panel_Reason, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Забанить игрока", Color_White"Укажите причину по которой вы хотите забанить игрока", Color_White"Далее", Color_White"Отмена");
 
 			SetPVarInt(playerid, "AdminPanelTime", strval(inputtext));
@@ -10966,7 +10988,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			if(!response) return 1;
 			if(!strlen(inputtext))
 			{
-				if(GetPVarInt(playerid, "AdminPanelType") == 1) ShowDialog(playerid, D_Admin_Panel_Reason, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Посадить игрока в деморган", Color_White"Укажите причину по которой вы хотите посадить игрока в деморган\n"Color_Red"Вы ничего не ввели!", Color_White"Далее", Color_White"Отмена");
+				if(GetPVarInt(playerid, "AdminPanelType") == 1) ShowDialog(playerid, D_Admin_Panel_Reason, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Посадить игрока в психушку", Color_White"Укажите причину по которой вы хотите посадить игрока в психушку\n"Color_Red"Вы ничего не ввели!", Color_White"Далее", Color_White"Отмена");
 				else if(GetPVarInt(playerid, "AdminPanelType") == 2) ShowDialog(playerid, D_Admin_Panel_Reason, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Выдать предупреждение игроку", Color_White"Укажите причину выдачи предупреждения\n"Color_Red"Вы ничего не ввели!", Color_White"Далее", Color_White"Отмена");
 				else if(GetPVarInt(playerid, "AdminPanelType") == 3) ShowDialog(playerid, D_Admin_Panel_Reason, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Забанить игрока", Color_White"Укажите причину по которой вы хотите забанить игрока\n"Color_Red"Вы ничего не ввели!", Color_White"Далее", Color_White"Отмена");
 				return 1;
@@ -11142,6 +11164,12 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 						SendClientMessage(playerid, -1, str);
 						GivePlayerMoneyEx(playerid, GetPVarInt(playerid, "CollectOre")*150);
 					}
+					else if(JobID == Job_FarmDeliver)
+					{
+						format(str, sizeof(str), Color_White"Вы доставили груз %d раз и заработали"Color_Green" %d$", GetPVarInt(playerid, "FarmDelivered"), GetPVarInt(playerid, "FarmDelivered")*10000);
+						SendClientMessage(playerid, -1, str);
+						GivePlayerMoneyEx(playerid, GetPVarInt(playerid, "FarmDelivered")*10000);
+					}
 					else
 					{
 						format(str, sizeof(str), Color_Yellow"Вы успешно уволились с работы "Main_Color"%sа", Jobs[JobID][JobNames]);
@@ -11179,6 +11207,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				else
 				{
 					if(JobID == Job_Lawyer && pInfo[playerid][pMembers] != Fraction_None && IsGovFraction(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Сотрудникам гос.организаций запрещено работать адвокатами");
+					if(JobID == Job_Lawyer && pInfo[playerid][pLevel] < 6) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Должность адвоката доступна с 6 уровня");
+					
 					format(str, sizeof(str), Color_Yellow"Вы успешно устроились на работу "Main_Color"%sа", Jobs[JobID][JobNames]);
 					SendClientMessage(playerid, -1, str);
 					ChangePlayerJob(playerid, JobID);
@@ -11221,6 +11251,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			if(!response) return 1;
 			if(pInfo[playerid][pLicAuto]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас уже есть лицензия на управление машинами");
 			if(pInfo[playerid][pMoney] < 10000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно средств для покупки лицензии на управление машинами");
+			if(!pInfo[playerid][pMedCard]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Необходима мед.карта");
 
 			GivePlayerMoneyEx(playerid, -10000);
 			FractionWare[Fraction_Police][FractionWareMoney] += 10000;
@@ -11237,6 +11268,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			if(!response) return 1;
 			if(pInfo[playerid][pLicMoto]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас уже есть лицензия на управление мототранспортом");
 			if(pInfo[playerid][pMoney] < 10000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно средств для покупки лицензии на управление мототранспортом");
+			if(!pInfo[playerid][pMedCard]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Необходима мед.карта");
+			if(pInfo[playerid][pLevel] < 2) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта лицензия доступна только со 2 уровня");
 
 			GivePlayerMoneyEx(playerid, -10000);
 			FractionWare[Fraction_Police][FractionWareMoney] += 10000;
@@ -11253,6 +11286,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			if(!response) return 1;
 			if(pInfo[playerid][pLicBoat]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас уже есть лицензия на управление лодками");
 			if(pInfo[playerid][pMoney] < 10000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно средств для покупки лицензии на управление лодками");
+			if(!pInfo[playerid][pMedCard]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Необходима мед.карта");
+			if(pInfo[playerid][pLevel] < 2) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта лицензия доступна только со 2 уровня");
 
 			GivePlayerMoneyEx(playerid, -10000);
 			FractionWare[Fraction_Police][FractionWareMoney] += 10000;
@@ -11269,6 +11304,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			if(!response) return 1;
 			if(pInfo[playerid][pLicPlane]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас уже есть лицензия на управление воздушным транспортом");
 			if(pInfo[playerid][pMoney] < 10000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно средств для покупки лицензии на управление воздушным транспортом");
+			if(!pInfo[playerid][pMedCard]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Необходима мед.карта");
+			if(pInfo[playerid][pLevel] < 2) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта лицензия доступна только со 2 уровня");
 
 			GivePlayerMoneyEx(playerid, -10000);
 			FractionWare[Fraction_Police][FractionWareMoney] += 10000;
@@ -11285,6 +11322,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			if(!response) return 1;
 			if(pInfo[playerid][pLicGun]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас уже есть лицензия на владение оружием");
 			if(pInfo[playerid][pMoney] < 10000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно средств для покупки лицензии на владение оружием");
+			if(!pInfo[playerid][pMedCard]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Необходима мед.карта");
+			if(pInfo[playerid][pLevel] < 5) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта лицензия доступна только с 5 уровня");
 
 			GivePlayerMoneyEx(playerid, -10000);
 			FractionWare[Fraction_Police][FractionWareMoney] += 10000;
@@ -12950,8 +12989,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 						format(str, sizeof(str), "%s"Color_White"/(a)msg - Чат администраторов\n", str);
 						format(str, sizeof(str), "%s"Color_White"/mute - Заглушить игрока\n", str);
 						format(str, sizeof(str), "%s"Color_White"/unmute - Снять заглушку с игрока\n", str);
-						format(str, sizeof(str), "%s"Color_White"/jail - Посадить игрока в деморган\n", str);
-						format(str, sizeof(str), "%s"Color_White"/unjail - Выпустить игрока из деморгана\n", str);
+						format(str, sizeof(str), "%s"Color_White"/jail - Посадить игрока в психушку\n", str);
+						format(str, sizeof(str), "%s"Color_White"/unjail - Выпустить игрока из психушки\n", str);
 						format(str, sizeof(str), "%s"Color_White"/warn - Дать игроку предупреждение\n", str);
 						format(str, sizeof(str), "%s"Color_White"/unwarn - Снять с игрока предупреждение\n", str);
 						format(str, sizeof(str), "%s"Color_White"/gm - Проверить игрока на GM\n", str);
@@ -12991,6 +13030,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					if(pInfo[playerid][pAdmin] >= 3)
 					{
 						new str[200], SubStr[100];
+						format(str, sizeof(str), "%s"Color_White"/givelic - Выдать игроку все лицензии\n", str);
 						format(str, sizeof(str), "%s"Color_White"/makeleader - Назначить игрока лидером\n", str);
 						format(str, sizeof(str), "%s"Color_White"/spall - Зареспавнить весь не занятый транспорт\n", str);
 						format(str, sizeof(str), "%s"Color_White"/cc - Очистить чат\n", str);
@@ -13004,6 +13044,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					{
 						new str[1500], SubStr[100];
 						format(str, sizeof(str), "%s"Color_White"/givemoney - Выдать игроку деньги\n", str);
+						format(str, sizeof(str), "%s"Color_White"/giveupgrade - Выдать очки улучшения\n", str);
+						format(str, sizeof(str), "%s"Color_White"/setlevel - Изменить уровень игрока\n", str);
 						format(str, sizeof(str), "%s"Color_White"/givedonatemoney - Выдать игроку донат валюту\n", str);
 						format(str, sizeof(str), "%s"Color_White"/giveskin - Выдать игроку скин\n", str);
 						format(str, sizeof(str), "%s"Color_White"/makeadmin - Назначить игрока администратором\n", str);
@@ -14013,18 +14055,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 				AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 
-				Iter_Remove(FractionMembers[pInfo[id][pMembers]], id);
-
-				pInfo[id][pMembers] = Fraction_None;
-				SavePlayerInt(id, "Members", pInfo[id][pMembers]);
-				pInfo[id][pRank] = 0;
-				SavePlayerInt(id, "Rank", pInfo[id][pRank]);
-				if(pInfo[id][pSpawnChange] == SpawnChange_Fraction)
-				{
-					pInfo[id][pSpawnChange] = SpawnChange_Standart;
-					SavePlayerInt(id, "SpawnChange", pInfo[id][pSpawnChange]);
-				}
-				SetColor(id);
+				UninvitePlayer(id);
 				SpawnPlayer(id);
 			}
 			else
@@ -14032,6 +14063,9 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				new FractionID = listitem;
 				new id = GetPVarInt(playerid, "MakeLeaderID");
 				DeletePVar(playerid, "MakeLeaderID");
+
+				if(pInfo[id][pMembers] != Fraction_None) UninvitePlayer(id);
+
 				new str[400];
 				format(str, sizeof(str), Main_Color"%s %s "Color_White"назначил вас на должность лидера организации "Main_Color"%s", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], FractionName[FractionID]);
 				SendClientMessage(id, -1, str);
@@ -14896,9 +14930,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					}
 
 					BotStatus = false;
-					BotCount = 0;
 
-					foreach(new i: Player) if(IsBot[i]) Kick(i);
+					foreach(new i: Bots) Kick(i);
 
 					new query[200];
 					mysql_format(DB, query, sizeof(query), "UPDATE `bot_time` SET `Status` = '%d'", _:BotStatus);
@@ -15239,6 +15272,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 			if(!IsABand(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам");
 
+			if(Iter_Count(FractionMembers[pInfo[playerid][pMembers]]) < 5) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Для объявления войны необходимо минимум 5 человек");
 			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша банда уже с кем-то ведет войну");
 			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Accept) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вашей банде уже кто-то сделал предложение о войне");
 			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Accept_Request) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша банда уже предложила войну кому-то");
@@ -15247,6 +15281,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 			if(FractionID == pInfo[playerid][pMembers]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете объявить войну своей банде");
 
+			if(Iter_Count(FractionMembers[FractionID]) < 5) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"В этой банде менее 5 человек, нельзя объявить войну");
 			if(WarStatus[FractionID] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта банда уже с кем-то ведет войну");
 			if(WarStatus[FractionID] == War_Status_Wait_Accept) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этой банде уже кто-то сделал предложение о войне");
 			if(WarStatus[FractionID] == War_Status_Wait_Accept_Request) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта банда уже предложила войну кому-то");
@@ -15273,10 +15308,12 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 			if(!IsABand(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам");
 
+			if(Iter_Count(FractionMembers[pInfo[playerid][pMembers]]) < 5) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Для объявления войны необходимо минимум 5 человек");
 			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша банда уже с кем-то ведет войну");
 			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Accept) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вашей банде уже кто-то сделал предложение о войне");
 			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Accept_Request) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша банда уже предложила войну кому-то");
 
+			if(Iter_Count(FractionMembers[FractionID]) < 5) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"В этой банде менее 5 человек, нельзя объявить войну");
 			if(WarStatus[FractionID] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта банда уже с кем-то ведет войну");
 			if(WarStatus[FractionID] == War_Status_Wait_Accept) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этой банде уже кто-то сделал предложение о войне");
 			if(WarStatus[FractionID] == War_Status_Wait_Accept_Request) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта банда уже предложила войну кому-то");
@@ -15324,10 +15361,12 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 			if(!IsABand(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам");
 
+			if(Iter_Count(FractionMembers[pInfo[playerid][pMembers]]) < 5) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Для объявления войны необходимо минимум 5 человек");
 			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша банда уже с кем-то ведет войну");
 			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Accept) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вашей банде уже кто-то сделал предложение о войне");
 			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Accept_Request) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша банда уже предложила войну кому-то");
 
+			if(Iter_Count(FractionMembers[FractionID]) < 5) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"В этой банде менее 5 человек, нельзя объявить войну");
 			if(WarStatus[FractionID] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта банда уже с кем-то ведет войну");
 			if(WarStatus[FractionID] == War_Status_Wait_Accept) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этой банде уже кто-то сделал предложение о войне");
 			if(WarStatus[FractionID] == War_Status_Wait_Accept_Request) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта банда уже предложила войну кому-то");
@@ -15554,6 +15593,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				if(bInfo[BusinessID][bMafiaOwner] == pInfo[playerid][pMembers]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша мафия уже владеет этим бизнесом");
 				else if(bInfo[BusinessID][bMafiaOwner] == Fraction_None)
 				{
+					if(GetPlayerDistanceFromPoint(playerid, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ]) > 5.0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть возле этого бизнеса");
+
 					new str[200];
 					format(str, sizeof(str), "Ваша мафия завладела бизнесом № %d %s", bInfo[BusinessID][bID], BusinessType[bInfo[BusinessID][bType]][bName]);
 					SendRMessage(playerid, str);
@@ -15569,6 +15610,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				{
 					if(WarStatus[pInfo[playerid][pMembers]] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша мафия уже ведет войну за какой-то бизнес");
 					if(WarStatus[bInfo[BusinessID][bMafiaOwner]] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта мафия уже ведет войну за какой-то бизнес");
+					if(GetPlayerDistanceFromPoint(playerid, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ]) > 5.0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть возле этого бизнеса");
 
 					WarBetType[pInfo[playerid][pMembers]] = Mafia_Bet_Type_Bizz;
 					WarBetType[bInfo[BusinessID][bMafiaOwner]] = Mafia_Bet_Type_Bizz;
@@ -16112,7 +16154,7 @@ public OnPlayerClickTextDraw(playerid, Text:clickedid)
 		else if(clickedid == SpecPanelTD[13])
 		{
 			SetPVarInt(playerid, "AdminPanelType", 1);
-			ShowDialog(playerid, D_Admin_Panel_Time, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Посадить игрока в деморган", Color_White"Укажите количество минут на которые хотите посадить игрока в деморган", Color_White"Далее", Color_White"Отмена");
+			ShowDialog(playerid, D_Admin_Panel_Time, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Посадить игрока в психушку", Color_White"Укажите количество минут на которые хотите посадить игрока в психушку", Color_White"Далее", Color_White"Отмена");
 			return 1;
 		}
 		else if(clickedid == SpecPanelTD[14])
@@ -16242,6 +16284,12 @@ CMD:main(playerid)
 }
 alias:main("mm", "menu");
 
+CMD:help(playerid)
+{
+	ShowPlayerCommandMenu(playerid);
+	return 1;
+}
+
 CMD:upgrade(playerid)
 {
 	ShowPlayerUpgradeMenu(playerid);
@@ -16283,6 +16331,8 @@ CMD:rape(playerid, params[])
 	PutPlayerInVehicle(id, vehicleid, seat);
 
 	SetPVarInt(playerid, "Kidnapped_Player", id+1);
+	SetPVarInt(playerid, "TimeToSellKidnapped", 120);
+
 	SetPVarInt(id, "Kidnapped_ID", playerid+1);
 
 	new str[100];
@@ -16389,6 +16439,8 @@ CMD:robbery(playerid)
 CMD:war(playerid)
 {
 	if(!IsABand(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам");
+
+	if(Iter_Count(FractionMembers[pInfo[playerid][pMembers]]) < 5) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Для объявления войны необходимо минимум 5 человек");
 
 	if(WarStatus[pInfo[playerid][pMembers]] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша банда уже с кем-то ведет войну");
 	if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Accept) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вашей банде уже кто-то сделал предложение о войне");
@@ -16812,7 +16864,7 @@ CMD:psih(playerid, params[])
 	if(!IsPlayerConnected(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не подключен");
 	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
 	if(time < 10) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Минимальное время 10 минут");
-	if(time > 60) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете посадить игрока в деморган более чем на 60 минут");
+	if(time > 60) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете посадить игрока в психушку более чем на 60 минут");
 	if(playerid == id) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете посадить в психушку самого себя");
 
 	new Float:X, Float:Y, Float:Z;
@@ -17113,7 +17165,7 @@ CMD:arrest(playerid, params[])
 	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока у которого хотите посадить в тюрьму");
 	if(!IsPlayerInDynamicArea(playerid, Pickups[ArrestPickup][PickAreaID])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны доставить преступника к воротам тюрьмы");
 
-	SetPVarInt(id, "JailCD", 5);
+	SetPVarInt(id, "JailCD", gettime()+5);
 
 	switch(pInfo[id][pWanted])
 	{
@@ -17723,6 +17775,8 @@ CMD:uninvite(playerid, params[])
 stock UninvitePlayer(playerid)
 {
 	new members = pInfo[playerid][pMembers];
+
+	if(members == Fraction_FBI && pInfo[playerid][pMask]) pc_cmd_maskoff(playerid);
 
 	Iter_Remove(FractionMembers[members], playerid);
 
@@ -18869,7 +18923,7 @@ CMD:buylevel(playerid)
 		if(pInfo[playerid][pMoney] < money)
 		{
 			new str[200];
-			format(str, sizeof(str), Color_Red"[Ошибка] "Color_Grey"Повышене на %d уровень стоит "Color_Green"%d$"Color_Grey". У вас недостаточно средств", pInfo[playerid][pLevel]+1, money);
+			format(str, sizeof(str), Color_Red"[Ошибка] "Color_Grey"Повышение на %d уровень стоит "Color_Green"%d$"Color_Grey". У вас недостаточно средств", pInfo[playerid][pLevel]+1, money);
 			return SendClientMessage(playerid, -1, str);
 		}
 		GivePlayerMoneyEx(playerid, -money);
@@ -19643,6 +19697,26 @@ CMD:accept(playerid, params[])
 			SendRMessageEx(pInfo[playerid][pMembers], "В банде соперника нет лидера онлайн. Предложение о войне автоматически отклонено");
 			ClearGangWar(pInfo[playerid][pMembers]);
 
+			return 1;
+		}
+
+		if(Iter_Count(FractionMembers[pInfo[playerid][pMembers]]) < 5)
+		{
+			SendRMessageEx(FractionID, "В банде соперника нет 5 человек. Предложение о войне автоматически отклонено");
+			ClearGangWar(FractionID);
+
+			SendRMessageEx(pInfo[playerid][pMembers], "В вашей банде менее 5 человек. Предложение о войне автоматически отклонено");
+			ClearGangWar(pInfo[playerid][pMembers]);
+			return 1;
+		}
+
+		if(Iter_Count(FractionMembers[FractionID]) < 5)
+		{
+			SendRMessageEx(FractionID, "В вашей банде менее 5 человек. Предложение о войне автоматически отклонено");
+			ClearGangWar(FractionID);
+
+			SendRMessageEx(pInfo[playerid][pMembers], "В банде соперника нет 5 человек. Предложение о войне автоматически отклонено");
+			ClearGangWar(pInfo[playerid][pMembers]);
 			return 1;
 		}
 
@@ -20543,7 +20617,7 @@ CMD:id(playerid, params[])
 
 	if(pInfo[id][pDemorgan])
 	{
-		format(string, sizeof(string), Main_Color"В деморгане до: "Color_White"%s", date(gettime()+pInfo[id][pDemorgan], 3, "%hh:%ii"));
+		format(string, sizeof(string), Main_Color"В психушке до: "Color_White"%s", date(gettime()+pInfo[id][pDemorgan], 3, "%hh:%ii"));
 		SendClientMessage(playerid, -1, string);
 	}
 
@@ -20621,7 +20695,7 @@ CMD:time(playerid)
 
 	if(pInfo[playerid][pDemorgan])
 	{
-		format(str, sizeof(str), Color_White"Вас выпустят из деморгана в:"Main_Color" %s", date(gettime()+pInfo[playerid][pDemorgan], 3, "%hh:%ii"));
+		format(str, sizeof(str), Color_White"Вас выпустят из психушки в:"Main_Color" %s", date(gettime()+pInfo[playerid][pDemorgan], 3, "%hh:%ii"));
 		SendClientMessage(playerid, -1, str);
 	}
 
@@ -21058,8 +21132,8 @@ CMD:jail(playerid, params[])
 	if(!IsPlayerConnected(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не подключен");
 	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
 	if(time < 0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверное время");
-	if(time > 300) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете посадить игрока в деморган более чем на 300 минут");
-	if(playerid == id) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете посадить в деморган самого себя");
+	if(time > 300) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете посадить игрока в психушку более чем на 300 минут");
+	if(playerid == id) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете посадить в психушку самого себя");
 
 	AInfo[playerid][AdmDemorgan][GetWeekDay()]++;
 
@@ -21073,19 +21147,19 @@ CMD:jail(playerid, params[])
 	SpawnPlayer(id);
 
 	new str[400];
-	format(str, sizeof(str), Color_Red"%s %s посадил игрока %s в деморган на %d минут, по причине: %s", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], pInfo[id][pName], time, message);
+	format(str, sizeof(str), Color_Red"%s %s посадил игрока %s в психушку на %d минут, по причине: %s", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], pInfo[id][pName], time, message);
 	SendAllMessage(str);
 
-	format(str, sizeof(str), Color_Red"%s %s "Color_White"посадил вас в деморган на "Color_Red"%d "Color_White"минут, по причине:\n\
+	format(str, sizeof(str), Color_Red"%s %s "Color_White"посадил вас в психушку на "Color_Red"%d "Color_White"минут, по причине:\n\
 	"Color_Red"%s\n\n\
 	"Color_White"Если вы не согласны с полученым наказанием оспорить вы его можете на форуме ogrm-project.ru", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], time, message);
-	ShowDialog(id, D_None, DIALOG_STYLE_MSGBOX, Color_Red"Вас посадили в деморган", str, Color_White"Закрыть", "");
+	ShowDialog(id, D_None, DIALOG_STYLE_MSGBOX, Color_Red"Вас посадили в психушку", str, Color_White"Закрыть", "");
 
 	str[0] = EOS;
 	GetPlayerIp(playerid, str, 16);
 	new SubStr[20];
 	GetPlayerIp(id, SubStr, 16);
-	format(str, sizeof(str), "(IP: %s | RegIP: %s) посадил игрока %s (IP: %s | RegIP: %s) в деморган на %d минут, по причине: %s", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp], time, message);
+	format(str, sizeof(str), "(IP: %s | RegIP: %s) посадил игрока %s (IP: %s | RegIP: %s) в психушку на %d минут, по причине: %s", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp], time, message);
 
 	AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 	return 1;
@@ -21100,23 +21174,23 @@ CMD:unjail(playerid, params[])
 	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
 	if(!IsPlayerConnected(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не подключен");
 	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
-	if(playerid == id) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете выпустить из деморгана самого себя");
-	if(pInfo[id][pDemorgan] <= 0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок не находится в деморгане!");
+	if(playerid == id) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете выпустить из психушки самого себя");
+	if(pInfo[id][pDemorgan] <= 0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок не находится в психушке!");
 
 	pInfo[id][pDemorgan] = 0;
 	SavePlayerInt(id, "Demorgan", pInfo[id][pDemorgan]);
 	new str[400];
-	format(str, sizeof(str), Color_Red"%s %s выпустил из деморгана игрока %s, по причине: %s", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], pInfo[id][pName], message);
+	format(str, sizeof(str), Color_Red"%s %s выпустил из психушки игрока %s, по причине: %s", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], pInfo[id][pName], message);
 	SendAllMessage(str);
 
-	SendClientMessage(id, -1, Color_Yellow"Вас выпустили из деморгана");
+	SendClientMessage(id, -1, Color_Yellow"Вас выпустили из психушки");
 	SpawnPlayer(id);
 
 	str[0] = EOS;
 	GetPlayerIp(playerid, str, 16);
 	new SubStr[20];
 	GetPlayerIp(id, SubStr, 16);
-	format(str, sizeof(str), "(IP: %s | RegIP: %s) выпустил игрока %s (IP: %s | RegIP: %s) из деморгана", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp]);
+	format(str, sizeof(str), "(IP: %s | RegIP: %s) выпустил игрока %s (IP: %s | RegIP: %s) из психушки", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp]);
 
 	AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 	return 1;
@@ -21400,16 +21474,19 @@ CMD:spec(playerid, params[])
 	if(playerid == id) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ввели свой ID");
 	if(GetPVarInt(id, "Spec_ID")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок находится в режиме слежки");
 
-	new Float:X, Float:Y, Float:Z, Float:A;
-	GetPlayerPos(playerid, X, Y, Z);
-	GetPlayerFacingAngle(playerid, A);
+	if(!GetPVarInt(playerid, "Spec_ID"))
+	{
+		new Float:X, Float:Y, Float:Z, Float:A;
+		GetPlayerPos(playerid, X, Y, Z);
+		GetPlayerFacingAngle(playerid, A);
 
-	SetPVarFloat(playerid, "Spec_X", X);
-	SetPVarFloat(playerid, "Spec_Y", Y);
-	SetPVarFloat(playerid, "Spec_Z", Z);
-	SetPVarFloat(playerid, "Spec_A", A);
-	SetPVarInt(playerid, "Spec_VW", GetPlayerVirtualWorld(playerid));
-	SetPVarInt(playerid, "Spec_INT", GetPlayerInterior(playerid));
+		SetPVarFloat(playerid, "Spec_X", X);
+		SetPVarFloat(playerid, "Spec_Y", Y);
+		SetPVarFloat(playerid, "Spec_Z", Z);
+		SetPVarFloat(playerid, "Spec_A", A);
+		SetPVarInt(playerid, "Spec_VW", GetPlayerVirtualWorld(playerid));
+		SetPVarInt(playerid, "Spec_INT", GetPlayerInterior(playerid));
+	}
 
 	SetPVarInt(playerid, "Spec_ID", id+1);
 	SetPVarInt(id, "UnderSpec", 1);
@@ -21514,6 +21591,115 @@ CMD:makeleader(playerid, params[])
 	for(new i = 1; i < MAX_FRACTION; i++) format(str, sizeof(str), "%s"Color_White"%s\n", str, FractionName[i]);
 	SetPVarInt(playerid, "MakeLeaderID", id);
 	ShowDialog(playerid, D_MakeLeader, DIALOG_STYLE_LIST, Main_Color"Назначение на пост лидера", str, Color_White"Далее", Color_White"Закрыть");
+	return 1;
+}
+
+CMD:givelic(playerid, params[])
+{
+	if(pInfo[playerid][pAdmin] < 3 || !Iter_Contains(Admins, playerid)) return 1;
+	new id;
+	if(sscanf(params, "d", id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/givelic [ID]");
+	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
+	if(!IsPlayerConnected(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не подключен");
+	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
+	if(pInfo[id][pLicAuto] && pInfo[id][pLicMoto] && pInfo[id][pLicBoat] && pInfo[id][pLicPlane] && pInfo[id][pLicGun]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У этого игрока уже есть все лицензии");
+
+	pInfo[id][pLicAuto] = true;
+	SavePlayerBool(id, "LicAuto", pInfo[id][pLicAuto]);
+
+	pInfo[id][pLicMoto] = true;
+	SavePlayerBool(id, "LicMoto", pInfo[id][pLicMoto]);
+
+	pInfo[id][pLicBoat] = true;
+	SavePlayerBool(id, "LicBoat", pInfo[id][pLicBoat]);
+
+	pInfo[id][pLicPlane] = true;
+	SavePlayerBool(id, "LicPlane", pInfo[id][pLicPlane]);
+
+	pInfo[id][pLicGun] = true;
+	SavePlayerBool(id, "LicGun", pInfo[id][pLicGun]);
+
+	new str[400];
+	format(str, sizeof(str), Color_Yellow"%s %s выдал вам все лицензии", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName]);
+	SendClientMessage(id, -1, str);
+	str[0] = EOS;
+	format(str, sizeof(str), Color_Yellow"Вы выдали %s все лицензии", pInfo[id][pName]);
+	SendClientMessage(playerid, -1, str);
+
+	str[0] = EOS;
+	GetPlayerIp(playerid, str, 16);
+	new SubStr[20];
+	GetPlayerIp(id, SubStr, 16);
+	format(str, sizeof(str), "(IP: %s | RegIP: %s) выдал все лицензии игроку %s (IP: %s | RegIP: %s)", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp]);
+
+	AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
+
+	return 1;
+}
+
+CMD:setlevel(playerid, params[])
+{
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
+	new id, level;
+	if(sscanf(params, "dd", id, level)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/setlevel [ID] [Уровень]");
+	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
+	if(!IsPlayerConnected(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не подключен");
+	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
+	if(level < 0 || level > MAX_LEVEL) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Минимальный уровень 0, максимальный уровень "#MAX_LEVEL);
+
+	pInfo[id][pLevel] = level;
+	pInfo[id][pExp] = 0;
+	PlayerLevelUpdate(id);
+
+	SavePlayerInt(id, "Level", pInfo[id][pLevel]);
+	SavePlayerInt(id, "Exp", pInfo[id][pExp]);
+
+	new str[400];
+	format(str, sizeof(str), Color_Yellow"%s %s установил вам "Color_Green"%d"Color_Yellow" уровень", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], level);
+	SendClientMessage(id, -1, str);
+	str[0] = EOS;
+	format(str, sizeof(str), Color_Yellow"Вы установили %s "Color_Green"%d"Color_Yellow" уровень", pInfo[id][pName], level);
+	SendClientMessage(playerid, -1, str);
+
+	str[0] = EOS;
+	GetPlayerIp(playerid, str, 16);
+	new SubStr[20];
+	GetPlayerIp(id, SubStr, 16);
+	format(str, sizeof(str), "(IP: %s | RegIP: %s) установил %d уровень игроку %s (IP: %s | RegIP: %s)", str, pInfo[playerid][pRegIp], level, pInfo[id][pName], SubStr, pInfo[id][pRegIp]);
+
+	AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
+
+	return 1;
+}
+
+CMD:giveupgrade(playerid, params[])
+{
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
+	new id, upgrade;
+	if(sscanf(params, "dd", id, upgrade)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/giveupgrade [ID] [Очки]");
+	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
+	if(!IsPlayerConnected(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не подключен");
+	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
+	if(upgrade <= 0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверное количество очков улучшения");
+
+	pInfo[id][pUpgradePoint] += upgrade;
+	SavePlayerInt(id, "UpgradePoint", pInfo[id][pUpgradePoint]);
+
+	new str[400];
+	format(str, sizeof(str), Color_Yellow"%s %s выдал вам "Color_Green"%d"Color_Yellow" очков улучшений", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], upgrade);
+	SendClientMessage(id, -1, str);
+	str[0] = EOS;
+	format(str, sizeof(str), Color_Yellow"Вы выдали %s "Color_Green"%d"Color_Yellow" очков улучшений", pInfo[id][pName], upgrade);
+	SendClientMessage(playerid, -1, str);
+
+	str[0] = EOS;
+	GetPlayerIp(playerid, str, 16);
+	new SubStr[20];
+	GetPlayerIp(id, SubStr, 16);
+	format(str, sizeof(str), "(IP: %s | RegIP: %s) выдал %d очков улучшений игроку %s (IP: %s | RegIP: %s)", str, pInfo[playerid][pRegIp], upgrade, pInfo[id][pName], SubStr, pInfo[id][pRegIp]);
+
+	AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
+
 	return 1;
 }
 
@@ -22734,8 +22920,8 @@ stock SaveCar(playerid, vehicleid, bool:msg = true, slot = 0)
 
 		DestroyVehicle(vInfo[vehicleid][vServerID]);
 		new respawn_delay = 0;
-		if(vInfo[vehicleid][vType] == VehicleTypePlayer) respawn_delay = -1;
-		else respawn_delay = 600;
+		if(vInfo[vehicleid][vType] == VehicleTypePlayer) respawn_delay = CarDelayPlayer;
+		else respawn_delay = CarDelayOther;
 		vInfo[vehicleid][vServerID] = CreateVehicle(vInfo[vehicleid][vModel], vInfo[vehicleid][vX], vInfo[vehicleid][vY], vInfo[vehicleid][vZ], vInfo[vehicleid][vA], vInfo[vehicleid][vColor1], vInfo[vehicleid][vColor2], respawn_delay);
 		SetVehicleParamsEx(vInfo[vehicleid][vServerID], false, false, false, false, false, false, false);
 
@@ -23735,8 +23921,8 @@ public GetCreateVehID(vehicleid, playerid)
 		vInfo[vehicleid][vServerID] = 0;
 	}
 	new respawn_delay = 0;
-	if(vInfo[vehicleid][vType] == VehicleTypePlayer) respawn_delay = -1;
-	else respawn_delay = 600;
+	if(vInfo[vehicleid][vType] == VehicleTypePlayer) respawn_delay = CarDelayPlayer;
+	else respawn_delay = CarDelayOther;
 	vInfo[vehicleid][vServerID] = CreateVehicle(vInfo[vehicleid][vModel], vInfo[vehicleid][vX], vInfo[vehicleid][vY], vInfo[vehicleid][vZ], vInfo[vehicleid][vA], vInfo[vehicleid][vColor1], vInfo[vehicleid][vColor2], respawn_delay);
 	SetVehicleParamsEx(vInfo[vehicleid][vServerID], false, false, false, false, false, false, false);
 
@@ -24121,9 +24307,6 @@ public AnimSpurnkTake(playerid)
 {
 	ApplyAnimation(playerid, "VENDING", "VEND_USE_PT2", 1.5, false, false, false, false, 0, true);
 	SetTimerEx("Drink", 500, false, "dfs", playerid, 5.0, "Sprunk");
-
-	GivePlayerMoneyEx(playerid, -15);
-	GiveCompanyMoney(playerid, BusinessSprunk, 15);
 	return 1;
 }
 
@@ -24214,11 +24397,9 @@ public CheckReg(playerid)
 	InterpolateCameraPos(playerid, -752.389892, -2102.738525, 38.198013, -781.461669, -2002.682006, 17.469572, 20000, CAMERA_MOVE);
 	InterpolateCameraLookAt(playerid, -752.583007, -2097.801513, 37.431518, -780.947753, -1997.714721, 17.219676, 20000, CAMERA_MOVE);
 	SetPVarInt(playerid, "LoginCameraTimer", SetTimerEx("LoginCameraNext", 20000, false, "d", playerid));
-
+	PlayerStartMusic(playerid, 1187);
 
 	new row = cache_num_rows();
-
-	PlayerStartMusic(playerid, 1187);
 	if (!row)
 	{
 		ShowDialog(playerid, D_Reg_Pass, DIALOG_STYLE_INPUT,  Main_Color Project_Name " ||"Color_White" Регистрация",
@@ -24234,8 +24415,8 @@ public CheckReg(playerid)
 
 }
 
-forward CheckAccountIPBan(playerid);
-public CheckAccountIPBan(playerid)
+forward CheckBotName(playerid);
+public CheckBotName(playerid)
 {
 	new row = cache_num_rows();
 	if (!row)
@@ -24243,6 +24424,29 @@ public CheckAccountIPBan(playerid)
 		new query[100];
 		mysql_format(DB, query, sizeof(query), "SELECT * FROM `account` WHERE `Name`='%s' LIMIT 1", pInfo[playerid][pName]);
 		mysql_tquery(DB, query, "CheckReg", "d", playerid);
+	}
+	else
+	{
+		InterpolateCameraPos(playerid, -752.389892, -2102.738525, 38.198013, -781.461669, -2002.682006, 17.469572, 20000, CAMERA_MOVE);
+		InterpolateCameraLookAt(playerid, -752.583007, -2097.801513, 37.431518, -780.947753, -1997.714721, 17.219676, 20000, CAMERA_MOVE);
+		SetPVarInt(playerid, "LoginCameraTimer", SetTimerEx("LoginCameraNext", 20000, false, "d", playerid));
+		PlayerStartMusic(playerid, 1187);
+
+		new query[80];
+		mysql_format(DB, query, sizeof(query), "SELECT * FROM `bans` WHERE `Name` = '%s'", pInfo[playerid][pName]);
+		mysql_tquery(DB, query, "CheckAccountBan", "d", playerid);
+	}
+}
+
+forward CheckAccountIPBan(playerid);
+public CheckAccountIPBan(playerid)
+{
+	new row = cache_num_rows();
+	if (!row)
+	{
+		new query[100];
+		mysql_format(DB, query, sizeof(query), "SELECT * FROM `bot_name` WHERE `Name`='%s' LIMIT 1", pInfo[playerid][pName]);
+		mysql_tquery(DB, query, "CheckBotName", "d", playerid);
 	}
 	else
 	{
@@ -24493,7 +24697,7 @@ public LoadAccount(playerid)
 	}
 	if(GetPVarInt(playerid, "LoginCamera")) DeletePVar(playerid, "LoginCamera");
 
-	SetPVarInt(playerid, "FirstSpawn", 10);
+	SetPVarInt(playerid, "FirstSpawn", gettime()+10);
 	TogglePlayerSpectating(playerid, false);
 	return 1;
 }
@@ -25011,6 +25215,7 @@ public SecondTimer()
 		{
 			LotteryStarted = true;
 			LotteryMoney += LotteryStartMoney;
+			if(LotteryMoney > 500000) LotteryMoney = 500000;
 			new str[200];
 			format(str, sizeof(str), Color_Yellow"[Лотерея] Через 2 минуты пройдет лотерея на сумму "Color_Green"%d$", LotteryMoney);
 			SendAllMessage(str);
@@ -25375,20 +25580,18 @@ public SecondTimer()
 		}
 	}
 
-	foreach(new i: Player)
+	foreach(new i: Bots)
 	{
-		if(IsBot[i] && pInfo[i][pClist] == -1)
+		if(pInfo[i][pClist] == -1)
 		{
 			pInfo[i][pClist] = random(sizeof(PlayerColors));
 			SetColor(i);
 		}
-		if(!pInfo[i][pAuth]) continue;
+	}
 
-		if(GetPVarInt(i, "FirstSpawn"))
-		{
-			SetPVarInt(i, "FirstSpawn", GetPVarInt(i, "FirstSpawn")-1);
-			if(GetPVarInt(i, "FirstSpawn") <= 0) DeletePVar(i, "FirstSpawn");
-		}
+	foreach(new i: Player)
+	{
+		if(!pInfo[i][pAuth]) continue;
 
 		pInfo[i][pAFK]++;
 
@@ -25511,6 +25714,27 @@ public SecondTimer()
 				TogglePlayerControllable(i, true);
 				ClearAnimations(i);
 				DeletePVar(i, "KidnappedTimer");
+			}
+			new str[20];
+			format(str, sizeof(str), "~w~%d", KidnappedTimer);
+			GameTextForPlayer(i, str, 1000, 3);
+		}
+		else if(GetPVarInt(i, "TimeToSellKidnapped"))
+		{
+			new KidnappedTimer = GetPVarInt(i, "TimeToSellKidnapped");
+			KidnappedTimer--;
+			SetPVarInt(i, "TimeToSellKidnapped", KidnappedTimer);
+			if(!KidnappedTimer)
+			{
+				new id = GetPVarInt(i, "Kidnapped_Player");
+				id--;
+				
+
+				SendClientMessage(i, -1, Color_White"Вы не успели сдать похищеного, он освободился!");
+				SendClientMessage(id, -1, Color_White"Похититель не успел сдать вас, вы свободны!");
+
+				FreeKidnapedPlayer(id);
+				FreeKidnapingPlayer(i);
 			}
 			new str[20];
 			format(str, sizeof(str), "~w~%d", KidnappedTimer);
@@ -25923,8 +26147,8 @@ public SecondTimer()
 				{
 					DeletePVar(i, "FarmDeliverUnloadTimer");
 
-					SendClientMessage(i, -1, Color_White"За разгрузку вы получили"Color_Green" 10.000$");
-					GivePlayerMoneyEx(i, 10000);
+					SetPVarInt(i, "FarmDelivered", GetPVarInt(i, "FarmDelivered")+1);
+					SendClientMessage(i, -1, Color_White"Вы разгрузились, можете продолжать работать или забрать награду");
 
 					for(new j = 0; j < MaxAttachedObjOnVehicle; j++) RemoveVehicleAttachObj(vehicleid, j);
 
@@ -26126,15 +26350,15 @@ public SecondTimer()
 			{
 				pInfo[i][pDemorgan] = 0;
 				SavePlayerInt(i, "Demorgan", pInfo[i][pDemorgan]);
-				SendClientMessage(i, -1, Color_Yellow"Ваше время заключения в деморгане закончилось. Впредь не нарушайте правила!");
+				SendClientMessage(i, -1, Color_Yellow"Ваше время заключения в психушке закончилось. Впредь не нарушайте правила!");
 				SpawnPlayer(i);
 			}
 			else
 			{
-				if(!IsPlayerInDynamicArea(i, Areas[DemorganArea]) && !GetPVarInt(i, "DemorganCD") && !GetPVarInt(i, "FirstSpawn"))
+				if(!IsPlayerInDynamicArea(i, Areas[DemorganArea]) && !GetPVarInt(i, "DemorganCD") && GetPVarInt(i, "FirstSpawn") <= gettime())
 				{
 					new str[80];
-					format(str, sizeof(str), "%s[%d] пытался покинуть деморган", pInfo[i][pName], i);
+					format(str, sizeof(str), "%s[%d] пытался покинуть психушку", pInfo[i][pName], i);
 					SendAdminMessage(str);
 					new rand = random(sizeof(RandomDemorganPos));
 					SetPlayerPosition(i, RandomDemorganPos[rand][0], RandomDemorganPos[rand][1], RandomDemorganPos[rand][2], RandomDemorganPos[rand][3], 2, 0);
@@ -26144,16 +26368,10 @@ public SecondTimer()
 		}
 		else if(!pInfo[i][pDemorgan] && pInfo[i][pJail])
 		{
-			if(GetPVarInt(i, "JailCD"))
-			{
-				SetPVarInt(i, "JailCD", GetPVarInt(i, "JailCD")-1);
-				if(GetPVarInt(i, "JailCD") <= 0) DeletePVar(i, "JailCD");
-			}
-
 			new PickupID = GetPVarInt(i, "InPickup");
 			if(PickupID && PickupID-1 == PrisonEnter)
 			{
-				if(!IsPlayerInDynamicArea(i, Areas[JailMineArea]) && !GetPVarInt(i, "JailCD") && !GetPVarInt(i, "FirstSpawn"))
+				if(!IsPlayerInDynamicArea(i, Areas[JailMineArea]) && GetPVarInt(i, "JailCD") <= gettime() && GetPVarInt(i, "FirstSpawn") <= gettime())
 				{
 					new str[80];
 					format(str, sizeof(str), "%s[%d] пытался покинуть шахту тюрьмы", pInfo[i][pName], i);
@@ -26170,7 +26388,7 @@ public SecondTimer()
 			}
 			else
 			{
-				if(!IsPlayerInDynamicArea(i, Areas[JailArea]) && !GetPVarInt(i, "JailCD") && !GetPVarInt(i, "FirstSpawn"))
+				if(!IsPlayerInDynamicArea(i, Areas[JailArea]) && GetPVarInt(i, "JailCD") <= gettime() && GetPVarInt(i, "FirstSpawn") <= gettime())
 				{
 					new str[80];
 					format(str, sizeof(str), "%s[%d] пытался покинуть тюрьму", pInfo[i][pName], i);
@@ -26185,16 +26403,12 @@ public SecondTimer()
 	if(BotStatus)
 	{
 		if(Iter_Count(Player) < BotTime[hour]) mysql_tquery(DB, "SELECT * FROM `bot_name`", "ConnectBots", "");
-		else if(BotCount && Iter_Count(Player) > BotTime[hour])
+		else if(Iter_Count(Bots) && Iter_Count(Player) > BotTime[hour])
 		{
-			foreach(new i: Player)
+			foreach(new i: Bots)
 			{
-				if(BotTime[hour] >= Iter_Count(Player) || !BotCount) break;
-				if(IsBot[i])
-				{
-					Kick(i);
-					break;
-				}
+				if(BotTime[hour] >= Iter_Count(Player) || !Iter_Count(Bots)) break;
+				else Kick(i);
 			}
 		}
 	}
@@ -26272,6 +26486,25 @@ stock AuthAdmin(playerid)
 	mysql_format(DB, str, sizeof(str), "SELECT * FROM `admin_info` WHERE `ID` = '%d'", pInfo[playerid][pID]);
 	mysql_tquery(DB, str, "LoadAdminInfo", "d", playerid);
     return 1;
+}
+
+stock FreeKidnapedPlayer(playerid)
+{
+	DeletePVar(playerid, "Kidnapped_ID");
+	
+	if(pInfo[playerid][pKnockoutStatus] == Player_No_Knockout)
+	{
+		ClearAnimations(playerid);
+		TogglePlayerControllable(playerid, true);
+	}
+	return 1;
+}
+
+stock FreeKidnapingPlayer(playerid)
+{
+	DeletePVar(playerid, "Kidnapped_Player");
+	DeletePVar(playerid, "TimeToSellKidnapped");
+	return 1;
 }
 
 stock GetWeekDay()
@@ -27239,6 +27472,7 @@ stock ChangePlayerUnOfficialJob(playerid, Job)
 
 		DeletePVar(playerid, "FarmDeliverType");
 		DeletePVar(playerid, "FarmDeliverStage");
+		DeletePVar(playerid, "FarmDelivered");
 	}
 	else SetPVarInt(playerid, "UnOfficialJob", Job);
 }
@@ -29584,9 +29818,9 @@ stock PlayerLevelUpdate(playerid)
 		SendClientMessage(playerid, -1, Color_Yellow"Используйте /buylevel");
 	}
 
-	if(pInfo[playerid][pLevel] > 50)
+	if(pInfo[playerid][pLevel] > MAX_LEVEL)
 	{
-		pInfo[playerid][pLevel] = 50;
+		pInfo[playerid][pLevel] = MAX_LEVEL;
 		pInfo[playerid][pExp] = 0;
 		SavePlayerInt(playerid, "Level", pInfo[playerid][pLevel]);
 		SavePlayerInt(playerid, "Exp", pInfo[playerid][pExp]);
