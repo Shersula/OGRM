@@ -984,7 +984,12 @@ enum WarZoneInfo
 {
 	WarZoneName[50],
 	WarZoneID,
-    WarDynamicZone
+    WarDynamicZone,
+	WarIcon,
+	Float:MinX,
+	Float:MinY,
+	Float:MaxX,
+	Float:MaxY
 };
 
 #define MAX_GANG_WAR_ZONES	6
@@ -2476,6 +2481,8 @@ stock ClearAccount(playerid)
 		ToggleAntiCheat(playerid, true);
 		Iter_Remove(Bots, playerid);
 	}
+
+	for(new i = 1; i < sizeof(WarZones); i++) Streamer_ToggleItem(playerid, STREAMER_TYPE_MAP_ICON, WarZones[i][WarIcon], false);
 	return 1;
 }
 
@@ -2620,25 +2627,50 @@ public OnGameModeInit()
 	WarZones[0][WarZoneID] = 0;
     WarZones[0][WarDynamicZone] = 0;
 
+	WarZones[1][MinX] = 2159;
+	WarZones[1][MinY] = -162;
+	WarZones[1][MaxX] = 2580;
+	WarZones[1][MaxY] = 209;
 	strcat(WarZones[1][WarZoneName], "Паломино");
-	WarZones[1][WarZoneID] = GangZoneCreate(2159, -162, 2580, 209);
-    WarZones[1][WarDynamicZone] = CreateDynamicRectangle(2159, -162, 2580, 209, 0, 0);
+	WarZones[1][WarZoneID] = GangZoneCreate(WarZones[1][MinX], WarZones[1][MinY], WarZones[1][MaxX], WarZones[1][MaxY]);
+    WarZones[1][WarDynamicZone] = CreateDynamicRectangle(WarZones[1][MinX], WarZones[1][MinY], WarZones[1][MaxX], WarZones[1][MaxY], 0, 0);
+	WarZones[1][WarIcon] = CreateDynamicMapIcon(WarZones[1][MinX]+((WarZones[1][MaxX]-WarZones[1][MinX])/2), WarZones[1][MinY]+((WarZones[1][MaxY]-WarZones[1][MinY])/2), 0.0, 0, 0x9b2d30FF, -1, -1, -1, 4000, MAPICON_GLOBAL);
 
+	WarZones[2][MinX] = -612;
+	WarZones[2][MinY] = -223;
+	WarZones[2][MaxX] = -395;
+	WarZones[2][MaxY] = -12;
 	strcat(WarZones[2][WarZoneName], "Лесопилка");
-	WarZones[2][WarZoneID] = GangZoneCreate(-612, -223, -395, -12);
-    WarZones[2][WarDynamicZone] = CreateDynamicRectangle(-612, -223, -395, -12, 0, 0);
+	WarZones[2][WarZoneID] = GangZoneCreate(WarZones[2][MinX], WarZones[2][MinY], WarZones[2][MaxX], WarZones[2][MaxY]);
+    WarZones[2][WarDynamicZone] = CreateDynamicRectangle(WarZones[2][MinX], WarZones[2][MinY], WarZones[2][MaxX], WarZones[2][MaxY], 0, 0);
+	WarZones[2][WarIcon] = CreateDynamicMapIcon(WarZones[2][MinX]+((WarZones[2][MaxX]-WarZones[2][MinX])/2), WarZones[2][MinY]+((WarZones[2][MaxY]-WarZones[2][MinY])/2), 0.0, 0, 0x9b2d30FF, -1, -1, -1, 4000, MAPICON_GLOBAL);
 
+	WarZones[3][MinX] = -54;
+	WarZones[3][MinY] = 2386;
+	WarZones[3][MaxX] = 447;
+	WarZones[3][MaxY] = 2670;
 	strcat(WarZones[3][WarZoneName], "Заброшенный аэропорт");
-	WarZones[3][WarZoneID] = GangZoneCreate(-54, 2386, 447, 2670);
-    WarZones[3][WarDynamicZone] = CreateDynamicRectangle(-54, 2386, 447, 2670, 0, 0);
+	WarZones[3][WarZoneID] = GangZoneCreate(WarZones[3][MinX], WarZones[3][MinY], WarZones[3][MaxX], WarZones[3][MaxY]);
+    WarZones[3][WarDynamicZone] = CreateDynamicRectangle(WarZones[3][MinX], WarZones[3][MinY], WarZones[3][MaxX], WarZones[3][MaxY], 0, 0);
+	WarZones[3][WarIcon] = CreateDynamicMapIcon(WarZones[3][MinX]+((WarZones[3][MaxX]-WarZones[3][MinX])/2), WarZones[3][MinY]+((WarZones[3][MaxY]-WarZones[3][MinY])/2), 0.0, 0, 0x9b2d30FF, -1, -1, -1, 4000, MAPICON_GLOBAL);
 
+	WarZones[4][MinX] = -284;
+	WarZones[4][MinY] = -138;
+	WarZones[4][MaxX] = 90;
+	WarZones[4][MaxY] = 163;
 	strcat(WarZones[4][WarZoneName], "Ферма Блуберри");
-	WarZones[4][WarZoneID] = GangZoneCreate(-284, -138, 90, 163);
-    WarZones[4][WarDynamicZone] = CreateDynamicRectangle(-284, -138, 90, 163, 0, 0);
+	WarZones[4][WarZoneID] = GangZoneCreate(WarZones[4][MinX], WarZones[4][MinY], WarZones[4][MaxX], WarZones[4][MaxY]);
+    WarZones[4][WarDynamicZone] = CreateDynamicRectangle(WarZones[4][MinX], WarZones[4][MinY], WarZones[4][MaxX], WarZones[4][MaxY], 0, 0);
+	WarZones[4][WarIcon] = CreateDynamicMapIcon(WarZones[4][MinX]+((WarZones[4][MaxX]-WarZones[4][MinX])/2), WarZones[4][MinY]+((WarZones[4][MaxY]-WarZones[4][MinY])/2), 0.0, 0, 0x9b2d30FF, -1, -1, -1, 4000, MAPICON_GLOBAL);
 
+	WarZones[5][MinX] = 405;
+	WarZones[5][MinY] = 714;
+	WarZones[5][MaxX] = 795;
+	WarZones[5][MaxY] = 1024;
 	strcat(WarZones[5][WarZoneName], "Карьер");
-	WarZones[5][WarZoneID] = GangZoneCreate(405, 714, 795, 1024);
-    WarZones[5][WarDynamicZone] = CreateDynamicRectangle(405, 714, 795, 1024, 0, 0);
+	WarZones[5][WarZoneID] = GangZoneCreate(WarZones[5][MinX], WarZones[5][MinY], WarZones[5][MaxX], WarZones[5][MaxY]);
+    WarZones[5][WarDynamicZone] = CreateDynamicRectangle(WarZones[5][MinX], WarZones[5][MinY], WarZones[5][MaxX], WarZones[5][MaxY], 0, 0);
+	WarZones[5][WarIcon] = CreateDynamicMapIcon(WarZones[5][MinX]+((WarZones[5][MaxX]-WarZones[5][MinX])/2), WarZones[5][MinY]+((WarZones[5][MaxY]-WarZones[5][MinY])/2), 0.0, 0, 0x9b2d30FF, -1, -1, -1, 4000, MAPICON_GLOBAL);
 
 	new hour;
 	gettime(hour, _, _);
@@ -3427,6 +3459,8 @@ public OnPlayerSpawn(playerid)
 	        GangZoneShowForPlayer(playerid, WarZones[WarZone[pInfo[playerid][pMembers]]][WarZoneID], FractionColor[pInfo[playerid][pMembers]]-0x7F);
 	        GangZoneFlashForPlayer(playerid, WarZones[WarZone[pInfo[playerid][pMembers]]][WarZoneID], FractionColor[WarOpponent[pInfo[playerid][pMembers]]]-0x7F);
 
+			Streamer_ToggleItem(playerid, STREAMER_TYPE_MAP_ICON, WarZones[WarZone[pInfo[playerid][pMembers]]][WarIcon], true);
+
 	        new str[100];
 	        ConvertedSecondsWithoutText(WarTimer[pInfo[playerid][pMembers]], str);
 	        format(str, sizeof(str), "VS~n~~n~Time:_%s", str);
@@ -3463,6 +3497,7 @@ public OnPlayerSpawn(playerid)
             for(new j = 0; j < sizeof(WarPTD[]); j++) PlayerTextDrawShow(playerid, WarPTD[playerid][j]);
 		}
     }
+	else for(new i = 1; i < sizeof(WarZones); i++) Streamer_ToggleItem(playerid, STREAMER_TYPE_MAP_ICON, WarZones[i][WarIcon], false);
 
 	KnockoutPlayer(playerid);
 	return 1;
@@ -3504,10 +3539,8 @@ public OnPlayerDeath(playerid, killerid, reason)
 
 	if(killerid != INVALID_PLAYER_ID)
 	{
-		if(pInfo[killerid][pMembers] == Fraction_FBI && pInfo[playerid][pWanted])
+		if(IsSecurityAgency(pInfo[killerid][pMembers]) && pInfo[playerid][pWanted])
 		{
-			new money = (pInfo[killerid][pRank] * (10000*pInfo[playerid][pLevel]))+(10000*pInfo[playerid][pWanted]);
-
 			SetPVarInt(playerid, "JailCD", gettime()+5);
 
 			switch(pInfo[playerid][pWanted])
@@ -3544,10 +3577,14 @@ public OnPlayerDeath(playerid, killerid, reason)
 			ChangePlayerJob(playerid, pInfo[playerid][pJob]);
 			ChangePlayerUnOfficialJob(playerid, Job_None);
 
-			format(str, sizeof(str), Color_White"Вы задержали %s[%d], на ваш банковский счет переведено "Color_Green"%d$", pInfo[playerid][pName], playerid, money);
-			SendClientMessage(killerid, BitColor_Main, str);
-			pInfo[killerid][pBankMoney] += money;
-			SavePlayerInt(killerid, "BankMoney", pInfo[killerid][pBankMoney]);
+			if(pInfo[killerid][pMembers] == Fraction_FBI)
+			{
+				new money = (pInfo[killerid][pRank] * (10000*pInfo[playerid][pLevel]))+(10000*pInfo[playerid][pWanted]);
+				format(str, sizeof(str), Color_White"Вы задержали %s[%d], на ваш банковский счет переведено "Color_Green"%d$", pInfo[playerid][pName], playerid, money);
+				SendClientMessage(killerid, BitColor_Main, str);
+				pInfo[killerid][pBankMoney] += money;
+				SavePlayerInt(killerid, "BankMoney", pInfo[killerid][pBankMoney]);
+			}
 		}
         else if(pInfo[killerid][pMembers] != Fraction_None && pInfo[playerid][pMembers] != Fraction_None && IsABand(pInfo[playerid][pMembers]) && IsABand(pInfo[killerid][pMembers]) && WarStatus[pInfo[playerid][pMembers]] == War_Status_War && WarOpponent[pInfo[playerid][pMembers]] == pInfo[killerid][pMembers])
         {
@@ -5061,6 +5098,8 @@ stock StartGangWar(FractionID)
 			GangZoneShowForPlayer(i, WarZones[WarZone[FractionID]][WarZoneID], FractionColor[FractionID]-0x7F);
 			GangZoneFlashForPlayer(i, WarZones[WarZone[FractionID]][WarZoneID], FractionColor[WarOpponent[FractionID]]-0x7F);
 
+			Streamer_ToggleItem(i, STREAMER_TYPE_MAP_ICON, WarZones[WarZone[FractionID]][WarIcon], true);
+
             new str[100];
             ConvertedSecondsWithoutText(WarTimer[FractionID], str);
             format(str, sizeof(str), "VS~n~~n~Time:_%s", str);
@@ -5168,7 +5207,8 @@ stock EndGangWar(FractionID, WinnerType = 0) //WinnerType = 0 - Проигравший || W
 	{
 		if(pInfo[i][pAuth])
 		{
-                for(new j = 0; j < sizeof(WarPTD[]); j++) PlayerTextDrawHide(i, WarPTD[i][j]);
+			for(new j = 1; j < sizeof(WarZones); j++) Streamer_ToggleItem(i, STREAMER_TYPE_MAP_ICON, WarZones[j][WarIcon], false);
+            for(new j = 0; j < sizeof(WarPTD[]); j++) PlayerTextDrawHide(i, WarPTD[i][j]);
         }
     }
     return 1;
@@ -5215,7 +5255,7 @@ stock EndBizzWar(FractionID, WinnerType = 0) //WinnerType = 0 - Проигравший || W
 		SendRMessageEx(FractionID, str);
     }
 
-	bInfo[WarBet[FractionID]][bBizzWarCD] = gettime()+(86400*3);
+	bInfo[WarBet[FractionID]][bBizzWarCD] = gettime()+(3600*3);
 	SaveBusinessInt(bInfo[WarBet[FractionID]][bID], "BizzWarCD", bInfo[WarBet[FractionID]][bBizzWarCD]);
 
     ClearBizzWar(FractionID);
@@ -6537,13 +6577,23 @@ public OnPlayerStateChange(playerid, newstate, oldstate)
 		else if(vInfo[vehicleid][vType] == VehicleTypeFraction)
 		{
 			if(vInfo[vehicleid][vOwner] == Fraction_Hospital && vInfo[vehicleid][vModel] == 416 && GetPlayerVehicleSeat(playerid) > 1 && vInfo[vehicleid][vRenter] != playerid
-			&& vInfo[vehicleid][vText] && IsValidDynamic3DTextLabel(vInfo[vehicleid][vText]))
+			&& vInfo[vehicleid][vRenter] != -1 && vInfo[vehicleid][vText] && IsValidDynamic3DTextLabel(vInfo[vehicleid][vText]))
 			{
 				if(GetPVarInt(playerid, "BloodCD"))
 				{
 					RemovePlayerFromVehicle(playerid);
 					return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы сдавали кровь недавно. Вам нужно время чтобы восстановиться");
 				}
+
+				foreach(new i: Player)
+				{
+					if(pInfo[i][pAuth] && GetPlayerVehicleID(i) == vehicleid && GetPVarInt(i, "BloodDonorTime"))
+					{
+						RemovePlayerFromVehicle(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Кто-то уже сдает кровь, подождите своей очереди");
+					}
+				}
+
 				ShowDialog(playerid, D_Blood_Donor, DIALOG_STYLE_MSGBOX, Main_Color"Сдача крови", Color_White"Вы сели в машину к сотруднику который принимает кровь\n\
 				Вы готовы сдать 1 литр крови и получить вознаграждение в "Color_Green"10000$", Color_White"Да", Color_White"Нет");
 			}
@@ -7179,7 +7229,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 	}
 	else if(newstate == PLAYER_STATE_SPECTATING)
 	{
-		if(newkeys & KEY_YES)
+		if(newkeys & KEY_SPRINT)
 		{
 			if(GetPVarInt(playerid, "Spec_ID"))
 			{
@@ -7520,13 +7570,13 @@ public OnPlayerEnterRaceCheckpoint(playerid)
 			new vehicleid = GetPlayerVehicleID(playerid);
 			if(vehicleid)
 			{
-				if(vInfo[vehicleid][vType] == VehicleTypeFraction && vInfo[vehicleid][vRenter] == playerid)
+				if(vInfo[vehicleid][vType] == VehicleTypeFraction)
 				{
 					switch(vInfo[vehicleid][vOwner])
 					{
 						case Fraction_Taxi:
 						{
-							if(GetPVarInt(playerid, "TaxiPassenger"))
+							if(GetPVarInt(playerid, "TaxiPassenger") && vInfo[vehicleid][vRenter] == playerid)
 							{
 								new id = GetPVarInt(playerid, "TaxiPassenger")-1;
 
@@ -8787,7 +8837,7 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 				}
 			}
 		}
-		else if(areaid == Areas[KidnappingArea] && IsAMafia(pInfo[playerid][pMembers]))
+		else if(areaid == Areas[KidnappingArea] && IsAMafia(pInfo[playerid][pMembers]) && GetPVarInt(playerid, "Kidnapped_Player"))
 		{
 			if(pInfo[playerid][pGPSType] == GPS_Type_Job)
 			{
@@ -8796,43 +8846,42 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 			}
 
 			new vehicleid = GetPlayerVehicleID(playerid);
-			foreach(new i:Player)
+			new id = GetPVarInt(playerid, "Kidnapped_Player");
+			id--;
+			if(GetPlayerVehicleID(id) == vehicleid)
 			{
-				if(GetPlayerVehicleID(i) == vehicleid && GetPVarInt(i, "Kidnapped"))
+				FreeKidnapedPlayer(id);
+				FreeKidnapingPlayer(playerid);
+
+				SetPlayerPosition(id, -128.5114,2256.5183,27.9542,190.5037, 0, 0, false);
+				ApplyAnimation(id, "CRACK", "crckdeth2", 4.1, true, true, true, false, 0, true);
+				SetPVarInt(id, "KidnappedTimer", 10);
+
+				if(!pInfo[id][pStealSkin])
 				{
-					SetPlayerPosition(i, -128.5114,2256.5183,27.9542,190.5037, 0, 0, false);
-					ApplyAnimation(i, "CRACK", "crckdeth2", 4.1, true, true, true, false, 0, true);
-					SetPVarInt(i, "KidnappedTimer", 10);
-
-					if(!pInfo[i][pStealSkin])
-					{
-						if(!AddPlayerInventory(playerid, ItemDress)) SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
-						pInfo[i][pStealSkin] = true;
-						SavePlayerBool(i, "StealSkin", pInfo[i][pStealSkin]);
-						SetSkin(i, pInfo[i][pSkins][pInfo[i][pSkin]]);
-					}
-
-					DeletePVar(i, "Kidnapped");
-
-					new money = 0;
-					switch(pInfo[i][pLevel])
-					{
-						case 0..4: money = 10000;
-						case 5..10: money = 50000;
-						default: money = 100000;
-					}
-
-					FractionWare[pInfo[playerid][pMembers]][FractionWareMoney] += money;
-
-					new str[200];
-					format(str, sizeof(str), Main_Color"%s %s "Color_White"похитил игрока пополнил банк организации на "Color_Green"%d$", FractionRankName[pInfo[playerid][pMembers]][pInfo[playerid][pRank]], pInfo[playerid][pName], money);
-					SendRMessage(playerid, str);
-					format(str, sizeof(str), Color_White"Общая сумма в банке "Color_Green"%d$", FractionWare[pInfo[playerid][pMembers]][FractionWareMoney]);
-					SendRMessage(playerid, str);
-
-					SaveFractionWare(pInfo[playerid][pMembers]);
+					if(!AddPlayerInventory(playerid, ItemDress)) SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					pInfo[id][pStealSkin] = true;
+					SavePlayerBool(id, "StealSkin", pInfo[id][pStealSkin]);
+					SetSkin(id, pInfo[id][pSkins][pInfo[id][pSkin]]);
 				}
 
+				new money = 0;
+				switch(pInfo[id][pLevel])
+				{
+					case 0..4: money = 10000;
+					case 5..10: money = 50000;
+					default: money = 100000;
+				}
+
+				FractionWare[pInfo[playerid][pMembers]][FractionWareMoney] += money;
+
+				new str[200];
+				format(str, sizeof(str), Main_Color"%s %s "Color_White"похитил игрока пополнил банк организации на "Color_Green"%d$", FractionRankName[pInfo[playerid][pMembers]][pInfo[playerid][pRank]], pInfo[playerid][pName], money);
+				SendRMessage(playerid, str);
+				format(str, sizeof(str), Color_White"Общая сумма в банке "Color_Green"%d$", FractionWare[pInfo[playerid][pMembers]][FractionWareMoney]);
+				SendRMessage(playerid, str);
+
+				SaveFractionWare(pInfo[playerid][pMembers]);
 			}
 		}
 		else if(areaid == Areas[FarmDeliverUnloadArea])
@@ -15593,7 +15642,17 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				if(bInfo[BusinessID][bMafiaOwner] == pInfo[playerid][pMembers]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша мафия уже владеет этим бизнесом");
 				else if(bInfo[BusinessID][bMafiaOwner] == Fraction_None)
 				{
-					if(GetPlayerDistanceFromPoint(playerid, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ]) > 5.0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть возле этого бизнеса");
+					if(GetPlayerDistanceFromPoint(playerid, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ]) > 15.0)
+					{
+						SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть возле этого бизнеса");
+						if(pInfo[playerid][pGPSType] != GPS_Type_Job)
+						{
+							pInfo[playerid][pGPSType] = GPS_Type_GPS;
+							SetPlayerRaceCheckpoint(playerid, 2, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 0.0, 0.0, 0.0, 10.0);
+							SendClientMessage(playerid, -1, Main_Color"[GPS] "Color_White"Навигатор включен");
+						}
+						return 1;
+					}
 
 					new str[200];
 					format(str, sizeof(str), "Ваша мафия завладела бизнесом № %d %s", bInfo[BusinessID][bID], BusinessType[bInfo[BusinessID][bType]][bName]);
@@ -15602,7 +15661,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					bInfo[BusinessID][bMafiaOwner] = pInfo[playerid][pMembers];
 					SaveBusinessInt(bInfo[BusinessID][bID], "MafiaOwner", bInfo[BusinessID][bMafiaOwner]);
 
-					bInfo[BusinessID][bBizzWarCD] = gettime()+(86400*3);
+					bInfo[BusinessID][bBizzWarCD] = gettime()+(3600*3);
 					SaveBusinessInt(bInfo[BusinessID][bID], "BizzWarCD", bInfo[BusinessID][bBizzWarCD]);
 					UpdateBusiness(BusinessID);
 				}
@@ -15610,7 +15669,17 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				{
 					if(WarStatus[pInfo[playerid][pMembers]] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша мафия уже ведет войну за какой-то бизнес");
 					if(WarStatus[bInfo[BusinessID][bMafiaOwner]] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта мафия уже ведет войну за какой-то бизнес");
-					if(GetPlayerDistanceFromPoint(playerid, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ]) > 5.0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть возле этого бизнеса");
+					if(GetPlayerDistanceFromPoint(playerid, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ]) > 15.0)
+					{
+						SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть возле этого бизнеса");
+						if(pInfo[playerid][pGPSType] != GPS_Type_Job)
+						{
+							pInfo[playerid][pGPSType] = GPS_Type_GPS;
+							SetPlayerRaceCheckpoint(playerid, 2, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 0.0, 0.0, 0.0, 10.0);
+							SendClientMessage(playerid, -1, Main_Color"[GPS] "Color_White"Навигатор включен");
+						}
+						return 1;
+					}
 
 					WarBetType[pInfo[playerid][pMembers]] = Mafia_Bet_Type_Bizz;
 					WarBetType[bInfo[BusinessID][bMafiaOwner]] = Mafia_Bet_Type_Bizz;
@@ -16111,7 +16180,7 @@ public OnPlayerClickTextDraw(playerid, Text:clickedid)
 
 		if(clickedid == Text:INVALID_TEXT_DRAW)
 		{
-			SendClientMessage(playerid, BitColor_Yellow, "Курсор выключен. Если вы хотите снова показать курсор, нажмите ~k~~CONVERSATION_YES~");
+			SendClientMessage(playerid, BitColor_Yellow, "Курсор выключен. Если вы хотите снова показать курсор, нажмите ~k~~PED_SPRINT~");
 		}
 		else if(clickedid == SpecPanelTD[9]) return SpectatePlayer(playerid, id);
 		else if(clickedid == SpecPanelTD[10])
@@ -17657,13 +17726,14 @@ CMD:clear(playerid, params[])
 	return 1;
 }
 
-CMD:su(playerid, params[])
+alias:suspect("su");
+CMD:suspect(playerid, params[])
 {
 	if(pInfo[playerid][pMembers] == Fraction_None) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не состоите не в одной из организаций");
 	if(!IsSecurityAgency(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не являетесь членом силовой структуры");
 
 	new id, wanted, message[145];
-	if(sscanf(params, "dds[145]", id, wanted, message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/su [ID] [Приоритет розыска] [Причина]");
+	if(sscanf(params, "dds[145]", id, wanted, message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/(su)spect [ID] [Приоритет розыска] [Причина]");
 	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
 	if(!IsPlayerConnected(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не подключен");
 	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
@@ -17777,6 +17847,18 @@ stock UninvitePlayer(playerid)
 	new members = pInfo[playerid][pMembers];
 
 	if(members == Fraction_FBI && pInfo[playerid][pMask]) pc_cmd_maskoff(playerid);
+
+	if(members != Fraction_None && WarStatus[members] == War_Status_War)
+    {
+		if(IsABand(members))
+		{
+			GangZoneHideForPlayer(playerid, WarZones[WarZone[members]][WarZoneID]);
+			for(new i = 1; i < sizeof(WarZones); i++) Streamer_ToggleItem(playerid, STREAMER_TYPE_MAP_ICON, WarZones[i][WarIcon], false);
+		}
+		else if(IsAMafia(members)) GangZoneHideForPlayer(playerid, bInfo[WarBet[members]][bBizzWarGangZone]);
+
+		for(new j = 0; j < sizeof(WarPTD[]); j++) PlayerTextDrawHide(playerid, WarPTD[playerid][j]);
+    }
 
 	Iter_Remove(FractionMembers[members], playerid);
 
@@ -22288,7 +22370,7 @@ CMD:makeadmin(playerid, params[])
 
 		ClearAdminInfo(id);
 		str[0] = EOS;
-		mysql_format(DB, str, sizeof(str), "DELETE FROM `admin_info` WHERE `ID` = '%d')", pInfo[id][pID]);
+		mysql_format(DB, str, sizeof(str), "DELETE FROM `admin_info` WHERE `ID` = '%d'", pInfo[id][pID]);
 		mysql_tquery(DB, str);
 
 		str[0] = EOS;
@@ -22309,10 +22391,13 @@ CMD:makeadmin(playerid, params[])
 		format(str, sizeof(str), Color_Yellow"%s %s назначил на должность %s игрока %s", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], AdminNames[AdmLevel], pInfo[id][pName]);
 		SendAdminMessage(str);
 
-		ClearAdminInfo(id);
-		str[0] = EOS;
-		mysql_format(DB, str, sizeof(str), "INSERT INTO `admin_info` (`ID`) VALUES ('%d')", pInfo[id][pID]);
-		mysql_tquery(DB, str);
+		if(!pInfo[id][pAdmin])
+		{
+			ClearAdminInfo(id);
+			str[0] = EOS;
+			mysql_format(DB, str, sizeof(str), "INSERT INTO `admin_info` (`ID`) VALUES ('%d')", pInfo[id][pID]);
+			mysql_tquery(DB, str);
+		}
 
 		str[0] = EOS;
 		GetPlayerIp(playerid, str, 16);
@@ -23360,7 +23445,7 @@ stock ShowFractionCommand(playerid)
 		{
 			ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Организации", Main_Color"/arrest [ID] "Color_White"- Арестовать преступника\n\
 			"Main_Color"/ticket [ID] "Color_White"- Выписать штраф\n\
-			"Main_Color"/su [ID] "Color_White"- Объявить игрока в розыск\n\
+			"Main_Color"/(su)spect [ID] "Color_White"- Объявить игрока в розыск\n\
 			"Main_Color"/clear [ID] "Color_White"- Убрать игрока из списка разыскиваемых\n\
 			"Main_Color"/wanted "Color_White"- Список разыскиваемых игроков\n\
 			"Main_Color"/cuff [ID] "Color_White"- Одеть наручники\n\
@@ -23391,7 +23476,7 @@ stock ShowFractionCommand(playerid)
 		{
 			ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Организации", Main_Color"/arrest [ID] "Color_White"- Арестовать преступника\n\
 			"Main_Color"/ticket [ID] "Color_White"- Выписать штраф\n\
-			"Main_Color"/su [ID] "Color_White"- Объявить игрока в розыск\n\
+			"Main_Color"/(su)spect [ID] "Color_White"- Объявить игрока в розыск\n\
 			"Main_Color"/clear [ID] "Color_White"- Убрать игрока из списка разыскиваемых\n\
 			"Main_Color"/wanted "Color_White"- Список разыскиваемых игроков\n\
 			"Main_Color"/cuff [ID] "Color_White"- Одеть наручники\n\
@@ -23422,7 +23507,7 @@ stock ShowFractionCommand(playerid)
 		{
 			ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Организации", Main_Color"/arrest [ID] "Color_White"- Арестовать преступника\n\
 			"Main_Color"/ticket [ID] "Color_White"- Выписать штраф\n\
-			"Main_Color"/su [ID] "Color_White"- Объявить игрока в розыск\n\
+			"Main_Color"/(su)spect [ID] "Color_White"- Объявить игрока в розыск\n\
 			"Main_Color"/clear [ID] "Color_White"- Убрать игрока из списка разыскиваемых\n\
 			"Main_Color"/wanted "Color_White"- Список разыскиваемых игроков\n\
 			"Main_Color"/cuff [ID] "Color_White"- Одеть наручники\n\
@@ -24824,7 +24909,7 @@ stock SetPlayerPosition(playerid, Float:x, Float:y, Float:z, Float:a=0.0, virtua
 		DeletePVar(playerid, "UnFreezePlayerTimer");
 	}
 
-	if(UnFreeze) SetPVarInt(playerid, "UnFreezePlayerTimer", SetTimerEx("UnFreezePlayer", 1000+(GetPlayerPing(playerid)*20), false, "d", playerid));
+	if(UnFreeze) SetPVarInt(playerid, "UnFreezePlayerTimer", SetTimerEx("UnFreezePlayer", 1000+(GetPlayerPing(playerid)*40), false, "d", playerid));
 
 	if(GetPVarInt(playerid, "UnderSpec"))
     {
@@ -25649,31 +25734,35 @@ public SecondTimer()
 			format(str, sizeof(str), "~w~%d", BloodTime);
 			GameTextForPlayer(i, str, 1000, 3);
 
+			new vehicleid = GetPlayerVehicleID(i);
+
+			if(vInfo[vehicleid][vType] == VehicleTypeFraction && vInfo[vehicleid][vOwner] == Fraction_Hospital && vInfo[vehicleid][vRenter] != -1 && GetPVarInt(vInfo[vehicleid][vRenter], "StartBloodVehicle") == vehicleid)
+			{
+				GameTextForPlayer(vInfo[vehicleid][vRenter], str, 1000, 3);
+			}
+
 			if(BloodTime <= 0)
 			{
-				new vehicleid = GetPlayerVehicleID(i);
-
-				if(vInfo[vehicleid][vType] == VehicleTypeFraction && vInfo[vehicleid][vOwner] == Fraction_Hospital && vInfo[vehicleid][vRenter] != -1)
+				if(vInfo[vehicleid][vType] == VehicleTypeFraction && vInfo[vehicleid][vOwner] == Fraction_Hospital && vInfo[vehicleid][vRenter] != -1 && GetPVarInt(vInfo[vehicleid][vRenter], "StartBloodVehicle") == vehicleid)
 				{
-					if(GetPVarInt(vInfo[vehicleid][vRenter], "StartBloodVehicle") == vehicleid)
+					SetPVarInt(vInfo[vehicleid][vRenter], "BloodCount", GetPVarInt(vInfo[vehicleid][vRenter], "BloodCount")+1);
+					str[0] = EOS;
+					format(str, sizeof(str), "%s "Color_White"Сдал(а) вам "Main_Color"1л "Color_White"крови. Всего крови теперь: "Main_Color"%dл", pInfo[i][pName], GetPVarInt(vInfo[vehicleid][vRenter], "BloodCount"));
+					SendClientMessage(vInfo[vehicleid][vRenter], BitColor_Main, str);
+
+					SendClientMessage(vInfo[vehicleid][vRenter], BitColor_Main, "Вы можете доставить кровь в больницу чтобы получить вознаграждение");
+
+					if(GetPVarInt(vInfo[vehicleid][vRenter], "BloodCount") >= 20)
 					{
-						SetPVarInt(vInfo[vehicleid][vRenter], "BloodCount", GetPVarInt(vInfo[vehicleid][vRenter], "BloodCount")+1);
-						str[0] = EOS;
-						format(str, sizeof(str), "%s "Color_White"Сдал(а) вам "Main_Color"1л "Color_White"крови. Всего крови теперь: "Main_Color"%dл", pInfo[i][pName], GetPVarInt(vInfo[vehicleid][vRenter], "BloodCount"));
-						SendClientMessage(vInfo[vehicleid][vRenter], BitColor_Main, str);
+						SendClientMessage(vInfo[vehicleid][vRenter], BitColor_Main, "Вы собрали 20 литров крови, вы можете доставить их в больницу чтобы получить вознаграждение");
 
-						if(GetPVarInt(vInfo[vehicleid][vRenter], "BloodCount") >= 20)
+						DeletePVar(vInfo[vehicleid][vRenter], "StartBloodVehicle");
+						vInfo[vehicleid][vRenter] = -1;
+
+						if(vInfo[vehicleid][vText] && IsValidDynamic3DTextLabel(vInfo[vehicleid][vText]))
 						{
-							SendClientMessage(vInfo[vehicleid][vRenter], BitColor_Main, "Вы собрали 20 литров крови, вы можете доставить их в больницу чтобы получить вознаграждение");
-
-							DeletePVar(vInfo[vehicleid][vRenter], "StartBloodVehicle");
-							vInfo[vehicleid][vRenter] = -1;
-
-							if(vInfo[vehicleid][vText] && IsValidDynamic3DTextLabel(vInfo[vehicleid][vText]))
-							{
-								DestroyDynamic3DTextLabel(vInfo[vehicleid][vText]);
-								vInfo[vehicleid][vText] = Text3D:0;
-							}
+							DestroyDynamic3DTextLabel(vInfo[vehicleid][vText]);
+							vInfo[vehicleid][vText] = Text3D:0;
 						}
 					}
 				}
@@ -25944,16 +26033,20 @@ public SecondTimer()
 			new trucker = GetPVarInt(i, "TruckerCD");
 			trucker--;
 			SetPVarInt(i, "TruckerCD", trucker);
-			if(trucker <= 0)
+
+			if(pInfo[i][pJob] == Job_Trucker)
 			{
-				SendClientMessage(i, -1, Color_White"Вы снова можете отвезти груз");
-				DeletePVar(i, "TruckerCD");
-			}
-			else if(trucker%60 == 0)
-			{
-				new str[100];
-				format(str, sizeof(str), Color_White"Вы снова сможете отвезти груз через %d минут", trucker/60);
-				SendClientMessage(i, -1, str);
+				if(trucker <= 0)
+				{
+					SendClientMessage(i, -1, Color_White"Вы снова можете отвезти груз");
+					DeletePVar(i, "TruckerCD");
+				}
+				else if(trucker%60 == 0)
+				{
+					new str[100];
+					format(str, sizeof(str), Color_White"Вы снова сможете отвезти груз через %d минут", trucker/60);
+					SendClientMessage(i, -1, str);
+				}
 			}
 		}
 		if(GetPVarInt(i, "CarThiefCD"))
@@ -25961,16 +26054,20 @@ public SecondTimer()
 			new thief = GetPVarInt(i, "CarThiefCD");
 			thief--;
 			SetPVarInt(i, "CarThiefCD", thief);
-			if(thief <= 0)
+
+			if(pInfo[i][pJob] == Job_CarThief)
 			{
-				SendClientMessage(i, -1, Color_White"Вы снова можете угнать машину");
-				DeletePVar(i, "CarThiefCD");
-			}
-			else if(thief%60 == 0)
-			{
-				new str[100];
-				format(str, sizeof(str), Color_White"Вы снова сможете угнать машину через %d минут", thief/60);
-				SendClientMessage(i, -1, str);
+				if(thief <= 0)
+				{
+					SendClientMessage(i, -1, Color_White"Вы снова можете угнать машину");
+					DeletePVar(i, "CarThiefCD");
+				}
+				else if(thief%60 == 0)
+				{
+					new str[100];
+					format(str, sizeof(str), Color_White"Вы снова сможете угнать машину через %d минут", thief/60);
+					SendClientMessage(i, -1, str);
+				}
 			}
 		}
 		if(GetPVarInt(i, "PilotCD"))
@@ -25978,16 +26075,20 @@ public SecondTimer()
 			new pilot = GetPVarInt(i, "PilotCD");
 			pilot--;
 			SetPVarInt(i, "PilotCD", pilot);
-			if(pilot <= 0)
+
+			if(pInfo[i][pJob] == Job_Pilot)
 			{
-				SendClientMessage(i, -1, Color_White"Вы снова можете выйти в рейс");
-				DeletePVar(i, "PilotCD");
-			}
-			else if(pilot%60 == 0)
-			{
-				new str[100];
-				format(str, sizeof(str), Color_White"Вы снова сможете выйти в рейс через %d минут", pilot/60);
-				SendClientMessage(i, -1, str);
+				if(pilot <= 0)
+				{
+					SendClientMessage(i, -1, Color_White"Вы снова можете выйти в рейс");
+					DeletePVar(i, "PilotCD");
+				}
+				else if(pilot%60 == 0)
+				{
+					new str[100];
+					format(str, sizeof(str), Color_White"Вы снова сможете выйти в рейс через %d минут", pilot/60);
+					SendClientMessage(i, -1, str);
+				}
 			}
 		}
 		if(GetPVarInt(i, "BusCD"))
@@ -25995,16 +26096,20 @@ public SecondTimer()
 			new bus = GetPVarInt(i, "BusCD");
 			bus--;
 			SetPVarInt(i, "BusCD", bus);
-			if(bus <= 0)
+
+			if(pInfo[i][pJob] == Job_Bus)
 			{
-				SendClientMessage(i, -1, Color_White"Вы снова можете выйти на маршрут");
-				DeletePVar(i, "BusCD");
-			}
-			else if(bus%60 == 0)
-			{
-				new str[100];
-				format(str, sizeof(str), Color_White"Вы снова сможете выйти на маршрут через %d минут", bus/60);
-				SendClientMessage(i, -1, str);
+				if(bus <= 0)
+				{
+					SendClientMessage(i, -1, Color_White"Вы снова можете выйти на маршрут");
+					DeletePVar(i, "BusCD");
+				}
+				else if(bus%60 == 0)
+				{
+					new str[100];
+					format(str, sizeof(str), Color_White"Вы снова сможете выйти на маршрут через %d минут", bus/60);
+					SendClientMessage(i, -1, str);
+				}
 			}
 		}
 		if(GetPVarInt(i, "FisherCD"))
@@ -26012,16 +26117,20 @@ public SecondTimer()
 			new fisher = GetPVarInt(i, "FisherCD");
 			fisher--;
 			SetPVarInt(i, "FisherCD", fisher);
-			if(fisher <= 0)
+
+			if(pInfo[i][pJob] == Job_Fisher)
 			{
-				SendClientMessage(i, -1, Color_White"Вы снова можете начать рыбалку");
-				DeletePVar(i, "FisherCD");
-			}
-			else if(fisher%60 == 0)
-			{
-				new str[100];
-				format(str, sizeof(str), Color_White"Вы снова сможете начать рыбалку через %d минут", fisher/60);
-				SendClientMessage(i, -1, str);
+				if(fisher <= 0)
+				{
+					SendClientMessage(i, -1, Color_White"Вы снова можете начать рыбалку");
+					DeletePVar(i, "FisherCD");
+				}
+				else if(fisher%60 == 0)
+				{
+					new str[100];
+					format(str, sizeof(str), Color_White"Вы снова сможете начать рыбалку через %d минут", fisher/60);
+					SendClientMessage(i, -1, str);
+				}
 			}
 		}
 		if(GetPVarInt(i, "LawyerCD"))
@@ -26029,16 +26138,20 @@ public SecondTimer()
 			new lawyer = GetPVarInt(i, "LawyerCD");
 			lawyer--;
 			SetPVarInt(i, "LawyerCD", lawyer);
-			if(lawyer <= 0)
+
+			if(pInfo[i][pJob] == Job_Lawyer)
 			{
-				SendClientMessage(i, -1, Color_White"Вы снова можете освободить игрока");
-				DeletePVar(i, "LawyerCD");
-			}
-			else if(lawyer%60 == 0)
-			{
-				new str[100];
-				format(str, sizeof(str), Color_White"Вы снова сможете освободить игрока через %d минут", lawyer/60);
-				SendClientMessage(i, -1, str);
+				if(lawyer <= 0)
+				{
+					SendClientMessage(i, -1, Color_White"Вы снова можете освободить игрока");
+					DeletePVar(i, "LawyerCD");
+				}
+				else if(lawyer%60 == 0)
+				{
+					new str[100];
+					format(str, sizeof(str), Color_White"Вы снова сможете освободить игрока через %d минут", lawyer/60);
+					SendClientMessage(i, -1, str);
+				}
 			}
 		}
 

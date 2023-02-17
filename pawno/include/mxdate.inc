@@ -1,86 +1,109 @@
-/*
-	Возвращает UNIX TIMESTAMP в соответствии с указанной датой.
-
-	ПОДРОБНЕЕ
-		UNIX TIMESTAMP это кол-во секунд со дня 01.01.1970, 00:00:00 до
-		указанной в параметрах даты
-
-	ВЕРНЕТ
-		число integer (4 байта)
-*/
-stock date_to_timestamp
-(
-	year = 1970,	month  = 1,	day    = 1,
-	hour =    0,	minute = 0,	second = 0
-)
+#include <a_samp>
+#include <sscanf2>
+ 
+#define SPLITTER .
+ 
+new MonthTimes[12][4] = 
 {
-	switch ( month )
-	{
-		case  2 : day +=  31;	case  3 : day +=  59;	case  4 : day +=  90;
-		case  5 : day += 120;	case  6 : day += 151;	case  7 : day += 181;
-		case  8 : day += 212;	case  9 : day += 243;	case 10 : day += 273;
-		case 11 : day += 304;	case 12 : day += 334;
-	}
-
-	return ( second + minute*60 + hour*3600 + (day - 1)*86400
-		+ (year - 1970)*31557600 + ( year % 4 == 0 ? 21600 : 0 ) );
+    { 31, 31, 2678400, 2678400 },
+    { 28, 29, 2419200, 2505600 },
+    { 31, 31, 2678400, 2678400 },
+    { 30, 30, 2592000, 2592000 },
+    { 31, 31, 2678400, 2678400 },
+    { 30, 30, 2592000, 2592000 },
+    { 31, 31, 2678400, 2678400 },
+    { 31, 31, 2678400, 2678400 },
+    { 30, 30, 2592000, 2592000 },
+    { 31, 31, 2678400, 2678400 },
+    { 30, 30, 2592000, 2592000 },
+    { 31, 31, 2678400, 2678400 }
+};
+ 
+stock IsLeapYear(year)
+{
+    if(year % 4 == 0) return 1;
+    else return 0;
 }
-
-
-/*
-	Возвращает по ссылке дату в соответствии с указанным UNIX TIMESTAMP.
-
-	ПОДРОБНЕЕ
-		UNIX TIMESTAMP это кол-во секунд со дня 01.01.1970, 00:00:00 до
-		указанной в параметрах даты. Если он правильно указан, то в
-		year будет помещен год, в month - месяц, в day - день,
-		в hour - час, в minute - минута, в second - секунда.
-
-	ВЕРНЕТ
-		ничего
-*/
-stock timestamp_to_date
-(
-	unix_timestamp = 0,
-
-	& year = 1970,		& month  = 1,		& day    = 1,
-	& hour =    0,		& minute = 0,		& second = 0
-)
+ 
+stock TimestampToDate(Timestamp, &year, &month, &day, &hour, &minute, &second, HourGMT, MinuteGMT = 0)
 {
-	year = unix_timestamp / 31557600;
-	unix_timestamp -= year * 31557600;
-	year += 1970;
-
-	if ( year % 4 == 0 ) unix_timestamp -= 21600;
-
-	day = unix_timestamp / 86400;
-
-	switch ( day )
-	{
-		// в second будет временно хранится число месяца
-		case    0..30 : { second = day;       month =  1; }
-		case   31..58 : { second = day -  31; month =  2; }
-		case   59..89 : { second = day -  59; month =  3; }
-		case  90..119 : { second = day -  90; month =  4; }
-		case 120..150 : { second = day - 120; month =  5; }
-		case 151..180 : { second = day - 151; month =  6; }
-		case 181..211 : { second = day - 181; month =  7; }
-		case 212..242 : { second = day - 212; month =  8; }
-		case 243..272 : { second = day - 243; month =  9; }
-		case 273..303 : { second = day - 273; month = 10; }
-		case 304..333 : { second = day - 304; month = 11; }
-		case 334..366 : { second = day - 334; month = 12; }
-	}
-
-	unix_timestamp -= day * 86400;
-	hour = unix_timestamp / 3600;
-
-	unix_timestamp -= hour * 3600;
-	minute = unix_timestamp / 60;
-
-	unix_timestamp -= minute * 60;
-	day = second + 1;
-	second = unix_timestamp;
+    new tmp = 2;
+    year = 1970;
+    month = 1;
+    Timestamp -= 172800; // Delete two days from the current timestamp. This is necessary, because the timestamp retrieved using gettime() includes two too many days.
+    for(;;)
+    {
+        if(Timestamp >= 31536000)
+        {
+            year ++;
+            Timestamp -= 31536000;
+            tmp ++;
+            if(tmp == 4)
+            {
+                if(Timestamp >= 31622400)
+                {
+                    tmp = 0;
+                    year ++;
+                    Timestamp -= 31622400;
+                }
+                else break;
+            }
+        }
+        else break;
+    }       
+    for(new i = 0; i < 12; i ++)
+    {
+        if(Timestamp >= MonthTimes[i][2 + IsLeapYear(year)])
+        {
+            month ++;
+            Timestamp -= MonthTimes[i][2 + IsLeapYear(year)];
+        }
+        else break;
+    }
+    day = 1 + (Timestamp / 86400);
+    Timestamp %= 86400;
+    hour = HourGMT + (Timestamp / 3600);
+    Timestamp %= 3600;
+    minute = MinuteGMT + (Timestamp / 60);
+    second = (Timestamp % 60);
+    if(minute > 59)
+    {
+        minute = 0;
+        hour ++;
+    }
+    if(hour > 23)
+    {
+        hour -= 24;
+        day ++;
+    }   
+    if(day > MonthTimes[month][IsLeapYear(year)])
+    {
+        day = 1;
+        month ++;
+    }
+    if(month > 12)
+    {
+        month = 1;
+        year ++;
+    }
+    return 1;
+}
+ 
+stock DateToTimestamp(str[11])
+{
+    new date[3]; // date[0] = day       date[1] = month         date[2] = year
+    if(!sscanf(str,"p<"#SPLITTER">ddd",date[0],date[1],date[2]))
+    {
+        new total = 0, tmp = 0;
+        total += date[0] * 86400;
+        if(date[1] == 2 && date[0] < 29) tmp = ((date[2] - 1968) / 4 - 2);
+        else tmp = ((date[2] - 1968) / 4 - 1);
+        total += tmp * 31622400;
+        total += (date[2] - 1970 - tmp) * 31536000;
+        for(new i = 1; i < date[1]; i ++) total += MonthTimes[i][0 + IsLeapYear(date[2])] * 86400;
+        return total;
+    }
+    else return -1;
 }
 
 /*
@@ -111,19 +134,16 @@ stock timestamp_to_date
 		строку с численными значениями даты вместо их псевдонимов
 		размер строки = sizeOfOutput
 */
-stock date (timestamp = 0, UTC = 0, const formatStr[] = "%dd.%mm.%yyyy, %hh:%ii:%ss")
+stock date (timestamp = 0, GMT = 0, const formatStr[] = "%dd.%mm.%yyyy, %hh:%ii:%ss")
 {
 	// ------------
-
-	timestamp += UTC*3600;
-
 	const sizeOfOutput = 128; // размер возвращаемой строки
 
 	new yyyy, mm, dd, h, m, s,
 		pos, foundPos, searchStartPos, outStrLen,
 		tmpNumStr[5], outStr[sizeOfOutput];
 
-	timestamp_to_date( timestamp, yyyy,mm,dd, h,m,s ); // превратим штамп в дату
+	TimestampToDate(timestamp, yyyy, mm, dd, h, m, s, GMT);// превратим штамп в дату
 	// ------------
 
 
