@@ -86,12 +86,14 @@
 
 #define Project_Name 		"Old Good RPG mod"
 #define Short_Project_Name 	"OGRM"
+#define Project_Site		"ogrm-project.ru"
 
 new MySQL:DB;
 new AdminBoard; //Объект с информацией об администраторах в Мэрии
 new LeaderBoard; //Объект с информацией о лидерах онлайн в Мэрии
 new PlayerBoard; //Объект с информацией о топе игроков в Мэрии
 new DonateBoard; //Объект с информацией о топе донатов в Мэрии
+new ServerMessage; //Счетчик времени до глобального сообщения
 
 new PlayerText:FuelPTD[MAX_PLAYERS];
 new PlayerText:SpeedPTD[MAX_PLAYERS];
@@ -1581,14 +1583,22 @@ enum AreaInfo
 	FarmDeliverUnloadArea,
 	LiveArea,
 	StashArea,
-	KidnappingArea
+	KidnappingArea,
+	StartQuestArea
 };
 new Areas[AreaInfo];
 
-/*enum ActorsInfo
+enum ActorsInfo
 {
+	QuestActor
 };
-new Actors[ActorsInfo];*/
+new ActorsName[ActorsInfo][] = {
+	"Обучающий персонаж"
+};
+
+new Text3D:ActorsChat[ActorsInfo];
+new ActorTimerSay[ActorsInfo];
+new Actors[ActorsInfo];
 
 #define GatePoliceFirst		0
 #define GatePoliceSecond	1
@@ -1933,7 +1943,18 @@ enum
 	D_Alarm,
 	D_BizzWar,
 	D_Upgrade,
-	D_Upgrade_Accept
+	D_Upgrade_Accept,
+	D_Quest_Menu,
+	D_Quest_Menu_Info,
+	D_Quest_Menu_Finish,
+	D_Start_Msg,
+	D_Start_Quest,
+	D_Take_Quest,
+	D_Guide_Msg_1,
+	D_Guide_Msg_2,
+	D_Guide_Msg_3,
+	D_Guide_Msg_4,
+	D_Guide_Msg_5
 };
 
 stock ShowDialog(playerid, dialogid, style, const caption[], const info[], const button1[], const button2[])
@@ -2233,6 +2254,45 @@ new GunNames[48][] = {
     "Fake Pistol"
 };
 
+#define MAX_QUEST	8
+enum QuestStatus
+{
+	QuestNotTaken = -3,
+	QuestFinish = -1
+};
+
+enum QuestIndexses
+{
+	None,
+	GuideQuest,
+	WoodQuest,
+	MedCardQuest,
+	DriveLicQuest,
+	BusQuest,
+	BankCardQuest,
+	GoodbyeQuest
+};
+
+enum QuestInfo
+{
+	QuestName[50],
+	QuestDescr[100],
+	QuestFinishProgress,
+	QuestRewardMoney,
+	QuestRewardExp,
+	QuestDependen
+};
+new Quests[MAX_QUEST][QuestInfo] = {
+	{"None", "None", 0, 0, 0},
+	{"Базовые основы RPG режима", "Необходимо узнать о RPG режиме", 0, 0, 2, -1},
+	{"Первая работа", "Добыть 10 древесины", 10, 10000, 2, 1},
+	{"Получаем мед.карту", "Купить медкарту в больнице", 1, 10000, 2, 2},
+	{"Получаем права на вождение авто", "Купить права в Мэрии", 1, 20000, 2, 3},
+	{"Помогаем новичкам", "Завершить 3 рейса работая водителем автобуса", 3, 30000, 2, 4},
+	{"Банковский счёт", "Купить банковскую карту в банке", 1, 20000, 0, 5},
+	{"Время прощаться", "Поговорить с обучающим персонажем", 0, 0, 2, 6}
+};
+
 #define Player_No_Knockout		0
 #define Player_Go_To_Knockout	1
 #define Player_In_Knockout		2
@@ -2328,7 +2388,8 @@ enum PlayerInfo
 	pStashMaterials,
 	pKnockoutStatus,
 	bool:pStealSkin,
-	pDayPlayedTime
+	pDayPlayedTime,
+	pQuests[MAX_QUEST]
 };
 new pInfo[MAX_PLAYERS][PlayerInfo];
 new Iterator:Admins<MAX_PLAYERS>;
@@ -2467,6 +2528,9 @@ stock ClearAccount(playerid)
 	pInfo[playerid][pKnockoutStatus] = Player_No_Knockout;
 	pInfo[playerid][pStealSkin] = false;
 	pInfo[playerid][pDayPlayedTime] = 0;
+
+	for(new i = 0; i < MAX_QUEST; i++) pInfo[playerid][pQuests][i] = _:QuestNotTaken;
+
 	UnloadHouseVehicle(playerid);
 
     if(Iter_Contains(Admins, playerid))
@@ -2483,6 +2547,59 @@ stock ClearAccount(playerid)
 	}
 
 	for(new i = 1; i < sizeof(WarZones); i++) Streamer_ToggleItem(playerid, STREAMER_TYPE_MAP_ICON, WarZones[i][WarIcon], false);
+	return 1;
+}
+
+stock SaveQuest(playerid)
+{
+	new query[70];
+	mysql_format(DB, query, sizeof(query), "SELECT * FROM `quests` WHERE `pID` = '%d'", pInfo[playerid][pID]);
+	mysql_tquery(DB, query, "SaveQuestCallback", "d", playerid);
+	return 1;
+}
+
+forward SaveQuestCallback(playerid);
+public SaveQuestCallback(playerid)
+{
+	new rows = cache_num_rows();
+	new query[200];
+	if(rows)
+	{
+		new bool:SavedQuest[MAX_QUEST] = {false, ...};
+		for(new i = 0; i < rows; i++)
+		{
+			new QuestID, Progress;
+			cache_get_value_name_int(i, "QuestID", QuestID);
+			cache_get_value_name_int(i, "Progress", Progress);
+			SavedQuest[QuestID] = true;
+
+			if(pInfo[playerid][pQuests][QuestID] != Progress)
+			{
+				mysql_format(DB, query, sizeof(query), "UPDATE `quests` SET `Progress` = '%d' WHERE `pID` = '%d' AND `QuestID` = '%d'", pInfo[playerid][pQuests][QuestID], pInfo[playerid][pID], QuestID);
+				mysql_tquery(DB, query);
+			}
+		}
+
+		for(new i = 0; i < MAX_QUEST; i++)
+		{
+			if(pInfo[playerid][pQuests][i] != _:QuestNotTaken && pInfo[playerid][pQuests][i] != _:QuestFinish && SavedQuest[i] == false)
+			{
+				mysql_format(DB, query, sizeof(query), "INSERT INTO `quests` (`pID`, `QuestID`, `Progress`) VALUES ('%d', '%d', '%d')", pInfo[playerid][pID], i, pInfo[playerid][pQuests][i]);
+				mysql_tquery(DB, query);
+			}
+		}
+	}
+	else
+	{
+		for(new i = 0; i < MAX_QUEST; i++)
+		{
+			if(pInfo[playerid][pQuests][i] != _:QuestNotTaken)
+			{
+				mysql_format(DB, query, sizeof(query), "INSERT INTO `quests` (`pID`, `QuestID`, `Progress`) VALUES ('%d', '%d', '%d')", pInfo[playerid][pID], i, pInfo[playerid][pQuests][i]);
+				mysql_tquery(DB, query);
+			}
+		}
+	}
 	return 1;
 }
 
@@ -2731,6 +2848,8 @@ public OnGameModeInit()
 	#include <mapping/exterior/Army>
 	#include <mapping/exterior/FBI>
 	#include <mapping/exterior/SanNews>
+	#include <mapping/exterior/TraidingArea>
+	#include <mapping/exterior/Warehouse>
 	//Дыра на ферме ЛС
 	CreateDynamicObject(1497, -383.47751, -1439.64209, 25.31070,   0.00000, 0.00000, 90.00000, 0, 0);
 
@@ -3318,127 +3437,136 @@ public OnPlayerSpawn(playerid)
 	}
 	else
 	{
-		switch(pInfo[playerid][pSpawnChange])
+		if(GetPVarInt(playerid, "SpawnAfterGuideQuest"))
 		{
-			case SpawnChange_Standart:
+			DeletePVar(playerid, "SpawnAfterGuideQuest");
+			SetPlayerPosition(playerid, 2219.1829, -1153.1589, 1025.7969, 104.3509, 1, 15);
+			SetPVarInt(playerid, "InPickup", SpawnEnter+1);
+		}
+		else
+		{
+			switch(pInfo[playerid][pSpawnChange])
 			{
-				SetPlayerPosition(playerid, 2227.4434, -1153.0583, 1029.7969, 0.6366, 1, 15);
-				SetPVarInt(playerid, "InPickup", SpawnEnter+1);
-			}
-			case SpawnChange_House:
-			{
-				new HouseID = pInfo[playerid][pHouseID];
-				SetPVarInt(playerid, "InHouse", hInfo[HouseID][hID]);
-				SetPlayerPosition(playerid, HouseInterior[hInfo[HouseID][hInterior]][hIntX], HouseInterior[hInfo[HouseID][hInterior]][hIntY], HouseInterior[hInfo[HouseID][hInterior]][hIntZ], HouseInterior[hInfo[HouseID][hInterior]][hIntA], House_World+hInfo[HouseID][hID], HouseInterior[hInfo[HouseID][hInterior]][hInt]);
-			}
-			case SpawnChange_Fraction:
-			{
-				switch(pInfo[playerid][pMembers])
+				case SpawnChange_Standart:
 				{
-					case Fraction_Police:
+					SetPlayerPosition(playerid, 2227.4434, -1153.0583, 1029.7969, 0.6366, 1, 15);
+					SetPVarInt(playerid, "InPickup", SpawnEnter+1);
+				}
+				case SpawnChange_House:
+				{
+					new HouseID = pInfo[playerid][pHouseID];
+					SetPVarInt(playerid, "InHouse", hInfo[HouseID][hID]);
+					SetPlayerPosition(playerid, HouseInterior[hInfo[HouseID][hInterior]][hIntX], HouseInterior[hInfo[HouseID][hInterior]][hIntY], HouseInterior[hInfo[HouseID][hInterior]][hIntZ], HouseInterior[hInfo[HouseID][hInterior]][hIntA], House_World+hInfo[HouseID][hID], HouseInterior[hInfo[HouseID][hInterior]][hInt]);
+				}
+				case SpawnChange_Fraction:
+				{
+					switch(pInfo[playerid][pMembers])
 					{
-						SetPVarInt(playerid, "InPickup", PoliceEnter+1);
-						SetPlayerPosition(playerid, 254.4145,79.8489,1003.6406,173.4543, 1, 6);
-					}
-					case Fraction_Army:
-					{
-						SetPVarInt(playerid, "InPickup", ArmyEnter+1);
-						SetPlayerPosition(playerid, 153.1704,1881.1949,2049.2261,86.7182, 2, 1);
-					}
-					case Fraction_FBI:
-					{
-						SetPVarInt(playerid, "InPickup", FBIEnter+1);
-						SetPlayerPosition(playerid, 323.2348,308.5165,999.1484,175.3689, 3, 5);
-					}
-					case Fraction_Hospital:
-					{
-						SetPVarInt(playerid, "InPickup", HospitalEnter+1);
-						SetPlayerPosition(playerid, -327.1405,1031.3286,1028.5514,272.0991, 4, 5);
-					}
-					case Fraction_Taxi:
-					{
-						SetPVarInt(playerid, "InPickup", TaxiEnter+1);
-						SetPlayerPosition(playerid, -2034.7810,-114.6488,1035.1719,186.8482, 5, 3);
-						GivePlayerGun(playerid, 2, 1);
-					}
-					case Fraction_SanNews:
-					{
-						SetPVarInt(playerid, "InPickup", SanNewsEnter+1);
-						SetPlayerPosition(playerid, 164.9721,-116.2468,1076.5938,180.6129, 6, 6);
-						GivePlayerGun(playerid, 15, 1);
-						GivePlayerGun(playerid, 43, 30);
-					}
-					case Fraction_Vagos:
-					{
-						SetPVarInt(playerid, "InPickup", VagosEnter+1);
-						SetPlayerPosition(playerid, 301.4915,301.9941,1003.5391,359.4203, 1, 4);
-						GivePlayerGun(playerid, 5, 1);
-					}
-					case Fraction_Ballas:
-					{
-						SetPVarInt(playerid, "InPickup", BallasEnter+1);
-						SetPlayerPosition(playerid, -59.5840,1363.7395,1080.2109,83.2658, 1, 6);
-						GivePlayerGun(playerid, 5, 1);
-					}
-					case Fraction_Aztecas:
-					{
-						SetPVarInt(playerid, "InPickup", AztecasEnter+1);
-						SetPlayerPosition(playerid, 415.2032,2536.6233,10.0000,277.7186, 1, 10);
-						GivePlayerGun(playerid, 5, 1);
-					}
-					case Fraction_Grove:
-					{
-						SetPVarInt(playerid, "InPickup", GroveEnter+1);
-						SetPlayerPosition(playerid, 2525.9622,-1674.9459,1015.4986,272.4487, 1, 1);
-						GivePlayerGun(playerid, 5, 1);
-					}
-					case Fraction_Rifa:
-					{
-						SetPVarInt(playerid, "InPickup", RifaEnter+1);
-						SetPlayerPosition(playerid, -226.3535,1409.7509,27.7734,180.3660, 1, 18);
-						GivePlayerGun(playerid, 5, 1);
-					}
-					case Fraction_StreetRacers:
-					{
-						SetPVarInt(playerid, "InPickup", StreetRacersEnter+1);
-						SetPlayerPosition(playerid, -2662.2390,601.9631,376.1918,87.0941, 2, 18);
-						GivePlayerGun(playerid, 5, 1);
-					}
-					case Fraction_Bikers:
-					{
-						SetPVarInt(playerid, "InPickup", BikersEnter+1);
-						SetPlayerPosition(playerid, -226.3535,1409.7509,27.7734,180.3660, 3, 18);
-						GivePlayerGun(playerid, 5, 1);
-					}
-					case Fraction_FarmOfTruth:
-					{
-						SetPVarInt(playerid, "InPickup", FarmOfTruthEnter+1);
-						SetPlayerPosition(playerid, -226.3535,1409.7509,27.7734,180.3660, 4, 18);
-						GivePlayerGun(playerid, 6, 1);
-					}
-                    case Fraction_RussiaMafia:
-					{
-						SetPVarInt(playerid, "InPickup", RussiaMafiaEnter+1);
-						SetPlayerPosition(playerid, -226.3535,1409.7509,27.7734,180.3660, 5, 18);
-						GivePlayerGun(playerid, 5, 1);
-                        GivePlayerGun(playerid, 30, 300);
-                        GivePlayerGun(playerid, 24, 150);
-					}
-                    case Fraction_LaCosaNostra:
-					{
-						SetPVarInt(playerid, "InPickup", LaCosaNostraEnter+1);
-						SetPlayerPosition(playerid, 149.5617,1372.2145,1083.8594,117.3625, 1, 5);
-						GivePlayerGun(playerid, 15, 1);
-                        GivePlayerGun(playerid, 30, 300);
-                        GivePlayerGun(playerid, 24, 150);
-					}
-                    case Fraction_Yakuza:
-					{
-						SetPVarInt(playerid, "InPickup", YakuzaEnter+1);
-						SetPlayerPosition(playerid, -2161.7471,645.5548,1057.5861,128.3213, 3, 1);
-						GivePlayerGun(playerid, 8, 1);
-                        GivePlayerGun(playerid, 30, 300);
-                        GivePlayerGun(playerid, 24, 150);
+						case Fraction_Police:
+						{
+							SetPVarInt(playerid, "InPickup", PoliceEnter+1);
+							SetPlayerPosition(playerid, 254.4145,79.8489,1003.6406,173.4543, 1, 6);
+						}
+						case Fraction_Army:
+						{
+							SetPVarInt(playerid, "InPickup", ArmyEnter+1);
+							SetPlayerPosition(playerid, 153.1704,1881.1949,2049.2261,86.7182, 2, 1);
+						}
+						case Fraction_FBI:
+						{
+							SetPVarInt(playerid, "InPickup", FBIEnter+1);
+							SetPlayerPosition(playerid, 323.2348,308.5165,999.1484,175.3689, 3, 5);
+						}
+						case Fraction_Hospital:
+						{
+							SetPVarInt(playerid, "InPickup", HospitalEnter+1);
+							SetPlayerPosition(playerid, -327.1405,1031.3286,1028.5514,272.0991, 4, 5);
+						}
+						case Fraction_Taxi:
+						{
+							SetPVarInt(playerid, "InPickup", TaxiEnter+1);
+							SetPlayerPosition(playerid, -2034.7810,-114.6488,1035.1719,186.8482, 5, 3);
+							GivePlayerGun(playerid, 2, 1);
+						}
+						case Fraction_SanNews:
+						{
+							SetPVarInt(playerid, "InPickup", SanNewsEnter+1);
+							SetPlayerPosition(playerid, 164.9721,-116.2468,1076.5938,180.6129, 6, 6);
+							GivePlayerGun(playerid, 15, 1);
+							GivePlayerGun(playerid, 43, 30);
+						}
+						case Fraction_Vagos:
+						{
+							SetPVarInt(playerid, "InPickup", VagosEnter+1);
+							SetPlayerPosition(playerid, 301.4915,301.9941,1003.5391,359.4203, 1, 4);
+							GivePlayerGun(playerid, 5, 1);
+						}
+						case Fraction_Ballas:
+						{
+							SetPVarInt(playerid, "InPickup", BallasEnter+1);
+							SetPlayerPosition(playerid, -59.5840,1363.7395,1080.2109,83.2658, 1, 6);
+							GivePlayerGun(playerid, 5, 1);
+						}
+						case Fraction_Aztecas:
+						{
+							SetPVarInt(playerid, "InPickup", AztecasEnter+1);
+							SetPlayerPosition(playerid, 415.2032,2536.6233,10.0000,277.7186, 1, 10);
+							GivePlayerGun(playerid, 5, 1);
+						}
+						case Fraction_Grove:
+						{
+							SetPVarInt(playerid, "InPickup", GroveEnter+1);
+							SetPlayerPosition(playerid, 2525.9622,-1674.9459,1015.4986,272.4487, 1, 1);
+							GivePlayerGun(playerid, 5, 1);
+						}
+						case Fraction_Rifa:
+						{
+							SetPVarInt(playerid, "InPickup", RifaEnter+1);
+							SetPlayerPosition(playerid, -226.3535,1409.7509,27.7734,180.3660, 1, 18);
+							GivePlayerGun(playerid, 5, 1);
+						}
+						case Fraction_StreetRacers:
+						{
+							SetPVarInt(playerid, "InPickup", StreetRacersEnter+1);
+							SetPlayerPosition(playerid, -2662.2390,601.9631,376.1918,87.0941, 2, 18);
+							GivePlayerGun(playerid, 5, 1);
+						}
+						case Fraction_Bikers:
+						{
+							SetPVarInt(playerid, "InPickup", BikersEnter+1);
+							SetPlayerPosition(playerid, -226.3535,1409.7509,27.7734,180.3660, 3, 18);
+							GivePlayerGun(playerid, 5, 1);
+						}
+						case Fraction_FarmOfTruth:
+						{
+							SetPVarInt(playerid, "InPickup", FarmOfTruthEnter+1);
+							SetPlayerPosition(playerid, -226.3535,1409.7509,27.7734,180.3660, 4, 18);
+							GivePlayerGun(playerid, 6, 1);
+						}
+						case Fraction_RussiaMafia:
+						{
+							SetPVarInt(playerid, "InPickup", RussiaMafiaEnter+1);
+							SetPlayerPosition(playerid, -226.3535,1409.7509,27.7734,180.3660, 5, 18);
+							GivePlayerGun(playerid, 5, 1);
+							GivePlayerGun(playerid, 30, 300);
+							GivePlayerGun(playerid, 24, 150);
+						}
+						case Fraction_LaCosaNostra:
+						{
+							SetPVarInt(playerid, "InPickup", LaCosaNostraEnter+1);
+							SetPlayerPosition(playerid, 149.5617,1372.2145,1083.8594,117.3625, 1, 5);
+							GivePlayerGun(playerid, 15, 1);
+							GivePlayerGun(playerid, 30, 300);
+							GivePlayerGun(playerid, 24, 150);
+						}
+						case Fraction_Yakuza:
+						{
+							SetPVarInt(playerid, "InPickup", YakuzaEnter+1);
+							SetPlayerPosition(playerid, -2161.7471,645.5548,1057.5861,128.3213, 3, 1);
+							GivePlayerGun(playerid, 8, 1);
+							GivePlayerGun(playerid, 30, 300);
+							GivePlayerGun(playerid, 24, 150);
+						}
 					}
 				}
 			}
@@ -3918,7 +4046,7 @@ public OnCheatDetected(playerid, const ip_address[], type, code)
 			SendAdminMessage(str);
 
 			format(str, sizeof(str), Color_Red"Античит сервера"Color_White" кикнул вас, с кодом: %d\n\n\
-			"Color_Yellow"Если вы считаете это ложным срабатыванием обратитесь в тех.раздел на форуме ogrm-project.ru", code);
+			"Color_Yellow"Если вы считаете это ложным срабатыванием обратитесь в тех.раздел на форуме "Project_Site, code);
 			ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Color_Red"Вас кикнули с сервера", str, Color_White"Закрыть", "");
 
 			AntiCheatKickWithDesync(playerid, code);
@@ -6776,6 +6904,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 					}
 				}
 			}
+			else if(areaid[0] == Areas[StartQuestArea]) ShowQuestDialog(playerid);
 
 			{
 				new VW = GetPlayerVirtualWorld(playerid);
@@ -6786,12 +6915,15 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 					{
 						if(pInfo[playerid][pMoney] < 15) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Sprunk стоит 15$ у вас недостаточно средств");
 						if(pInfo[playerid][pHealth] >= 100.0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы здоровы");
+						if(GetPVarInt(playerid, "BlockSprunk")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Подождите немного");
 
 						GivePlayerMoneyEx(playerid, -15);
 						GiveCompanyMoney(playerid, BusinessSprunk, 15);
 
-						ApplyAnimation(playerid, "VENDING", "VEND_USE", 4.1, false, false, false, false, 0, 1);
-						SetTimerEx("AnimSpurnkTake", 1400, false, "d", playerid);
+						SetPVarInt(playerid, "BlockSprunk", 1);
+						ApplyAnimation(playerid, "VENDING", "VEND_USE", 10.0, false, false, false, false, 0, true);
+						PlayerPlaySound(playerid, 42600, 0.0, 0.0, 0.0);
+						SetTimerEx("AnimSpurnkTake", 2500, false, "d", playerid);
 						return 1;
 					}
 				}
@@ -7332,6 +7464,7 @@ stock UpdateTruckerQueueText()
 forward WalkAnim(playerid);
 public  WalkAnim(playerid)
 {
+	if(GetPVarInt(playerid, "BlockSprunk")) return 1;
     new keys, updown, leftright;
     GetPlayerKeys(playerid,keys,updown,leftright);
     if (pInfo[playerid][pWalkStyle] == 1)
@@ -7838,6 +7971,7 @@ public OnPlayerEnterRaceCheckpoint(playerid)
 											SendClientMessage(playerid, -1, Color_Yellow"Вы можете выйти на следующий маршрут через 10 минут");
 										}
 									}
+									QuestProgress(playerid, _:BusQuest, 1);
 								}
 								else
 								{
@@ -8676,6 +8810,13 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 			ApplyAnimation(playerid, "CARRY", "PUTDWN", 4.1, false, false, false, false, 0, true);
 		}
 		else if(areaid == Areas[KidnappingArea] && IsAMafia(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы и похищеный игрок должны находится в транспорте");
+		else if(areaid == Areas[StartQuestArea])
+		{
+			for(new i = 0; i < MAX_QUEST; i++) if(pInfo[playerid][pQuests][i] != _:QuestNotTaken) return 1;
+			ShowDialog(playerid, D_Start_Msg, DIALOG_STYLE_MSGBOX, Main_Color"Добро пожаловать на "Project_Name, Color_White"Привет и добро пожаловать на сервер "Main_Color Project_Name" "Color_White"("Main_Color Short_Project_Name Color_White")!\n\
+			Я помогу тебе быстро освоится на сервере, путем прохождения небольшой квестовой линии.\n\
+			Не беспокойся, здесь не будет абсурдных заданий, только то, что поможет тебе быстро войти в игровой режим.", Color_White"Далее", "");
+		}
 	}
 	else if(GetPlayerState(playerid) == PLAYER_STATE_DRIVER)
 	{
@@ -9679,6 +9820,8 @@ public SetCarriedObj(playerid)
 		SetPVarInt(playerid, "ChopCount", 1);
 		SetPVarInt(playerid, "TreeCutCount", GetPVarInt(playerid, "TreeCutCount")+1);
 
+		QuestProgress(playerid, _:WoodQuest, 1);
+
 		new str[100];
 		LumberjackTree[TreeIndx][TreeTimer] = 60;
 		DestroyDynamicObject(LumberjackTree[TreeIndx][TreeID]);
@@ -10647,6 +10790,151 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			ShowDialog(Player, D_None, DIALOG_STYLE_MSGBOX, SubStr, str, Color_White"Закрыть", "");
 			return 1;
 		}
+		case D_Quest_Menu:
+		{
+			if(!response) return 1;
+			if(!listitem) ShowPlayerQuestMenuFinish(playerid);
+			else ShowPlayerQuestMenuInfo(playerid, --listitem, false);
+			return 1;
+		}
+		case D_Quest_Menu_Finish:
+		{
+			if(!response) return ShowPlayerQuestMenu(playerid);
+			else ShowPlayerQuestMenuInfo(playerid, listitem, true);
+			return 1;
+		}
+		case D_Quest_Menu_Info: return ShowPlayerQuestMenu(playerid);
+		case D_Start_Msg: return ShowQuestDialog(playerid);
+		case D_Start_Quest:
+		{
+			if(!response) return 1;
+			new indx = GetPVarInt(playerid, "StartQuestIndx")+listitem;
+			DeletePVar(playerid, "StartQuestIndx");
+
+			if(pInfo[playerid][pQuests][indx] == _:QuestFinish) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы уже завершили данное задание");
+			else if(pInfo[playerid][pQuests][indx] != _:QuestNotTaken && pInfo[playerid][pQuests][indx] < Quests[indx][QuestFinishProgress]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы уже взяли это задание");
+			else if(Quests[indx][QuestDependen] != -1 && pInfo[playerid][pQuests][Quests[indx][QuestDependen]] != _:QuestFinish) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Это задание еще недоступно для вас");
+			
+			if(pInfo[playerid][pQuests][indx] != _:QuestNotTaken && pInfo[playerid][pQuests][indx] >= Quests[indx][QuestFinishProgress]) EndQuest(playerid, indx);
+			else TakeQuestDialog(playerid, indx);
+			return 1;
+		}
+		case D_Take_Quest:
+		{
+			new indx = GetPVarInt(playerid, "TakeQuestID");
+			DeletePVar(playerid, "TakeQuestID");
+
+			if(!response || indx < 1) return 1;
+			
+			pInfo[playerid][pQuests][indx] = 0;
+			
+			new str[200];
+			format(str, sizeof(str), Color_White"Вы приступили к выполнению задания \""Main_Color"%s"Color_White"\"", Quests[indx][QuestName]);
+			SendClientMessage(playerid, -1, str);
+
+			switch(indx)
+			{
+				case GuideQuest:
+				{
+					FirstQuestCamera(playerid, 1);
+					ShowDialog(playerid, D_Guide_Msg_1, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Знакомство с сервером", Color_White"Начнем сразу с режима игры. \
+					"Main_Color"RPG (Role Play Game) "Color_White"– режим, особенностью которого является достижение наилучших показателей в игре.\n\
+					Самое главное отличие от RP – отсутствие надобности отыгрывать роль персонажа, а также иметь RP-ник.\n\n\
+					Официальный сайт проекта – "Main_Color Project_Site Color_White". В нём, ты сможешь узнать многие подробности игрового режима.\n\
+					Например, многие фракции требует знать устав – его можно найти на сайте, в разделе нужной тебе фракции.\n\
+					Там же, можно почитать последние новости по проекту, а также изменениях при обновлениях", Color_White"Далее", "");
+					SaveQuest(playerid);
+				}
+				case WoodQuest:
+				{
+					ActorSay(QuestActor, "Итак, давай попробуем заработать наши первые деньги. Тут за холмами находится лесопилка – отправляйся туда.", 3000, playerid);
+					SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Твоя задача – добыть 10 единиц древисины. За это ты получишь 2 EXP и 10.000$.", 3000, playerid);
+					SaveQuest(playerid);
+				}
+				case MedCardQuest:
+				{
+					ActorSay(QuestActor, "Сейчас, нам нужно приобрести медицинскую карту. Её можно купить в Больнице (/gps – Важные места – Больница)", 3000, playerid);
+					SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Отправляйся туда. Как? - Либо своим ходом, либо такси или дождись автобуса.", 3000, playerid);
+					if(pInfo[playerid][pMedCard] == 1) QuestProgress(playerid, _:MedCardQuest, 1);
+					else SaveQuest(playerid);
+				}
+				case DriveLicQuest:
+				{
+					ActorSay(QuestActor, "Нам нужны права на автомобиль. Не беспокойся, тебе не нужно будет проходить какой-то маршрут.", 3000, playerid);
+					SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "В нашем штате все лицензии можно приобрести в Мэрии (/gps – Важные места – Мэрия).", 3000, playerid);
+					SetTimerEx("ActorSay", 6000, false, "dsd", _:QuestActor, "Как зайдешь в здание, поднимайся на самый последний этаж, а дальше разберешься. Удачи!", 3000, playerid);
+					if(pInfo[playerid][pLicAuto]) QuestProgress(playerid, _:DriveLicQuest, 1);
+					else SaveQuest(playerid);
+				}
+				case BusQuest:
+				{
+					ActorSay(QuestActor, "Нам нужны водители автобуса для развоза новичков. Так, отправляйся на работу водителя-автобуса. Команды, ты и так знаешь.", 3000, playerid);
+					SaveQuest(playerid);
+				}
+				case BankCardQuest:
+				{
+					ActorSay(QuestActor, "Как же так получилось, что у тебя нет банковской карты? А как же ты будешь снимать деньги со своего счёта?", 3000, playerid);
+					SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Отправляйся в ближайшее банковское отделение и приобрети карту.", 3000, playerid);
+					if(pInfo[playerid][pCard]) QuestProgress(playerid, _:BankCardQuest, 1);
+					else SaveQuest(playerid);
+				}
+				default: SaveQuest(playerid);
+			}
+			return 1;
+		}
+		case D_Guide_Msg_1:
+		{
+			FirstQuestCamera(playerid, 2);
+			return ShowDialog(playerid, D_Guide_Msg_2, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Знакомство с сервером", Color_White"На сервере присутствует 17 фракций. Из них:\n\
+			"Main_Color"3 фракции закона (Полиция, Армия, ФБР)\n\
+			3 мирные фракции (Такси, МЧС, Репортёры)\n\
+			3 мафии (Русская Мафия, Якудза, La Cosa Nostra)\n\
+			8 банд (Вагосы, Балласы, Грув, Ацтеки, Рифа, Колхоз, Стритрейсеры и Байкеры).\n\n\
+			"Color_White"Каждая из фракций обладает своими особенностями. Например: ФБР может поставить метку на любого игрока на сервере или у Стритрейсеров, машины с неоном и полным тюннингом.\n\n\
+			Кроме того, фракции равномерно распределены по всему штату, но в соответствии с каноном. Например, Рифа находится в Сан-Фиерро.\n\n\
+			Ты спросишь, а как же капты? Отвечаем, капты заменены на систему «варов» (войн между фракциями), где ставкой является деньги, материалы или наркотики.\n\
+			Вар забивается на определенную локацию. Более подробно, ты сможешь узнать непосредственно вступив в банду.\n\n\
+			Так как мод для сервера писался полностью с нуля, то и остальные системы достаточно уникальны. Например: война за крышевание бизнесов и похищение людей (для мафий)\n\
+			ограбление 24/7 или банков (для банд), введение развлекательных мероприятий (для репортёров), система сдачи крови (для медиков) и многое другое!", Color_White"Далее", "");
+		}
+		case D_Guide_Msg_2:
+		{
+			FirstQuestCamera(playerid, 3);
+			return ShowDialog(playerid, D_Guide_Msg_3, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Знакомство с сервером", Color_White"Расскажем немного о чатах на сервере, а также – как им пользоваться:\n\
+			- "Main_Color"Обычный чат "Color_White"– активируется нажатием клавиши F6 и написание текста;\n\
+			- "Main_Color"/s "Color_White"– кричать, дальность видимости выше, но не дает возможность двигаться;\n\
+			- "Main_Color"/o "Color_White"– общий чат, видим всем игрокам на сервере;\n\
+			- "Main_Color"/ad "Color_White"– реклама, стоит денег, выделяется особым цветом;\n\
+			- "Main_Color"/f "Color_White"– чат для мафий/банд, виден только участникам фракции;\n\
+			- "Main_Color"/r "Color_White"– рация, доступна для мирных фракций и закона;\n\
+			- "Main_Color"/d "Color_White"– общий чат для закона;\n\
+			Остальные чаты достаточно уникальны и доступны для определённых фракций.\n\n\
+			Хотелось бы напомнить, что в чатах запрещен мат, капс или флуд (одно и тоже сообщение, отправленное более 3 раз в короткий промежуток времени).", Color_White"Далее", "");
+		}
+		case D_Guide_Msg_3:
+		{
+			FirstQuestCamera(playerid, 4);
+			return ShowDialog(playerid, D_Guide_Msg_4, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Знакомство с сервером", Color_White"Если ты не знаешь куда ехать, то всегда можешь вызвать такси:\n\
+			- "Main_Color"/service taxi "Color_White"– вызвать такси;\n\
+			Если у тебя хп меньше 12 единиц, то ты не сможешь двигаться – воспользуйся услугой по вызову медицинского работника:\n\
+			- "Main_Color"/service medic "Color_White"– вызвать медицинского работника;\n\
+			Если у тебя закончилось топливо, а заправки рядом нет – вызывай механика:\n\
+			- "Main_Color"/service mechanic "Color_White"– вызвать механика;", Color_White"Далее", "");
+		}
+		case D_Guide_Msg_4:
+		{
+			FirstQuestCamera(playerid, 5);
+			return ShowDialog(playerid, D_Guide_Msg_5, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Знакомство с сервером", Color_White"На этом, ознакомительная часть окончена. Можешь приступать к следующему заданию.\n\
+			В награду ты получишь 2 EXP. Для повышения уровня тебе нужно набрать необходимое количество EXP.\n\
+			Например, для получения первого уровня тебе нужно набрать 4 EXP и далее прописать команду /buylevel.\n\n\
+			EXP даются за 1 час в игре на каждый payday.", Color_White"Закрыть", "");
+		}
+		case D_Guide_Msg_5:
+		{
+			SetPVarInt(playerid, "SpawnAfterGuideQuest", 1);
+			TogglePlayerSpectating(playerid, false);
+			return ShowQuestDialog(playerid);
+		}
 		case D_Main_Menu:
 		{
 			if(!response) return 1;
@@ -10668,6 +10956,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				case 0:
 				{
 					ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Основные команды", Main_Color"/main(/mm, /menu) "Color_White"- Меню сервера\n\
+					"Main_Color"/quest "Color_White"- Список заданий\n\
 					"Main_Color"/showstats [id] "Color_White"- Показать свою статистику другому игроку\n\
 					"Main_Color"/pay [id] [сумма] "Color_White"- Передать наличные деньги другому игроку\n\
 					"Main_Color"/time "Color_White"- Узнать время(Заключения/Мута/Сервера)\n\
@@ -11310,6 +11599,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			SavePlayerBool(playerid, "LicAuto", pInfo[playerid][pLicAuto]);
 
 			SendClientMessage(playerid, -1,  Color_Yellow"Вы приобрели лицензию на управление машинами");
+			QuestProgress(playerid, _:DriveLicQuest, 1);
 			return 1;
 		}
 		case D_Lic_Moto:
@@ -13016,7 +13306,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			vInfo[vehicleid][vFuel] += Fuel;
 			SaveCarFloat(vehicleid, "Fuel", vInfo[vehicleid][vFuel]);
 
-			GiveCompanyMoney(playerid, BusinessOilDepot, strval(inputtext)*10);
+			GiveCompanyMoney(playerid, BusinessOilDepot, floatround(Fuel)*10);
 
 			SendClientMessage(playerid, -1, Color_White"Транспорт заправлен");
 			return 1;
@@ -13511,6 +13801,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			pInfo[playerid][pCard] = true;
 			SavePlayerBool(playerid, "Card", pInfo[playerid][pCard]);
 			SendClientMessage(playerid, -1, Color_White"Вы приобрели банковскую карту. Теперь вы можете пользоваться услугами банка");
+			QuestProgress(playerid, _:BankCardQuest, 1);
 			return 1;
 		}
 		case D_Hospital_Buy_Card:
@@ -13527,6 +13818,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				pInfo[playerid][pMedCard] = 1;
 				SavePlayerInt(playerid, "MedCard", pInfo[playerid][pMedCard]);
 				SendClientMessage(playerid, -1, Color_White"Вы приобрели медицинскую карту.");
+				QuestProgress(playerid, _:MedCardQuest, 1);
 			}
 			else if(pInfo[playerid][pMedCard] == 2)
 			{
@@ -13539,6 +13831,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				pInfo[playerid][pMedCard] = 1;
 				SavePlayerInt(playerid, "MedCard", pInfo[playerid][pMedCard]);
 				SendClientMessage(playerid, -1, Color_White"Вы восстановили медицинскую карту.");
+				QuestProgress(playerid, _:MedCardQuest, 1);
 			}
 		}
 		case D_Buy_Cloth:
@@ -16346,6 +16639,14 @@ public OnPlayerClickMap(playerid, Float:fX, Float:fY, Float:fZ)
 }
 
 /////////////////////////////CMD///////////////////////////////////////////////
+
+CMD:test(playerid, params[])
+{
+	new page;
+	sscanf(params, "d", page);
+	FirstQuestCamera(playerid, page);
+}
+
 CMD:main(playerid)
 {
 	ShowPlayerMainMenu(playerid);
@@ -16362,6 +16663,12 @@ CMD:help(playerid)
 CMD:upgrade(playerid)
 {
 	ShowPlayerUpgradeMenu(playerid);
+	return 1;
+}
+
+CMD:quest(playerid)
+{
+	ShowPlayerQuestMenu(playerid);
 	return 1;
 }
 
@@ -19010,8 +19317,9 @@ CMD:buylevel(playerid)
 		}
 		GivePlayerMoneyEx(playerid, -money);
 
+		pInfo[playerid][pExp] -= (pInfo[playerid][pLevel]+1)*4;
+		if(pInfo[playerid][pExp] < 0) pInfo[playerid][pExp] = 0;
 		pInfo[playerid][pLevel] += 1;
-		pInfo[playerid][pExp] = 0;
 		pInfo[playerid][pUpgradePoint] += 2;
 
 		SendClientMessage(playerid, -1, Color_Yellow"Ваш уровень повышен, поздравляем!");
@@ -21162,7 +21470,7 @@ CMD:mute(playerid, params[])
 
 	format(str, sizeof(str), Color_Red"%s %s "Color_White"выдал вам мут на "Color_Red"%d "Color_White"минут, по причине:\n\
 	"Color_Red"%s\n\n\
-	"Color_White"Если вы не согласны с полученым наказанием оспорить вы его можете на форуме ogrm-project.ru", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], time, message);
+	"Color_White"Если вы не согласны с полученым наказанием оспорить вы его можете на форуме "Project_Site, AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], time, message);
 	ShowDialog(id, D_None, DIALOG_STYLE_MSGBOX, Color_Red"Вы получили мут", str, Color_White"Закрыть", "");
 
 	str[0] = EOS;
@@ -21234,7 +21542,7 @@ CMD:jail(playerid, params[])
 
 	format(str, sizeof(str), Color_Red"%s %s "Color_White"посадил вас в психушку на "Color_Red"%d "Color_White"минут, по причине:\n\
 	"Color_Red"%s\n\n\
-	"Color_White"Если вы не согласны с полученым наказанием оспорить вы его можете на форуме ogrm-project.ru", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], time, message);
+	"Color_White"Если вы не согласны с полученым наказанием оспорить вы его можете на форуме "Project_Site, AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], time, message);
 	ShowDialog(id, D_None, DIALOG_STYLE_MSGBOX, Color_Red"Вас посадили в психушку", str, Color_White"Закрыть", "");
 
 	str[0] = EOS;
@@ -21297,7 +21605,7 @@ CMD:warn(playerid, params[])
 
 	format(str, sizeof(str), Color_Red"%s %s "Color_White"выдал вам предупреждение, по причине:\n\
 	"Color_Red"%s\n\n\
-	"Color_White"Если вы не согласны с полученым наказанием оспорить вы его можете на форуме ogrm-project.ru", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], message);
+	"Color_White"Если вы не согласны с полученым наказанием оспорить вы его можете на форуме "Project_Site, AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], message);
 	ShowDialog(id, D_None, DIALOG_STYLE_MSGBOX, Color_Red"Вам выдали предупреждение", str, Color_White"Закрыть", "");
 
 	str[0] = EOS;
@@ -21321,7 +21629,7 @@ CMD:warn(playerid, params[])
 
 		format(str, sizeof(str), Color_Red"%s %s "Color_White"забанил вас на %d дней, по причине:\n\
 		"Color_Red"%s\n\n\
-		"Color_White"Если вы не согласны с полученым наказанием оспорить вы его можете на форуме ogrm-project.ru", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], time, reason);
+		"Color_White"Если вы не согласны с полученым наказанием оспорить вы его можете на форуме "Project_Site, AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], time, reason);
 		ShowDialog(id, D_None, DIALOG_STYLE_MSGBOX, Color_Red"Этот аккаунт заблокирован", str, Color_White"Закрыть", "");
 
 		BanPlayer(id, reason, gettime()+(time*86400), playerid);
@@ -21384,7 +21692,7 @@ CMD:kick(playerid, params[])
 
 	format(str, sizeof(str), Color_Red"%s %s "Color_White"кикнул вас, по причине:\n\
 	"Color_Red"%s\n\n\
-	"Color_White"Если вы не согласны с полученым наказанием оспорить вы его можете на форуме ogrm-project.ru", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], message);
+	"Color_White"Если вы не согласны с полученым наказанием оспорить вы его можете на форуме "Project_Site, AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], message);
 	ShowDialog(id, D_None, DIALOG_STYLE_MSGBOX, Color_Red"Вас кикнули с сервера", str, Color_White"Закрыть", "");
 
 	AInfo[playerid][AdmKick][GetWeekDay()]++;
@@ -21418,7 +21726,7 @@ CMD:ban(playerid, params[])
 
 	format(str, sizeof(str), Color_Red"%s %s "Color_White"забанил вас на %d дней, по причине:\n\
 	"Color_Red"%s\n\n\
-	"Color_White"Если вы не согласны с полученым наказанием оспорить вы его можете на форуме ogrm-project.ru", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], time, message);
+	"Color_White"Если вы не согласны с полученым наказанием оспорить вы его можете на форуме "Project_Site, AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], time, message);
 	ShowDialog(id, D_None, DIALOG_STYLE_MSGBOX, Color_Red"Этот аккаунт заблокирован", str, Color_White"Закрыть", "");
 
 	BanPlayer(id, message, gettime()+(time*86400), playerid);
@@ -23354,6 +23662,95 @@ stock ShowPlayerUpgradeMenu(playerid)
 	return 1;
 }
 
+stock ShowPlayerQuestMenuInfo(playerid, listitem, bool:Finish)
+{
+	new QuestID = -1;
+	if(Finish)
+	{
+		for(new i = 0; i < MAX_QUEST; i++)
+		{
+			if(pInfo[playerid][pQuests][i] == _:QuestFinish)
+			{
+				if(listitem) listitem--;
+				else
+				{
+					QuestID = i;
+					break;
+				}
+			}
+		}
+	}
+	else
+	{
+		for(new i = 0; i < MAX_QUEST; i++)
+		{
+			if(pInfo[playerid][pQuests][i] != _:QuestNotTaken && pInfo[playerid][pQuests][i] != _:QuestFinish)
+			{
+				if(listitem) listitem--;
+				else
+				{
+					QuestID = i;
+					break;
+				}
+			}
+		}
+	}
+
+	if(QuestID == -1) return 1;
+	else
+	{
+		new TitelStr[100];
+		new str[300];
+
+		format(TitelStr, sizeof(TitelStr), Main_Color Project_Name " || %s", Quests[QuestID][QuestName]);
+
+		format(str, sizeof(str), Color_White"Описание: %s\n\nНаграда: ", Quests[QuestID][QuestDescr]);
+
+		if(Quests[QuestID][QuestRewardMoney]) format(str, sizeof(str), "%s"Color_Green"%d$ "Color_White, str, Quests[QuestID][QuestRewardMoney]);
+		if(Quests[QuestID][QuestRewardExp]) format(str, sizeof(str), "%s"Main_Color"%d Exp "Color_White, str, Quests[QuestID][QuestRewardExp]);
+
+		if(Finish) format(str, sizeof(str), "%s\n\nПрогресс: "Color_Gold"Задание завершено", str);
+		else
+		{
+			if(pInfo[playerid][pQuests][QuestID] >= Quests[QuestID][QuestFinishProgress]) format(str, sizeof(str), "%s\n\nПрогресс: "Color_Green"[Можно завершить]", str, pInfo[playerid][pQuests][QuestID], Quests[QuestID][QuestFinishProgress]);
+			else format(str, sizeof(str), "%s\n\nПрогресс: %d/"Main_Color"%d", str, pInfo[playerid][pQuests][QuestID], Quests[QuestID][QuestFinishProgress]);
+		}
+		ShowDialog(playerid, D_Quest_Menu_Info, DIALOG_STYLE_MSGBOX, TitelStr, str, Color_White"Назад", "");
+	}
+	return 1;
+}
+
+stock ShowPlayerQuestMenuFinish(playerid)
+{
+	new str[500];
+	for(new i = 0; i < MAX_QUEST; i++)
+	{
+		if(pInfo[playerid][pQuests][i] == _:QuestFinish) format(str, sizeof(str), "%s"Main_Color"%s "Color_Gold"[Завершено]\n", str, Quests[i][QuestName]);
+	}
+
+	if(!strlen(str)) return SendClientMessage(playerid, -1, Color_Grey"Вы еще не завершили ни одного задания.");
+	ShowDialog(playerid, D_Quest_Menu_Finish, DIALOG_STYLE_LIST, Main_Color Project_Name " || "Color_White"Завершенные задания", str, Color_White"Далее", Color_White"Назад");
+	return 1;
+}
+
+stock ShowPlayerQuestMenu(playerid)
+{
+	new str[500];
+
+	strcat(str, Color_Gold"Завершенные задания\n");
+	for(new i = 0; i < MAX_QUEST; i++)
+	{
+		if(pInfo[playerid][pQuests][i] != _:QuestNotTaken && pInfo[playerid][pQuests][i] != _:QuestFinish)
+		{
+			if(pInfo[playerid][pQuests][i] >= Quests[i][QuestFinishProgress]) format(str, sizeof(str), "%s"Main_Color"%s "Color_Green"[Можно завершить]\n", str, Quests[i][QuestName], pInfo[playerid][pQuests][i], Quests[i][QuestFinishProgress]);
+			else format(str, sizeof(str), "%s"Main_Color"%s "Color_White"[%d/"Main_Color"%d"Color_White"]\n", str, Quests[i][QuestName], pInfo[playerid][pQuests][i], Quests[i][QuestFinishProgress]);
+		}
+	}
+
+	ShowDialog(playerid, D_Quest_Menu, DIALOG_STYLE_LIST, Main_Color Project_Name " || "Color_White"Активные задания", str, Color_White"Далее", Color_White"Закрыть");
+	return 1;
+}
+
 stock ShowPlayerMainMenu(playerid)
 {
 	ShowDialog(playerid, D_Main_Menu, DIALOG_STYLE_LIST, Main_Color Project_Name " || "Color_White"КПК", Main_Color"1. "Color_White"Персонаж\n\
@@ -24127,6 +24524,89 @@ stock GivePlayerMoneyEx(playerid, money)
 	}
 }
 
+stock QuestProgress(playerid, QuestID, progress = 1)
+{
+	if(pInfo[playerid][pQuests][QuestID] != _:QuestNotTaken && pInfo[playerid][pQuests][QuestID] != _:QuestFinish && pInfo[playerid][pQuests][QuestID] < Quests[QuestID][QuestFinishProgress])
+	{
+		pInfo[playerid][pQuests][QuestID] += progress;
+		SaveQuest(playerid);
+		if(pInfo[playerid][pQuests][QuestID] >= Quests[QuestID][QuestFinishProgress])
+		{
+			new str[200];
+			format(str, sizeof(str), Color_Gold"Задание \""Main_Color"%s"Color_Gold"\" можно завершить", Quests[QuestID][QuestName]);
+			SendClientMessage(playerid, -1, str);
+		}
+	}
+	return 1;
+}
+
+stock EndQuest(playerid, QuestID)
+{
+	if(pInfo[playerid][pQuests][QuestID] >= Quests[QuestID][QuestFinishProgress])
+	{
+		pInfo[playerid][pQuests][QuestID] = _:QuestFinish;
+		new str[200];
+		format(str, sizeof(str), Color_Gold"Задание \""Main_Color"%s"Color_Gold"\" завершено", Quests[QuestID][QuestName]);
+		SendClientMessage(playerid, -1, str);
+
+		str[0] = EOS;
+		if(Quests[QuestID][QuestRewardExp])
+		{
+			if(!strlen(str)) strcat(str, Color_White"Вы получили:");
+			
+			format(str, sizeof(str), "%s "Main_Color"%d Exp"Color_White, str, Quests[QuestID][QuestRewardExp]);
+			pInfo[playerid][pExp] += Quests[QuestID][QuestRewardExp];
+			
+			SavePlayerInt(playerid, "Exp", pInfo[playerid][pExp]);
+			PlayerLevelUpdate(playerid);
+		}
+		if(Quests[QuestID][QuestRewardMoney])
+		{
+			if(!strlen(str)) strcat(str, Color_White"Вы получили:");
+
+			format(str, sizeof(str), "%s "Color_Green"%d$"Color_White, str, Quests[QuestID][QuestRewardMoney]);
+			GivePlayerMoneyEx(playerid, Quests[QuestID][QuestRewardMoney]);
+		}
+		SendClientMessage(playerid, -1, str);
+
+		SaveQuest(playerid);
+
+		switch(QuestID)
+		{
+			case WoodQuest:
+			{
+				ActorSay(QuestActor, "Ты справился! Молодец! Кстати, работы делятся на требующие трудоустройства и не требующие.", 3000, playerid);
+				SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Работа на лесопилке относится к последней категории.", 3000, playerid);
+				SetTimerEx("ActorSay", 6000, false, "dsd", _:QuestActor, "Разница в том, что требующих трудоустройства работах у тебя повышается скилл и соответственно оплата за труд.", 3000, playerid);
+				SetTimerEx("ActorSay", 9000, false, "dsd", _:QuestActor, "Узнать статистику по работе ты сможешь, прописав универсальную команду /main.", 3000, playerid);
+				SetTimerEx("ActorSay", 12000, false, "dsd", _:QuestActor, "Узнать, какие есть другие работы и где они находятся - /gps.", 3000, playerid);
+			}
+			case MedCardQuest:
+			{
+				ActorSay(QuestActor, "Миссия выполнена. Кстати, мед.карта нужна для приобретения всех лицензий. В больнице ты также можешь сдать сперму за деньги.", 3000, playerid);
+				SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Иногда мед.работники могут брать кровь у других игроков – за это ты также можешь получить награду.", 3000, playerid);
+			}
+			case DriveLicQuest:
+			{
+				ActorSay(QuestActor, "Миссия выполнена. Кстати, в Мэрии ты также сможешь приобрести и другие виды лицензий.", 3000, playerid);
+				SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Также, там ты сможешь найти рейтинги самых богатых игроков, лидеров и модераторов.", 3000, playerid);
+			}
+			case BusQuest: ActorSay(QuestActor, "Молодец! Остальные работы ты сможешь найти в (/gps – Трудоустройства), а доп. заработок в (/gps –доп.заработок)", 3000, playerid);
+			case BankCardQuest:
+			{
+				ActorSay(QuestActor, "Отлично! Помимо возможности снимать и класть свои деньги на счёт.", 3000, playerid);
+				SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Ты так же сможешь через банк оплачивать счёта за свои дом или бизнес.", 3000, playerid);
+				SetTimerEx("ActorSay", 6000, false, "dsd", _:QuestActor, "Ну и кончено же, переводить крупные суммы другим игрокам.", 3000, playerid);
+			}
+			case GoodbyeQuest:
+			{
+				ActorSay(QuestActor, "Ну вот и все. Дальше – сам.", 3000, playerid);
+				SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Мы дали тебе некоторую базу для игры на нашем сервере, остальное придёт с опытом игры. Удачи!", 3000, playerid);
+			}
+		}
+	}
+}
+
 stock GivePlayerMoneyInPayDay(playerid, money)
 {
 	new str[200];
@@ -24189,7 +24669,7 @@ stock BanIP(const IP[], AdminID, const reason[])
 			query[0] = EOS;
 			format(query, sizeof(query), Color_Red"%s %s "Color_White"забанил ваш IP, по причине:\n\
 			"Color_Red"%s\n\n\
-			"Color_White"Если вы не согласны с полученым наказанием оспорить вы его можете на форуме ogrm-project.ru", AdminNames[pInfo[AdminID][pAdmin]], pInfo[AdminID][pName], reason);
+			"Color_White"Если вы не согласны с полученым наказанием оспорить вы его можете на форуме "Project_Site, AdminNames[pInfo[AdminID][pAdmin]], pInfo[AdminID][pName], reason);
 			ShowDialog(i, D_None, DIALOG_STYLE_MSGBOX, Color_Red"Этот IP заблокирован", query, Color_White"Закрыть", "");
 			KickPlayer(i);
 		}
@@ -24398,6 +24878,8 @@ public AnimSpurnkTake(playerid)
 forward Drink(playerid, Float:Heal, const ItemsName[]);
 public Drink(playerid, Float:Heal, const ItemsName[])
 {
+	DeletePVar(playerid, "BlockSprunk");
+
 	ApplyAnimation(playerid, "VENDING", "VEND_DRINK2_P", 4.1, false, false, false, false, 0, true);
 	SetTimerEx("ClearAnim", 1400, false, "d", playerid);
 
@@ -24542,7 +25024,7 @@ public CheckAccountIPBan(playerid)
 		new str[300];
 		format(str, sizeof(str), Color_Red"%s "Color_White"забанил ваш IP, по причине:\n\
 		"Color_Red"%s\n\n\
-		"Color_White"Если вы не согласны с полученым наказанием оспорить вы его можете на форуме ogrm-project.ru", AdminName, Reason);
+		"Color_White"Если вы не согласны с полученым наказанием оспорить вы его можете на форуме "Project_Site, AdminName, Reason);
 		ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Color_Red"Этот IP заблокирован", str, Color_White"Закрыть", "");
 
 		KickPlayer(playerid);
@@ -24579,7 +25061,7 @@ public CheckAccountBan(playerid)
 			new str[300];
 			format(str, sizeof(str), Color_Red"%s "Color_White"забанил вас до %s, по причине:\n\
 			"Color_Red"%s\n\n\
-			"Color_White"Если вы не согласны с полученым наказанием оспорить вы его можете на форуме ogrm-project.ru", AdminName, date(BanTime, 3, "%dd.%mm.%yyyy %hh:%ii"), Reason);
+			"Color_White"Если вы не согласны с полученым наказанием оспорить вы его можете на форуме "Project_Site, AdminName, date(BanTime, 3, "%dd.%mm.%yyyy %hh:%ii"), Reason);
 			ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Color_Red"Этот аккаунт заблокирован", str, Color_White"Закрыть", "");
 
 			KickPlayer(playerid);
@@ -24767,6 +25249,10 @@ public LoadAccount(playerid)
 	mysql_format(DB, str, sizeof(str), "SELECT * FROM `inventory` WHERE `ID` = '%d'", pInfo[playerid][pID]);
 	mysql_tquery(DB, str, "LoadInventory", "d", playerid);
 
+	str[0] = EOS;
+	mysql_format(DB, str, sizeof(str), "SELECT * FROM `quests` WHERE `pID` = '%d'", pInfo[playerid][pID]);
+	mysql_tquery(DB, str, "LoadQuests", "d", playerid);
+
 	pInfo[playerid][pAuth] = true;
 
 	if(pInfo[playerid][pMembers] != Fraction_None && pInfo[playerid][pRank] >= FractionMaxRank) FillLeaderBoard();
@@ -24852,6 +25338,22 @@ public CheckAccountHouse(playerid)
 		{
 			pInfo[playerid][pSpawnChange] = SpawnChange_Standart;
 			SavePlayerInt(playerid, "SpawnChange", pInfo[playerid][pSpawnChange]);
+		}
+	}
+	return 1;
+}
+
+forward LoadQuests(playerid);
+public LoadQuests(playerid)
+{
+	new row = cache_num_rows();
+	if(row)
+	{
+		for(new i = 0; i < row; i++)
+		{
+			new QuestID;
+			cache_get_value_name_int(i, "QuestID", QuestID);
+			cache_get_value_name_int(i, "Progress", pInfo[playerid][pQuests][QuestID]);
 		}
 	}
 	return 1;
@@ -25146,13 +25648,10 @@ stock PayDay()
 		pInfo[i][pPlayedTime] = 0;
 		SavePlayerInt(i, "PlayedTime", pInfo[i][pPlayedTime]);
 
-		if(pInfo[i][pLevel] < 50)
+		if(pInfo[i][pLevel] < 50 && pInfo[i][pExp] < (pInfo[i][pLevel]+1)*4)
 		{
-			if(pInfo[i][pExp] < (pInfo[i][pLevel]+1)*4)
-			{
-				pInfo[i][pExp] += 1;
-				SavePlayerInt(i, "Exp", pInfo[i][pExp]);
-			}
+			pInfo[i][pExp] += 1;
+			SavePlayerInt(i, "Exp", pInfo[i][pExp]);
 		}
 		PlayerLevelUpdate(i);
 
@@ -25316,6 +25815,14 @@ public SecondTimer()
 		new string[20];
 		format(string,sizeof(string),"~w~%02d~y~:~w~%02d",hour,minute);
 		TextDrawSetString(GlobalTimeTD, string);
+	}
+
+	ServerMessage++;
+	if(ServerMessage == 1800) //30 минут
+	{
+		SendAllMessage(Color_White"***");
+		SendAllMessage(Color_White"Ты играешь на сервере"Main_Color" "Project_Name" "Color_White". Сайт нашего сервера – "Main_Color Project_Site);
+		SendAllMessage(Color_White"***");
 	}
 
 	foreach(new i:Business)
@@ -28951,6 +29458,9 @@ stock StopSpectate(playerid)
 
 stock RemovePlayerObject(playerid)
 {
+	//Warehouse
+	RemoveBuildingForPlayer(playerid, 985, 2497.4063, 2777.0703, 11.5313, 0.25);
+	RemoveBuildingForPlayer(playerid, 986, 2497.4063, 2769.1094, 11.5313, 0.25);
 	//Ворота К.А.С.С ЛВ
 	RemoveBuildingForPlayer(playerid, 985, 2497.4063, 2777.0703, 11.5313, 0.25);
 	RemoveBuildingForPlayer(playerid, 986, 2497.4063, 2769.1094, 11.5313, 0.25);
@@ -29037,9 +29547,6 @@ stock RemovePlayerObject(playerid)
 	RemoveBuildingForPlayer(playerid, 3277, 354.4141, 2028.5000, 22.3750, 0.25);
 	RemoveBuildingForPlayer(playerid, 16668, 357.9375, 2049.4219, 16.8438, 0.25);
 	RemoveBuildingForPlayer(playerid, 16669, 380.2578, 1914.9609, 17.4297, 0.25);
-	RemoveBuildingForPlayer(playerid, 2887, 213.0821, 1875.7795, 17.6406, 200.25);
-	RemoveBuildingForPlayer(playerid, 2888, 213.0821, 1875.7795, 17.6406, 200.25);
-	RemoveBuildingForPlayer(playerid, 2889, 213.0821, 1875.7795, 17.6406, 200.25);
 	//////////////////
 	//Hospital
 	RemoveBuildingForPlayer(playerid, 669, -332.4063, 1072.2422, 18.7891, 0.25);
@@ -29997,11 +30504,14 @@ stock Create3DText()
 
 	CreateDynamic3DTextLabel(Main_Color"Подплывите сюда чтобы разгрузить рыбу", -1, 2099.3953,-106.5395,1.0695, 30.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	CreateDynamic3DTextLabel(Main_Color"Тайник\n["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\nЧтобы открыть", -1, -240.2665,-1.2341,1046.3240, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 17);
+	
+	CreateDynamic3DTextLabel(Main_Color"Обучение", -1, 2217.5854,-1153.7849,1025.7969, 30.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 15);
 	return 1;
 }
 
 stock CreateActors()
 {
+	Actors[QuestActor] = CreateDynamicActor(219, 2217.5854,-1153.7849,1025.7969,312.4425, 1, 100.0, 1, 15);
 	return 1;
 }
 
@@ -30018,6 +30528,7 @@ stock CreateAreas()
 	Areas[LiveArea] = CreateDynamicRectangle(170.1479,-119.9004, 175.4543,-113.9935, 6, 6);
 	Areas[StashArea] = CreateDynamicSphere(-240.2665,-1.2341,1046.3240, 1.5, 1, 17);
 	Areas[KidnappingArea] = CreateDynamicCircle(2358.1138, -655.8890, 12, 0, 0);
+	Areas[StartQuestArea] = CreateDynamicSphere(2217.5854,-1153.7849,1025.7969, 2.0, 1, 15);
 	return 1;
 }
 
@@ -31653,5 +32164,117 @@ stock PreloadAllAnimLibs(playerid)
 	PreloadAnimLib(playerid,"WEAPONS");
 	PreloadAnimLib(playerid,"WUZI");
 	pInfo[playerid][pAnimLoad] = true;
+	return 1;
+}
+
+stock TakeQuestDialog(playerid, QuestID)
+{
+	SetPVarInt(playerid, "TakeQuestID", QuestID);
+	new TitelStr[100];
+	new str[300];
+
+	format(TitelStr, sizeof(TitelStr), Main_Color Project_Name " || %s", Quests[QuestID][QuestName]);
+
+	format(str, sizeof(str), Color_White"Описание: %s\n\nНаграда: ", Quests[QuestID][QuestDescr]);
+
+	if(Quests[QuestID][QuestRewardMoney]) format(str, sizeof(str), "%s"Color_Green"%d$ "Color_White, str, Quests[QuestID][QuestRewardMoney]);
+	if(Quests[QuestID][QuestRewardExp]) format(str, sizeof(str), "%s"Main_Color"%d Exp "Color_White, str, Quests[QuestID][QuestRewardExp]);
+
+	if(Quests[QuestID][QuestFinishProgress]) format(str, sizeof(str), "%s\n\nЦель: "Color_Gold"0/%d", str, Quests[QuestID][QuestFinishProgress]);
+	ShowDialog(playerid, D_Take_Quest, DIALOG_STYLE_MSGBOX, TitelStr, str, Color_White"Принять", Color_White"Закрыть");
+	return 1;
+}
+
+stock ShowQuestDialog(playerid)
+{
+	new str[500];
+	for(new i = 1; i < MAX_QUEST; i++)
+	{
+		if(pInfo[playerid][pQuests][i] == _:QuestFinish) format(str, sizeof(str), "%s"Main_Color"%s "Color_Green"[Завершено]\n", str, Quests[i][QuestName]);
+		else if(pInfo[playerid][pQuests][i] != _:QuestNotTaken && pInfo[playerid][pQuests][i] < Quests[i][QuestFinishProgress]) format(str, sizeof(str), "%s"Main_Color"%s "Color_Gold"[В процессе]\n", str, Quests[i][QuestName]);
+		else if(pInfo[playerid][pQuests][i] != _:QuestNotTaken && pInfo[playerid][pQuests][i] >= Quests[i][QuestFinishProgress]) format(str, sizeof(str), "%s"Color_Green"%s [Можно завершить]\n", str, Quests[i][QuestName]);
+		else if(Quests[i][QuestDependen] == -1 || pInfo[playerid][pQuests][Quests[i][QuestDependen]] == _:QuestFinish) format(str, sizeof(str), "%s"Main_Color"%s\n", str, Quests[i][QuestName]);
+		else format(str, sizeof(str), "%s"Color_Grey"%s\n", str, Quests[i][QuestName]);
+	}
+	SetPVarInt(playerid, "StartQuestIndx", 1);
+	ShowDialog(playerid, D_Start_Quest, DIALOG_STYLE_LIST, Main_Color Project_Name " || "Color_White"Стартовые задания", str, Color_White"Далее", Color_White"Закрыть");
+	return 1;
+}
+
+stock FirstQuestCamera(playerid, page)
+{
+	if(GetPVarInt(playerid, "QuestCameraTimer"))
+	{
+		KillTimer(GetPVarInt(playerid, "QuestCameraTimer"));
+		DeletePVar(playerid, "QuestCameraTimer");
+	}
+	TogglePlayerSpectating(playerid, true);
+	SetPlayerVirtualWorld(playerid, 0);
+	SetPlayerInterior(playerid, 0);
+
+	switch(page)
+	{
+		case 1:
+		{
+			InterpolateCameraPos(playerid, -2564.4080,472.1612,47.3492, -2857.8274,287.3648,47.3492, 40000, CAMERA_MOVE);
+			InterpolateCameraLookAt(playerid, -2857.8274,287.3648,47.3492, -3048.5054,150.6951,47.3492, 40000, CAMERA_MOVE);
+		}
+		case 2:
+		{
+			InterpolateCameraPos(playerid, 2328.6023,-1618.5125,42.5456, 2547.9365,-1704.9121,42.5456, 40000, CAMERA_MOVE);
+			InterpolateCameraLookAt(playerid, 2547.9365,-1704.9121,42.5456, 2659.0959,-1763.2686,42.5456, 40000, CAMERA_MOVE);
+		}
+		case 3:
+		{
+			InterpolateCameraPos(playerid, -206.0719,975.9278,40.1667, -427.3745,1144.2225,40.1667, 40000, CAMERA_MOVE);
+			InterpolateCameraLookAt(playerid, -427.3745,1144.2225,40.1667, -584.1648,1277.1938,40.1667, 40000, CAMERA_MOVE);
+		}
+		case 4:
+		{
+			InterpolateCameraPos(playerid, -415.4086,-459.2501,52.4594, -602.5170,-544.3688,52.4594, 40000, CAMERA_MOVE);
+			InterpolateCameraLookAt(playerid, -602.5170,-544.3688,52.4594, -702.5137,-492.1046,52.4594, 40000, CAMERA_MOVE);
+		}
+		case 5:
+		{
+			InterpolateCameraPos(playerid, -2213.7036,-2176.0686,43.6221, -2188.2034,-2338.8792,43.6221, 40000, CAMERA_MOVE);
+			InterpolateCameraLookAt(playerid, -2188.2034,-2338.8792,43.6221, -2193.4790,-2264.1602,43.6221, 40000, CAMERA_MOVE);
+		}
+	}
+	return 1;
+}
+
+forward ActorSay(ActorsInfo:ActorIndx, const str[], SayTime, playerid);
+public ActorSay(ActorsInfo:ActorIndx, const str[], SayTime, playerid)
+{
+	if(!ActorsChat[ActorIndx] && !IsValidDynamic3DTextLabel(ActorsChat[ActorIndx]))
+	{
+		new Float:X, Float:Y, Float:Z;
+		GetDynamicActorPos(Actors[ActorIndx], X, Y, Z);
+		ActorsChat[ActorIndx] = CreateDynamic3DTextLabel("", -1, X, Y, Z+1.0, MESSAGE_DIST, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, GetDynamicActorVirtualWorld(Actors[ActorIndx]), GetDynamicActorInterior(Actors[ActorIndx]));
+	}
+
+	if(ActorTimerSay[ActorIndx]) StopActorSay(ActorIndx);
+
+	UpdateDynamic3DTextLabelText(ActorsChat[ActorIndx], -1, str);
+	ApplyDynamicActorAnimation(Actors[ActorIndx], "PED","IDLE_chat", 4.1, true, 1, 1, 1, 1);
+	ActorTimerSay[ActorIndx] = SetTimerEx("StopActorSay", SayTime, false, "d", _:ActorIndx);
+
+	if(playerid != -1)
+	{
+		new msg[200];
+		format(msg, sizeof(msg), "%s: %s", ActorsName[ActorIndx], str);
+		SendClientMessage(playerid, -1, msg);
+		Streamer_Update(playerid);
+	}
+	return 1;
+}
+
+forward StopActorSay(ActorsInfo:ActorIndx);
+public StopActorSay(ActorsInfo:ActorIndx)
+{
+	KillTimer(ActorTimerSay[ActorIndx]);
+	ActorTimerSay[ActorIndx] = 0;
+	UpdateDynamic3DTextLabelText(ActorsChat[ActorIndx], -1, "");
+	ApplyDynamicActorAnimation(Actors[ActorIndx], "CARRY","crry_prtial",4.0, false, false, false, false, 0);
 	return 1;
 }

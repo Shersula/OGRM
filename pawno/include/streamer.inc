@@ -363,6 +363,7 @@ native IsToggleDynAreaSpectateMode(STREAMER_TAG_AREA:areaid);
 
 // Natives (Actors)
 
+#define GetDynamicActorInterior(%1)	Streamer_GetIntData(STREAMER_TYPE_ACTOR,(%1),E_STREAMER_INTERIOR_ID)
 native STREAMER_TAG_ACTOR:CreateDynamicActor(modelid, Float:x, Float:y, Float:z, Float:r, invulnerable = true, Float:health = 100.0, worldid = -1, interiorid = -1, playerid = -1, Float:streamdistance = STREAMER_ACTOR_SD, STREAMER_TAG_AREA:areaid = STREAMER_TAG_AREA:-1, priority = 0);
 native DestroyDynamicActor(STREAMER_TAG_ACTOR:actorid);
 native IsValidDynamicActor(STREAMER_TAG_ACTOR:actorid);
