@@ -30,11 +30,12 @@
 #define E_STREAMER_INDX 		E_STREAMER_CUSTOM(0xFF)
 
 //////////////////////COLOR////////////////////////////////////////////////////
-#define Main_Color 		"{D8816E}"
+#define Main_Color 		"{29CDDF}"//"{D8816E}"
 #define Color_Blue		"{29CDDF}"
 #define Color_Red 		"{FF0000}"
 #define Color_Red2 		"{E66761}"
 #define Color_Grey 		"{AFAFAF}"
+#define Color_DarkGrey	"{4A4A4A}"
 #define Color_White 	"{FFFFFF}"
 #define Color_Yellow 	"{FFFF00}"
 #define Color_Gold		"{FFD700}"
@@ -49,7 +50,7 @@
 #define Color_GOV 		"{2E35FE}"
 #define Color_Live 		"{C1DC8F}"
 
-#define BitColor_Main	0xD8816EFF
+#define BitColor_Main	0x29CDDFFF//0xD8816EFF
 #define BitColor_Green	0x2ED13EFF
 #define BitColor_Yellow	0xFFFF00FF
 #define BitColor_Grey	0xAFAFAFFF
@@ -63,9 +64,12 @@
 #define BitColor_GOV	0x2E35FEFF
 #define BitColor_Live	0xC1DC8FFF
 ///////////////////////////////////////////////////////////////////////////////
-
+////////////////////////////////Key Name///////////////////////////////////////
+#define	KEY_WALK_NAME		"L.ALT"
 ////////////////////////////////Other//////////////////////////////////////////
 #define MAX_LEVEL				50
+#define HOUSE_COST_DAY			700
+#define BUSINESS_COST_DAY		1500
 ///////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////Anim Indx////////////////////////////////////////
@@ -76,7 +80,8 @@
 
 /////////////////////////////Car Respawn///////////////////////////////////////
 #define CarDelayPlayer			-1
-#define CarDelayOther			120
+#define CarDelayServer			300
+#define CarDelayOther			600
 ///////////////////////////////////////////////////////////////////////////////
 
 #define LogTypeMoney	1
@@ -349,8 +354,8 @@ stock ClearMapIcon(indx)
 	return 1;
 }
 
-#define MAX_GPS_TITLE	11
-#define MAX_GPS 		20
+#define MAX_GPS_TITLE	20
+#define MAX_GPS 		40
 
 enum GPSTitleInfo
 {
@@ -1754,7 +1759,9 @@ new Gate[MAX_GATE][GateInfo];
 #define CommandHelpRussianMafia	117
 #define CommandHelpLCN			118
 #define CommandHelpYakuza		119
-#define MAX_PICK 				120
+#define GunDeallerHelp			120
+#define DrugDeallerHelp			121
+#define MAX_PICK 				122
 
 enum PickupInfo
 {
@@ -2300,12 +2307,12 @@ new Quests[MAX_QUEST][QuestInfo] = {
 #define MAX_PLAYER_SKINS		10
 #define MESSAGE_DIST 			10.0
 
-#define MAX_UPGRADE				3
 enum UpgradeType
 {
 	Upg_Health,
 	Upg_UseDrugs,
-	Upg_FSD
+	Upg_FSD,
+	Upg_HealCmd
 };
 
 enum UpgradeConfig
@@ -2316,9 +2323,10 @@ enum UpgradeConfig
 };
 
 new Upgrade[UpgradeType][UpgradeConfig] = {
-	{50.0, 1.0, 50},
+	{50.0, 5.0, 10},
 	{15.0, 0.5, 30},
-	{100.0, 3.0, 20}
+	{100.0, 3.0, 20},
+	{100.0, 10.0, 6}
 };
 
 enum PlayerInfo
@@ -2561,12 +2569,12 @@ stock SaveQuest(playerid)
 forward SaveQuestCallback(playerid);
 public SaveQuestCallback(playerid)
 {
-	new rows = cache_num_rows();
+	new row = cache_num_rows();
 	new query[200];
-	if(rows)
+	if(row)
 	{
 		new bool:SavedQuest[MAX_QUEST] = {false, ...};
-		for(new i = 0; i < rows; i++)
+		for(new i = 0; i < row; i++)
 		{
 			new QuestID, Progress;
 			cache_get_value_name_int(i, "QuestID", QuestID);
@@ -2610,9 +2618,17 @@ stock SaveAccount(playerid)
 
 	SavePlayerInt(playerid, "Mute", pInfo[playerid][pMute]);
 	SavePlayerInt(playerid, "Demorgan", pInfo[playerid][pDemorgan]);
+
 	SavePlayerInt(playerid, "TentCD", GetPVarInt(playerid, "TentCD"));
 	SavePlayerInt(playerid, "SpermCD", GetPVarInt(playerid, "SpermCD"));
 	SavePlayerInt(playerid, "BloodCD", GetPVarInt(playerid, "BloodCD"));
+
+	SavePlayerInt(playerid, "TruckerCD", GetPVarInt(playerid, "TruckerCD"));
+	SavePlayerInt(playerid, "CarThiefCD", GetPVarInt(playerid, "CarThiefCD"));
+	SavePlayerInt(playerid, "PilotCD", GetPVarInt(playerid, "PilotCD"));
+	SavePlayerInt(playerid, "BusCD", GetPVarInt(playerid, "BusCD"));
+	SavePlayerInt(playerid, "FisherCD", GetPVarInt(playerid, "FisherCD"));
+	SavePlayerInt(playerid, "LawyerCD", GetPVarInt(playerid, "LawyerCD"));
 
 	SavePlayerInt(playerid, "PlayedTime", pInfo[playerid][pPlayedTime]);
 	SavePlayerInt(playerid, "DayPlayedTime", pInfo[playerid][pDayPlayedTime]);
@@ -3087,21 +3103,13 @@ public OnPlayerDisconnect(playerid, reason)
 
 	if(AntiCheatGetSpecialAction(playerid) == SPECIAL_ACTION_CUFFED && pInfo[playerid][pWanted])
 	{
-		pInfo[playerid][pJail] = 100;
-		SavePlayerInt(playerid, "Jail", pInfo[playerid][pJail]);
+		pInfo[playerid][pWanted] = 6;
+
+		if(pInfo[playerid][pFollow] != -1 && pInfo[pInfo[playerid][pFollow]][pMembers] != Fraction_None) ArrestPlayer(playerid, pInfo[pInfo[playerid][pFollow]][pMembers]);
+		else ArrestPlayer(playerid);
 
 		pInfo[playerid][pJailNoFree] = true;
 		SavePlayerBool(playerid, "JailNoFree", pInfo[playerid][pJailNoFree]);
-
-		pInfo[playerid][pWanted] = 0;
-		SetPlayerWantedLevel(playerid, pInfo[playerid][pWanted]);
-		SavePlayerInt(playerid, "Wanted", pInfo[playerid][pWanted]);
-
-		if(pInfo[playerid][pFollow] != -1 && pInfo[pInfo[playerid][pFollow]][pMembers] != Fraction_None)
-		{
-			pInfo[playerid][pJailedFraction] = pInfo[pInfo[playerid][pFollow]][pMembers];
-			SavePlayerInt(playerid, "JailedFraction", pInfo[playerid][pJailedFraction]);
-		}
 
 		SetPlayerSpecialAction(playerid, SPECIAL_ACTION_NONE);
 		TogglePlayerControllable(playerid, true);
@@ -3225,6 +3233,11 @@ public OnPlayerDisconnect(playerid, reason)
 	TextDrawHideForPlayer(playerid, GlobalTimeTD);
 	TextDrawHideForPlayer(playerid, SiteTD);
 
+	new str[300];
+	GetPlayerIp(playerid, str, 16);
+	format(str, sizeof(str), Color_DarkGrey"%s[%d] отключился от сервера (IP: %s | RegIP: %s)", pInfo[playerid][pName], playerid, str, pInfo[playerid][pRegIp]);
+	SendAdminMessage(str);
+
 	SaveAccount(playerid);
 	ClearAccount(playerid);
 	return 1;
@@ -3242,7 +3255,7 @@ public OnIncomingPacket(playerid, packetid, BitStream:bs)
 	    BS_IgnoreBits(bs, 8);
 	    BS_ReadOnFootSync(bs, onFootData);
 
-	    if(onFootData[PR_health] < 14.0 && pInfo[playerid][pKnockoutStatus] == Player_No_Knockout)
+	    if(onFootData[PR_health] < 14.0 && pInfo[playerid][pKnockoutStatus] == Player_No_Knockout && !pInfo[playerid][pJail] && !pInfo[playerid][pDemorgan])
 	    {
 	    	SetPVarFloat(playerid, "PlayerKnockoutX", onFootData[PR_position][0]);
 			SetPVarFloat(playerid, "PlayerKnockoutY", onFootData[PR_position][1]);
@@ -3279,6 +3292,8 @@ public OnIncomingRPC(playerid, rpcid, BitStream:bs)
 
 stock KnockoutPlayer(playerid)
 {
+	if(pInfo[playerid][pJail] || pInfo[playerid][pDemorgan]) return 1;
+
 	if(pInfo[playerid][pKnockoutStatus] == Player_In_Knockout)
 	{
 		pInfo[playerid][pKnockoutStatus] = Player_No_Knockout;
@@ -3307,12 +3322,7 @@ stock KnockoutPlayer(playerid)
 		}
 
 		SetPlayerPosition(playerid, GetPVarFloat(playerid, "PlayerKnockoutX"), GetPVarFloat(playerid, "PlayerKnockoutY"), GetPVarFloat(playerid, "PlayerKnockoutZ"), 0.0, GetPVarInt(playerid, "PlayerKnockoutVW"), GetPVarInt(playerid, "PlayerKnockoutInt"), false);
-		TogglePlayerControllable(playerid, true);
-		SetCameraBehindPlayer(playerid);
-		SetPlayerSpecialAction(playerid, SPECIAL_ACTION_NONE);
-		SetPVarInt(playerid, "DisableTextAnim", 1);
-		ClearAnimations(playerid, true);
-		ApplyAnimation(playerid, "CRACK", "crckdeth2", 4.1, true, true, true, false, 0, true);
+		NockPlayer(playerid);
 
 		SendClientMessage(playerid, -1, Main_Color"Вы сильно пострадали. Вызовите медика - /service medic");
 		SetPlayerHealth(playerid, 1.0);
@@ -3325,6 +3335,17 @@ stock KnockoutPlayer(playerid)
 		DeletePVar(playerid, "PlayerKnockoutInt");
 		pInfo[playerid][pKnockoutStatus] = Player_In_Knockout;
 	}
+	return 1;
+}
+
+stock NockPlayer(playerid)
+{
+	TogglePlayerControllable(playerid, true);
+	SetCameraBehindPlayer(playerid);
+	SetPlayerSpecialAction(playerid, SPECIAL_ACTION_NONE);
+	SetPVarInt(playerid, "DisableTextAnim", 1);
+	ClearAnimations(playerid, true);
+	ApplyAnimation(playerid, "CRACK", "crckdeth2", 4.1, true, true, true, false, 0, true);
 	return 1;
 }
 
@@ -3399,8 +3420,13 @@ public OnPlayerSpawn(playerid)
 	{
 		ResetPlayerWeapons(playerid);
 		SavePlayerWeapon(playerid);
-		SetPlayerPosition(playerid, 234.3806, 1957.0878, 18.3294, 89.9933, 0, 0);
+		SetPlayerPosition(playerid, 208.3521, 1918.8027, 17.6406, 177.3568, 0, 0);
 		SetSkin(playerid, pInfo[playerid][pSkins][pInfo[playerid][pSkin]]);
+
+		new str[200];
+		format(str, sizeof(str), Color_White"Вам нужно добыть еще "Main_Color"%d "Color_White"камней", pInfo[playerid][pJail]);
+		SendClientMessage(playerid, -1, str);
+		if(!pInfo[playerid][pJailNoFree]) SendClientMessage(playerid, -1, "Вы также можете воспользоваться услугами адвоката, для этого нужно подойти на пикап у ворот");
 	}
 	else if(GetPVarInt(playerid, "Spec_ID"))
 	{
@@ -3669,44 +3695,11 @@ public OnPlayerDeath(playerid, killerid, reason)
 	{
 		if(IsSecurityAgency(pInfo[killerid][pMembers]) && pInfo[playerid][pWanted])
 		{
-			SetPVarInt(playerid, "JailCD", gettime()+5);
-
-			switch(pInfo[playerid][pWanted])
-			{
-				case 1: pInfo[playerid][pJail] = 30;
-				case 2: pInfo[playerid][pJail] = 40;
-				case 3: pInfo[playerid][pJail] = 50;
-				case 4: pInfo[playerid][pJail] = 60;
-				case 5: pInfo[playerid][pJail] = 80;
-				case 6: pInfo[playerid][pJail] = 100;
-				default: pInfo[playerid][pJail] = 30;
-			}
-			SavePlayerInt(playerid, "Jail", pInfo[playerid][pJail]);
-
-			if(pInfo[playerid][pFollow] != -1) DeletePVar(pInfo[playerid][pFollow], "Following");
-			pInfo[playerid][pFollow] = -1;
-			SetPlayerSpecialAction(playerid, SPECIAL_ACTION_NONE);
-			TogglePlayerControllable(playerid, true);
-
-			new str[300];
-			format(str, sizeof(str), "%s %s[%d] посадил в тюрьму %s[%d] с приоритетом розыска %d", FractionRankName[pInfo[killerid][pMembers]][pInfo[killerid][pRank]], pInfo[killerid][pName], killerid, pInfo[playerid][pName], playerid, pInfo[playerid][pWanted]);
-			SendDMessage(killerid, str);
-
-			format(str, sizeof(str), "%s %s[%d] "Color_White"посадил вас в тюрьму с приоритетом розыска "Main_Color"%d", FractionRankName[pInfo[killerid][pMembers]][pInfo[killerid][pRank]], pInfo[killerid][pName], killerid, pInfo[playerid][pWanted]);
-			SendClientMessage(playerid, BitColor_Main, str);
-
-			format(str, sizeof(str), Color_White"Вы попали в тюрьму вам нужно добыть "Main_Color"%d "Color_White"камня чтобы выйти", pInfo[playerid][pJail]);
-			SendClientMessage(playerid, BitColor_Main, str);
-
-			pInfo[playerid][pWanted] = 0;
-			SetPlayerWantedLevel(playerid, pInfo[playerid][pWanted]);
-			SavePlayerInt(playerid, "Wanted", pInfo[playerid][pWanted]);
-
-			ChangePlayerJob(playerid, pInfo[playerid][pJob]);
-			ChangePlayerUnOfficialJob(playerid, Job_None);
+			ArrestPlayer(playerid, killerid);
 
 			if(pInfo[killerid][pMembers] == Fraction_FBI)
 			{
+				new str[300];
 				new money = (pInfo[killerid][pRank] * (10000*pInfo[playerid][pLevel]))+(10000*pInfo[playerid][pWanted]);
 				format(str, sizeof(str), Color_White"Вы задержали %s[%d], на ваш банковский счет переведено "Color_Green"%d$", pInfo[playerid][pName], playerid, money);
 				SendClientMessage(killerid, BitColor_Main, str);
@@ -4810,13 +4803,13 @@ stock UpdateBusiness(BusinessID)
 
 		if(BusinessType[bInfo[BusinessID][bType]][bInt])
 		{
-			bInfo[BusinessID][bPickup] = CreateDynamicPickup(1318, 1, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 0, 0);
-			strcat(str, "\n"Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]");
+			bInfo[BusinessID][bPickup] = CreateDynamicPickup(19132, 1, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 0, 0);
+			strcat(str, "\n"Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]");
 			bInfo[BusinessID][bExitArea] = CreateDynamicSphere(BusinessType[bInfo[BusinessID][bType]][bIntX], BusinessType[bInfo[BusinessID][bType]][bIntY], BusinessType[bInfo[BusinessID][bType]][bIntZ], 2.0, Business_World+bInfo[BusinessID][bID], BusinessType[bInfo[BusinessID][bType]][bInt]);
 			Streamer_SetIntData(STREAMER_TYPE_AREA, bInfo[BusinessID][bExitArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Business);
 			Streamer_SetIntData(STREAMER_TYPE_AREA, bInfo[BusinessID][bExitArea],  E_STREAMER_INDX, BusinessID);
-			bInfo[BusinessID][bExitPickup] = CreateDynamicPickup(1318, 1, BusinessType[bInfo[BusinessID][bType]][bIntX], BusinessType[bInfo[BusinessID][bType]][bIntY], BusinessType[bInfo[BusinessID][bType]][bIntZ], Business_World+bInfo[BusinessID][bID], BusinessType[bInfo[BusinessID][bType]][bInt]);
-			bInfo[BusinessID][bExitText] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, BusinessType[bInfo[BusinessID][bType]][bIntX], BusinessType[bInfo[BusinessID][bType]][bIntY], BusinessType[bInfo[BusinessID][bType]][bIntZ], 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, Business_World+bInfo[BusinessID][bID], BusinessType[bInfo[BusinessID][bType]][bInt]);
+			bInfo[BusinessID][bExitPickup] = CreateDynamicPickup(19132, 1, BusinessType[bInfo[BusinessID][bType]][bIntX], BusinessType[bInfo[BusinessID][bType]][bIntY], BusinessType[bInfo[BusinessID][bType]][bIntZ], Business_World+bInfo[BusinessID][bID], BusinessType[bInfo[BusinessID][bType]][bInt]);
+			bInfo[BusinessID][bExitText] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, BusinessType[bInfo[BusinessID][bType]][bIntX], BusinessType[bInfo[BusinessID][bType]][bIntY], BusinessType[bInfo[BusinessID][bType]][bIntZ], 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, Business_World+bInfo[BusinessID][bID], BusinessType[bInfo[BusinessID][bType]][bInt]);
 		}
 		else bInfo[BusinessID][bPickup] = CreateDynamicPickup(1239, 1, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 0, 0);
 
@@ -4919,13 +4912,13 @@ public GetBusinesOwnerName(BusinessID)
 
 		if(BusinessType[bInfo[BusinessID][bType]][bInt])
 		{
-			bInfo[BusinessID][bPickup] = CreateDynamicPickup(1318, 1, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 0, 0);
-			strcat(str, "\n"Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]");
+			bInfo[BusinessID][bPickup] = CreateDynamicPickup(19132, 1, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 0, 0);
+			strcat(str, "\n"Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]");
 			bInfo[BusinessID][bExitArea] = CreateDynamicSphere(BusinessType[bInfo[BusinessID][bType]][bIntX], BusinessType[bInfo[BusinessID][bType]][bIntY], BusinessType[bInfo[BusinessID][bType]][bIntZ], 2.0, Business_World+bInfo[BusinessID][bID], BusinessType[bInfo[BusinessID][bType]][bInt]);
 			Streamer_SetIntData(STREAMER_TYPE_AREA, bInfo[BusinessID][bExitArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Business);
 			Streamer_SetIntData(STREAMER_TYPE_AREA, bInfo[BusinessID][bExitArea],  E_STREAMER_INDX, BusinessID);
-			bInfo[BusinessID][bExitPickup] = CreateDynamicPickup(1318, 1, BusinessType[bInfo[BusinessID][bType]][bIntX], BusinessType[bInfo[BusinessID][bType]][bIntY], BusinessType[bInfo[BusinessID][bType]][bIntZ], Business_World+bInfo[BusinessID][bID], BusinessType[bInfo[BusinessID][bType]][bInt]);
-			bInfo[BusinessID][bExitText] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, BusinessType[bInfo[BusinessID][bType]][bIntX], BusinessType[bInfo[BusinessID][bType]][bIntY], BusinessType[bInfo[BusinessID][bType]][bIntZ], 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, Business_World+bInfo[BusinessID][bID], BusinessType[bInfo[BusinessID][bType]][bInt]);
+			bInfo[BusinessID][bExitPickup] = CreateDynamicPickup(19132, 1, BusinessType[bInfo[BusinessID][bType]][bIntX], BusinessType[bInfo[BusinessID][bType]][bIntY], BusinessType[bInfo[BusinessID][bType]][bIntZ], Business_World+bInfo[BusinessID][bID], BusinessType[bInfo[BusinessID][bType]][bInt]);
+			bInfo[BusinessID][bExitText] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, BusinessType[bInfo[BusinessID][bType]][bIntX], BusinessType[bInfo[BusinessID][bType]][bIntY], BusinessType[bInfo[BusinessID][bType]][bIntZ], 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, Business_World+bInfo[BusinessID][bID], BusinessType[bInfo[BusinessID][bType]][bInt]);
 		}
 		else bInfo[BusinessID][bPickup] = CreateDynamicPickup(1239, 1, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 0, 0);
 
@@ -5037,49 +5030,49 @@ public LoadFractionInfo()
 			{
 				case Fraction_Police:
 				{
-					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Банк организации нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, 237.9677+0.5, 82.5557, 1005.6564, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 6);
+					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Банк организации нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]\n"Color_White"Чтобы открыть", -1, 237.9677+0.5, 82.5557, 1005.6564, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 6);
 					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(237.9677+0.5, 82.5557, 1005.6564, 1.0, 1, 6);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
 				}
 				case Fraction_Army:
 				{
-					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Банк организации нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, 145.55510, 1874.69678+0.5, 2050.06812, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 1);
+					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Банк организации нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]\n"Color_White"Чтобы открыть", -1, 145.55510, 1874.69678+0.5, 2050.06812, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 1);
 					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(145.55510, 1874.69678+0.5, 2050.06812, 1.0, 2, 1);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
 				}
 				case Fraction_FBI:
 				{
-					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Банк организации нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, 320.24551, 309.12140+0.5, 999.86810, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 3, 5);
+					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Банк организации нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]\n"Color_White"Чтобы открыть", -1, 320.24551, 309.12140+0.5, 999.86810, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 3, 5);
 					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(320.24551, 309.12140+0.5, 999.86810, 1.0, 3, 5);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
 				}
 				case Fraction_Hospital:
 				{
-					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Банк организации нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, -329.26630, 1027.82349+0.5, 1028.61646, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 4, 5);
+					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Банк организации нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]\n"Color_White"Чтобы открыть", -1, -329.26630, 1027.82349+0.5, 1028.61646, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 4, 5);
 					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-329.26630, 1027.82349+0.5, 1028.61646, 1.0, 4, 5);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
 				}
 				case Fraction_Taxi:
 				{
-					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Банк организации нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, -2028.28430+0.5, -113.27220, 1035.70227, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 5, 3);
+					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Банк организации нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]\n"Color_White"Чтобы открыть", -1, -2028.28430+0.5, -113.27220, 1035.70227, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 5, 3);
 					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-2028.28430+0.5, -113.27220, 1035.70227, 1.0, 5, 3);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
 				}
 				case Fraction_SanNews:
 				{
-					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Банк организации нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, 164.02400+0.5, -114.13020, 1077.28906, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 6, 6);
+					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Банк организации нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]\n"Color_White"Чтобы открыть", -1, 164.02400+0.5, -114.13020, 1077.28906, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 6, 6);
 					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(164.02400+0.5, -114.13020, 1077.28906, 1.0, 6, 6);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_INDX, indx);
 				}
 				case Fraction_Vagos:
 				{
-					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, 304.3056,311.1736,1003.3047, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 4);
+					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]\n"Color_White"Чтобы открыть", -1, 304.3056,311.1736,1003.3047, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 4);
 					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(304.3056,311.1736,1003.3047, 1.0, 1, 4);
 					CreateDynamicPickup(1279, 1, 304.3056,311.1736,1003.3047, 1, 4);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
@@ -5087,7 +5080,7 @@ public LoadFractionInfo()
 				}
 				case Fraction_Ballas:
 				{
-					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, -71.6223,1365.3029,1080.2185, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 6);
+					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]\n"Color_White"Чтобы открыть", -1, -71.6223,1365.3029,1080.2185, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 6);
 					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-71.6223,1365.3029,1080.2185, 1.0, 1, 6);
 					CreateDynamicPickup(1279, 1, -71.6223,1365.3029,1080.2185, 1, 6);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
@@ -5095,7 +5088,7 @@ public LoadFractionInfo()
 				}
 				case Fraction_Aztecas:
 				{
-					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, 417.4076,2541.3838,10.0000, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 10);
+					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]\n"Color_White"Чтобы открыть", -1, 417.4076,2541.3838,10.0000, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 10);
 					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(417.4076,2541.3838,10.0000, 1.0, 1, 10);
 					CreateDynamicPickup(1279, 1, 417.4076,2541.3838,10.0000, 1, 10);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
@@ -5103,7 +5096,7 @@ public LoadFractionInfo()
 				}
 				case Fraction_Grove:
 				{
-					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, 2530.8069,-1672.1730,1015.4986, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 1);
+					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]\n"Color_White"Чтобы открыть", -1, 2530.8069,-1672.1730,1015.4986, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 1);
 					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(2530.8069,-1672.1730,1015.4986, 1.0, 1, 1);
 					CreateDynamicPickup(1279, 1, 2530.8069,-1672.1730,1015.4986, 1, 1);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
@@ -5111,7 +5104,7 @@ public LoadFractionInfo()
 				}
 				case Fraction_Rifa:
 				{
-					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, -218.3894,1401.8822,27.7734, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 18);
+					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]\n"Color_White"Чтобы открыть", -1, -218.3894,1401.8822,27.7734, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 18);
 					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-218.3894,1401.8822,27.7734, 1.0, 1, 18);
 					CreateDynamicPickup(1279, 1, -218.3894,1401.8822,27.7734, 1, 18);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
@@ -5119,7 +5112,7 @@ public LoadFractionInfo()
 				}
 				case Fraction_StreetRacers:
 				{
-					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, -2678.9426,602.0468,375.1918, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 18);
+					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]\n"Color_White"Чтобы открыть", -1, -2678.9426,602.0468,375.1918, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 18);
 					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-2678.9426,602.0468,375.1918, 1.0, 2, 18);
 					CreateDynamicPickup(1279, 1, -2678.9426,602.0468,375.1918, 2, 18);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
@@ -5127,7 +5120,7 @@ public LoadFractionInfo()
 				}
 				case Fraction_Bikers:
 				{
-					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, -218.3894,1401.8822,27.7734, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 3, 18);
+					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]\n"Color_White"Чтобы открыть", -1, -218.3894,1401.8822,27.7734, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 3, 18);
 					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-218.3894,1401.8822,27.7734, 1.0, 3, 18);
 					CreateDynamicPickup(1279, 1, -218.3894,1401.8822,27.7734, 3, 18);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
@@ -5135,7 +5128,7 @@ public LoadFractionInfo()
 				}
 				case Fraction_FarmOfTruth:
 				{
-					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, -218.3894,1401.8822,27.7734, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 4, 18);
+					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]\n"Color_White"Чтобы открыть", -1, -218.3894,1401.8822,27.7734, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 4, 18);
 					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-218.3894,1401.8822,27.7734, 1.0, 4, 18);
 					CreateDynamicPickup(1279, 1, -218.3894,1401.8822,27.7734, 4, 18);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
@@ -5143,7 +5136,7 @@ public LoadFractionInfo()
 				}
                 case Fraction_RussiaMafia:
 				{
-					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, -218.3894,1401.8822,27.7734, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 5, 18);
+					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]\n"Color_White"Чтобы открыть", -1, -218.3894,1401.8822,27.7734, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 5, 18);
 					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-218.3894,1401.8822,27.7734, 1.0, 5, 18);
 					CreateDynamicPickup(1279, 1, -218.3894,1401.8822,27.7734, 5, 18);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
@@ -5151,7 +5144,7 @@ public LoadFractionInfo()
 				}
                 case Fraction_LaCosaNostra:
 				{
-					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, 147.6701,1367.2035,1083.8594, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0,  1, 5);
+					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]\n"Color_White"Чтобы открыть", -1, 147.6701,1367.2035,1083.8594, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0,  1, 5);
 					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(147.6701,1367.2035,1083.8594, 1.0, 1, 5);
 					CreateDynamicPickup(1279, 1, 147.6701,1367.2035,1083.8594, 1, 5);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
@@ -5159,7 +5152,7 @@ public LoadFractionInfo()
 				}
                 case Fraction_Yakuza:
 				{
-					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\n"Color_White"Чтобы открыть", -1, -2160.1130,639.0449,1057.5861, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0,  3, 1);
+					FractionWare[indx][FractionWareText] = CreateDynamic3DTextLabel(Color_White"Общак нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]\n"Color_White"Чтобы открыть", -1, -2160.1130,639.0449,1057.5861, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0,  3, 1);
 					FractionWare[indx][FractionWareArea] = CreateDynamicSphere(-2160.1130,639.0449,1057.5861, 1.0, 3, 1);
 					CreateDynamicPickup(1279, 1, -2160.1130,639.0449,1057.5861, 3, 1);
 					Streamer_SetIntData(STREAMER_TYPE_AREA, FractionWare[indx][FractionWareArea],  E_STREAMER_ARRAY_TYPE, Array_Type_FractionWare);
@@ -5509,7 +5502,7 @@ public LoadTent()
 			"Main_Color"Свободна\n\
 			"Main_Color"Стоимость: "Color_Green"%d$/ч\n\
 			"Main_Color"Количество мест: "Color_Green"%d\n\
-			"Color_White"Чтобы арендовать нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", Tent[i][TentPrice], Tent[i][TentSlot]);
+			"Color_White"Чтобы арендовать нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", Tent[i][TentPrice], Tent[i][TentSlot]);
 			Tent[i][TentText] = CreateDynamic3DTextLabel(query, -1, Tent[i][TentX], Tent[i][TentY], Tent[i][TentZ], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, Tent[i][TentVW], Tent[i][TentInt]);
 			Tent[i][TentArea] = CreateDynamicSphere(Tent[i][TentX], Tent[i][TentY], Tent[i][TentZ], 2.0, Tent[i][TentVW], Tent[i][TentInt]);
 		}
@@ -5551,7 +5544,7 @@ public UnrentTent(playerid)
 		"Main_Color"Свободна\n\
 		"Main_Color"Стоимость: "Color_Green"%d$/ч\n\
 		"Main_Color"Количество мест: "Color_Green"%d\n\
-		"Color_White"Чтобы арендовать нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", Tent[indx][TentPrice], Tent[indx][TentSlot]);
+		"Color_White"Чтобы арендовать нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", Tent[indx][TentPrice], Tent[indx][TentSlot]);
 
 		Tent[indx][TentTime] = 0;
 
@@ -5669,7 +5662,7 @@ public LoadTable()
 			format(query, sizeof(query), Main_Color"Стол %s\n\
 			"Main_Color"Игроков для старта: "Color_White"%d\n\
 			"Main_Color"Ставка: "Color_Green"%d фишек\n\
-			"Color_White"Чтобы использовать нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", CasinoTableTypeName[CasinoTable[i][CasTabType]], CasinoTable[i][CasTabMaxPlayer], CasinoTable[i][CasTabBet]);
+			"Color_White"Чтобы использовать нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", CasinoTableTypeName[CasinoTable[i][CasTabType]], CasinoTable[i][CasTabMaxPlayer], CasinoTable[i][CasTabBet]);
 			CasinoTable[i][CasTabText] = CreateDynamic3DTextLabel(query, -1, CasinoTable[i][CasTabX], CasinoTable[i][CasTabY], CasinoTable[i][CasTabZ], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, CasinoTable[i][CasTabVW], CasinoTable[i][CasTabInt]);
 			CasinoTable[i][CasTabArea] = CreateDynamicSphere(CasinoTable[i][CasTabX], CasinoTable[i][CasTabY], CasinoTable[i][CasTabZ], 2.0, CasinoTable[i][CasTabVW], CasinoTable[i][CasTabInt]);
 		}
@@ -5711,7 +5704,7 @@ public LoadVending()
 			cache_get_value_name_int(i, "VW", Vending[i][VendVW]);
 
 			Vending[i][VendObjectID] = CreateDynamicObject(1775, Vending[i][VendX], Vending[i][VendY], Vending[i][VendZ], Vending[i][VendRX], Vending[i][VendRY], Vending[i][VendRZ], Vending[i][VendVW], Vending[i][VendInt]);
-			Vending[i][VendText] = CreateDynamic3DTextLabel(Main_Color"Автомат Sprunk\n"Color_White"Чтобы использовать нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, Vending[i][VendX], Vending[i][VendY], Vending[i][VendZ], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, Vending[i][VendVW], Vending[i][VendInt]);
+			Vending[i][VendText] = CreateDynamic3DTextLabel(Main_Color"Автомат Sprunk\n"Color_White"Чтобы использовать нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, Vending[i][VendX], Vending[i][VendY], Vending[i][VendZ], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, Vending[i][VendVW], Vending[i][VendInt]);
 			Vending[i][VendArea] = CreateDynamicSphere(Vending[i][VendX], Vending[i][VendY], Vending[i][VendZ], 1.0, Vending[i][VendVW], Vending[i][VendInt]);
 		}
 		printf("Загружено %d автоматов Sprunk за %dмс.\n", row, GetTickCount()-time);
@@ -5810,15 +5803,15 @@ stock UpdateHouse(HouseID)
 		hInfo[HouseID][hExitArea] = CreateDynamicSphere(HouseInterior[hInfo[HouseID][hInterior]][hIntX], HouseInterior[hInfo[HouseID][hInterior]][hIntY], HouseInterior[hInfo[HouseID][hInterior]][hIntZ], 2.0, House_World+hInfo[HouseID][hID], HouseInterior[hInfo[HouseID][hInterior]][hInt]);
 		Streamer_SetIntData(STREAMER_TYPE_AREA, hInfo[HouseID][hExitArea],  E_STREAMER_ARRAY_TYPE, Array_Type_House);
 		Streamer_SetIntData(STREAMER_TYPE_AREA, hInfo[HouseID][hExitArea],  E_STREAMER_INDX, HouseID);
-		hInfo[HouseID][hExitPickup] = CreateDynamicPickup(1318, 1, HouseInterior[hInfo[HouseID][hInterior]][hIntX], HouseInterior[hInfo[HouseID][hInterior]][hIntY], HouseInterior[hInfo[HouseID][hInterior]][hIntZ], House_World+hInfo[HouseID][hID], HouseInterior[hInfo[HouseID][hInterior]][hInt]);
-		hInfo[HouseID][hExitText] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, HouseInterior[hInfo[HouseID][hInterior]][hIntX], HouseInterior[hInfo[HouseID][hInterior]][hIntY], HouseInterior[hInfo[HouseID][hInterior]][hIntZ], 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, House_World+hInfo[HouseID][hID], HouseInterior[hInfo[HouseID][hInterior]][hInt]);
+		hInfo[HouseID][hExitPickup] = CreateDynamicPickup(19132, 1, HouseInterior[hInfo[HouseID][hInterior]][hIntX], HouseInterior[hInfo[HouseID][hInterior]][hIntY], HouseInterior[hInfo[HouseID][hInterior]][hIntZ], House_World+hInfo[HouseID][hID], HouseInterior[hInfo[HouseID][hInterior]][hInt]);
+		hInfo[HouseID][hExitText] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, HouseInterior[hInfo[HouseID][hInterior]][hIntX], HouseInterior[hInfo[HouseID][hInterior]][hIntY], HouseInterior[hInfo[HouseID][hInterior]][hIntZ], 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, House_World+hInfo[HouseID][hID], HouseInterior[hInfo[HouseID][hInterior]][hInt]);
 
 		format(str, sizeof(str), Main_Color"Дом №"Color_White"%d\n\
 		"Main_Color"Класс"Color_White": %s\n\
 		"Main_Color"Продается\n\
 		"Main_Color"Цена"Color_White": "Color_Green"%d%s\n\
 		"Main_Color"Требуемый уровень"Color_White": %d\n\
-		"Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]",
+		"Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]",
 		hInfo[HouseID][hID],
 		HouseClassName[HouseInterior[hInfo[HouseID][hInterior]][hIntClass]],
 		hInfo[HouseID][hPrice],
@@ -5869,14 +5862,14 @@ public GetHouseOwnerName(HouseID)
 		hInfo[HouseID][hExitArea] = CreateDynamicSphere(HouseInterior[hInfo[HouseID][hInterior]][hIntX], HouseInterior[hInfo[HouseID][hInterior]][hIntY], HouseInterior[hInfo[HouseID][hInterior]][hIntZ], 2.0, House_World+hInfo[HouseID][hID], HouseInterior[hInfo[HouseID][hInterior]][hInt]);
 		Streamer_SetIntData(STREAMER_TYPE_AREA, hInfo[HouseID][hExitArea],  E_STREAMER_ARRAY_TYPE, Array_Type_House);
 		Streamer_SetIntData(STREAMER_TYPE_AREA, hInfo[HouseID][hExitArea],  E_STREAMER_INDX, HouseID);
-		hInfo[HouseID][hExitPickup] = CreateDynamicPickup(1318, 1, HouseInterior[hInfo[HouseID][hInterior]][hIntX], HouseInterior[hInfo[HouseID][hInterior]][hIntY], HouseInterior[hInfo[HouseID][hInterior]][hIntZ], House_World+hInfo[HouseID][hID], HouseInterior[hInfo[HouseID][hInterior]][hInt]);
-		hInfo[HouseID][hExitText] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, HouseInterior[hInfo[HouseID][hInterior]][hIntX], HouseInterior[hInfo[HouseID][hInterior]][hIntY], HouseInterior[hInfo[HouseID][hInterior]][hIntZ], 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, House_World+hInfo[HouseID][hID], HouseInterior[hInfo[HouseID][hInterior]][hInt]);
+		hInfo[HouseID][hExitPickup] = CreateDynamicPickup(19132, 1, HouseInterior[hInfo[HouseID][hInterior]][hIntX], HouseInterior[hInfo[HouseID][hInterior]][hIntY], HouseInterior[hInfo[HouseID][hInterior]][hIntZ], House_World+hInfo[HouseID][hID], HouseInterior[hInfo[HouseID][hInterior]][hInt]);
+		hInfo[HouseID][hExitText] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, HouseInterior[hInfo[HouseID][hInterior]][hIntX], HouseInterior[hInfo[HouseID][hInterior]][hIntY], HouseInterior[hInfo[HouseID][hInterior]][hIntZ], 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, House_World+hInfo[HouseID][hID], HouseInterior[hInfo[HouseID][hInterior]][hInt]);
 
 		format(str, sizeof(str), Main_Color"Дом №"Color_White"%d\n\
 		"Main_Color"Класс"Color_White": %s\n\
 		"Main_Color"Дверь"Color_White": %s\n\
 		"Main_Color"Владелец"Color_White": %s\n\
-		"Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", hInfo[HouseID][hID], HouseClassName[HouseInterior[hInfo[HouseID][hInterior]][hIntClass]], (hInfo[HouseID][hClose]) ? (Color_Red"Закрыта") : (Color_Green"Открыта"), hInfo[HouseID][hOwnerName]);
+		"Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", hInfo[HouseID][hID], HouseClassName[HouseInterior[hInfo[HouseID][hInterior]][hIntClass]], (hInfo[HouseID][hClose]) ? (Color_Red"Закрыта") : (Color_Green"Открыта"), hInfo[HouseID][hOwnerName]);
 		hInfo[HouseID][hText] = CreateDynamic3DTextLabel(str, -1, hInfo[HouseID][hX], hInfo[HouseID][hY], hInfo[HouseID][hZ], 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	}
 	else
@@ -5922,6 +5915,7 @@ stock AddHouseVehicle(playerid, vehiclemodel, slot)
 
 	new respawn_delay = 0;
 	if(vInfo[vehicleid][vType] == VehicleTypePlayer) respawn_delay = CarDelayPlayer;
+	else if(vInfo[vehicleid][vType] == VehicleTypeServer) respawn_delay = CarDelayServer;
 	else respawn_delay = CarDelayOther;
 	vInfo[vehicleid][vServerID] = CreateVehicle(vInfo[vehicleid][vModel], vInfo[vehicleid][vX], vInfo[vehicleid][vY], vInfo[vehicleid][vZ], vInfo[vehicleid][vA], vInfo[vehicleid][vColor1], vInfo[vehicleid][vColor2], respawn_delay);
 	SetVehicleParamsEx(vInfo[vehicleid][vServerID], false, false, false, false, false, false, false);
@@ -6052,7 +6046,16 @@ public LoadVehicle(playerid)
 
 			new respawn_delay = 0;
 			if(vInfo[indx][vType] == VehicleTypePlayer) respawn_delay = CarDelayPlayer;
-			else respawn_delay = CarDelayOther;
+			else if(vInfo[indx][vType] == VehicleTypeServer)
+			{
+				respawn_delay = CarDelayServer;
+				vInfo[indx][vFuel] = 100.0;
+			}
+			else
+			{
+				respawn_delay = CarDelayOther;
+				vInfo[indx][vFuel] = 100.0;
+			}
 
 			vInfo[indx][vServerID] = CreateVehicle(vInfo[indx][vModel], vInfo[indx][vX], vInfo[indx][vY], vInfo[indx][vZ], vInfo[indx][vA], vInfo[indx][vColor1], vInfo[indx][vColor2], respawn_delay);
 			if(vInfo[indx][vType] == VehicleTypePlayer)
@@ -6411,6 +6414,7 @@ stock ShowHouseInteriorList(playerid, Type) //Type = 1 Создание || Type = 2 Реда
 
 public OnPlayerEnterVehicle(playerid, vehicleid, ispassenger)
 {
+	if(pInfo[playerid][pKnockoutStatus] != Player_No_Knockout) return NockPlayer(playerid);
 	return 1;
 }
 
@@ -6537,6 +6541,8 @@ public OnPlayerStateChange(playerid, newstate, oldstate)
 
 	if(newstate == PLAYER_STATE_DRIVER)
 	{
+		if(pInfo[playerid][pKnockoutStatus] != Player_No_Knockout) return NockPlayer(playerid);
+
 		new vehicleid = GetPlayerVehicleID(playerid);
 		if(IsABoat(vInfo[vehicleid][vModel]) && !pInfo[playerid][pLicBoat])
 		{
@@ -6692,6 +6698,8 @@ public OnPlayerStateChange(playerid, newstate, oldstate)
 	}
 	else if(newstate == PLAYER_STATE_PASSENGER)
 	{
+		if(pInfo[playerid][pKnockoutStatus] != Player_No_Knockout) return NockPlayer(playerid);
+
 		new vehicleid = GetPlayerVehicleID(playerid);
 		if(vInfo[vehicleid][vType] == VehicleTypeJob && vInfo[vehicleid][vOwner] == Job_Bus && vInfo[vehicleid][vRenter] != -1 && vInfo[vehicleid][vRenter] != playerid && GetPVarInt(playerid, "BusPassengerCD") <= gettime())
 		{
@@ -7135,7 +7143,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 						case KEY_SPRINT: GameTextForPlayer(playerid, "~g~~k~~PED_SPRINT~", 3000, 3);
 						case KEY_SECONDARY_ATTACK: GameTextForPlayer(playerid, "~g~~k~~VEHICLE_ENTER_EXIT~", 3000, 3);
 						case KEY_JUMP: GameTextForPlayer(playerid, "~g~~k~~PED_JUMPING~", 3000, 3);
-						case KEY_WALK: GameTextForPlayer(playerid, "~g~~k~~SNEAK_ABOUT~", 3000, 3);
+						case KEY_WALK: GameTextForPlayer(playerid, "~g~"KEY_WALK_NAME, 3000, 3);
 						case KEY_YES: GameTextForPlayer(playerid, "~g~~k~~CONVERSATION_YES~", 3000, 3);
 						case KEY_NO: GameTextForPlayer(playerid, "~g~~k~~CONVERSATION_NO~", 3000, 3);
 						case KEY_CTRL_BACK: GameTextForPlayer(playerid, "~g~~k~~GROUP_CONTROL_BWD~", 3000, 3);
@@ -7152,7 +7160,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 						case KEY_SPRINT: GameTextForPlayer(playerid, "~r~~k~~PED_SPRINT~", 3000, 3);
 						case KEY_SECONDARY_ATTACK: GameTextForPlayer(playerid, "~r~~k~~VEHICLE_ENTER_EXIT~", 3000, 3);
 						case KEY_JUMP: GameTextForPlayer(playerid, "~r~~k~~PED_JUMPING~", 3000, 3);
-						case KEY_WALK: GameTextForPlayer(playerid, "~r~~k~~SNEAK_ABOUT~", 3000, 3);
+						case KEY_WALK: GameTextForPlayer(playerid, "~r~"KEY_WALK_NAME, 3000, 3);
 						case KEY_YES: GameTextForPlayer(playerid, "~r~~k~~CONVERSATION_YES~", 3000, 3);
 						case KEY_NO: GameTextForPlayer(playerid, "~r~~k~~CONVERSATION_NO~", 3000, 3);
 						case KEY_CTRL_BACK: GameTextForPlayer(playerid, "~r~~k~~GROUP_CONTROL_BWD~", 3000, 3);
@@ -7910,30 +7918,9 @@ public OnPlayerEnterRaceCheckpoint(playerid)
 										}
 										case 4:
 										{
-											SendClientMessage(playerid, -1, Color_Yellow"Вы завершили маршрут Деревня новичков - Завод");
+											SendClientMessage(playerid, -1, Color_Yellow"Вы завершили маршрут Деревня новичков - Банк Los-Santos");
 											money = 15000;
 										}
-										case 5:
-										{
-											SendClientMessage(playerid, -1, Color_Yellow"Вы завершили маршрут Деревня новичков - Шахта");
-											money = 30000;
-										}
-										case 6:
-										{
-											SendClientMessage(playerid, -1, Color_Yellow"Вы завершили маршрут Деревня новичков - Ферма");
-											money = 20000;
-										}
-										case 7:
-										{
-											SendClientMessage(playerid, -1, Color_Yellow"Вы завершили маршрут Деревня новичков - Грузчики");
-											money = 35000;
-										}
-										case 8:
-										{
-											SendClientMessage(playerid, -1, Color_Yellow"Вы завершили маршрут Деревня новичков - Водитель погрузчика");
-											money = 30000;
-										}
-
 									}
 
 									RemoveRentedCar(playerid);
@@ -8657,6 +8644,26 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 		{
 			ShowFractionCommand(playerid);
 		}
+		else if(areaid == Pickups[GunDeallerHelp][PickAreaID])
+		{
+			ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color"Инструкция"Color_White": Как работать Гандиллером.", Main_Color"1"Color_White". Тебе нужно вступить в банду/мафию;\n\
+			"Main_Color"2"Color_White". Купить в любом магазине 24/7 пустую бочку;\n\
+			"Main_Color"3"Color_White". Отправиться на нефтебазу (/gps – Важные места - Нефтебаза) и наполнить её (там будет 3д пикап в виде бочки);\n\
+			"Main_Color"4"Color_White". Также, тебе нужен металл. Добыть его можно, копая руду в шахте (/gps – Доп. заработок - Шахта);\n\
+			"Main_Color"5"Color_White". После всего, отправляйся на пункт покупки необработанных материалов (/gps – Важные места – Пункт обмена необработанных материалов) и обменяй на необработанные материалы;\n\
+			"Main_Color"6"Color_White". Потом, возвращайся обратно и получи уже готовые материалы.\n\n\
+			"Main_Color"Примечание"Color_White": Хранить их можно на складе (/gps – Важные места – Склад (тайник)).\n\
+			Также, расходниками и материалами часто торгуют на Торговой площадке (/gps – Важные места – Торговая площадка).", Color_White"Понятно", "");
+		}
+		else if(areaid == Pickups[DrugDeallerHelp][PickAreaID])
+		{
+			ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color"Инструкция"Color_White": Как работать Наркодиллером", Main_Color"1"Color_White". Тебе нужно вступить в банду/мафию;\n\
+			"Main_Color"2"Color_White". Купить в любом магазине 24/7 закрутку;\n\
+			"Main_Color"3"Color_White". Также, тебе нужна трава. Добыть её можно, собирая урожай на ферме (/gps – Доп. заработок - Ферма);\n\
+			"Main_Color"4"Color_White". После чего, возвращайся обратно и обменяй на наркотики.\n\n\
+			"Main_Color"Примечание"Color_White": Хранить их можно на складе (/gps – Важные места – Склад (тайник)).\n\
+			Также, расходниками и наркотиками часто торгуют на Торговой площадке (/gps – Важные места – Торговая площадка).", Color_White"Понятно", "");
+		}
 		else if(areaid == Pickups[BankPickCard][PickAreaID] && !pInfo[playerid][pCard])
 		{
 			ShowDialog(playerid, D_Bank_Buy_Card, DIALOG_STYLE_MSGBOX, Main_Color"Покупка банковской карты", Color_White"Для того чтобы пользоваться услугами банка\n\
@@ -8743,14 +8750,14 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 			SetPVarInt(playerid, "TrashBagCount", 1);
 			if(!BagInBin)
 			{
-				format(str, sizeof(str), Color_Yellow"Вы взяли мешок из мусорки. Подойдите к машине и нажмите ~k~~SNEAK_ABOUT~ чтобы положить его в машину. В контейнере не осталось мешков");
+				format(str, sizeof(str), Color_Yellow"Вы взяли мешок из мусорки. Подойдите к машине и нажмите "KEY_WALK_NAME" чтобы положить его в машину. В контейнере не осталось мешков");
 				DeletePVar(playerid, "TrashBagCountInBin");
 				SetPVarInt(playerid, "TrashBinCount", GetPVarInt(playerid, "TrashBinCount")-1);
 				SetTrashCollectorMarker(playerid);
 			}
 			else
 			{
-				format(str, sizeof(str), Color_Yellow"Вы взяли мешок из мусорки. Подойдите к машине и нажмите ~k~~SNEAK_ABOUT~ чтобы положить его в машину. В контейнере осталось %d мешков", BagInBin);
+				format(str, sizeof(str), Color_Yellow"Вы взяли мешок из мусорки. Подойдите к машине и нажмите "KEY_WALK_NAME" чтобы положить его в машину. В контейнере осталось %d мешков", BagInBin);
 				SetPVarInt(playerid, "TrashBagCountInBin", BagInBin);
 			}
 			SendClientMessage(playerid, -1, str);
@@ -8763,7 +8770,7 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 			if(GetPVarInt(playerid, "DriverDeliveryStatus") == 1)
 			{
 				if(GetPVarInt(playerid, "BoxCount")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас уже есть коробка в руках");
-				SendClientMessage(playerid, -1, Color_Yellow"Вы взяли коробку. Подойдите к машине и нажмите ~k~~SNEAK_ABOUT~ чтобы положить её в машину.");
+				SendClientMessage(playerid, -1, Color_Yellow"Вы взяли коробку. Подойдите к машине и нажмите "KEY_WALK_NAME" чтобы положить её в машину.");
 				ClearAnimations(playerid, true);
 				ApplyAnimation(playerid,"CARRY","crry_prtial", 4.0, true, false, false, true, 1, true);
 				SetPlayerAttachedObject(playerid, AttachSlotJob, 1221, 1, 0.135011, 0.463495, -0.024351, 357.460632, 87.350753, 88.068374, 0.434164, 0.491270, 0.368655);
@@ -9518,7 +9525,7 @@ stock SetDriverDeliveryMarker(playerid)
 		pInfo[playerid][pGPSType] = GPS_Type_Job;
 
 		SendClientMessage(playerid, -1, Color_Yellow"Отправляйтесь на разгрузку к бизнесу.");
-		SendClientMessage(playerid, -1, Color_Yellow"Когда будете на месте, подойдите к машине сзади и нажмите ~k~~SNEAK_ABOUT~ чтобы взять коробку.");
+		SendClientMessage(playerid, -1, Color_Yellow"Когда будете на месте, подойдите к машине сзади и нажмите "KEY_WALK_NAME" чтобы взять коробку.");
 	}
 	return 1;
 }
@@ -9551,27 +9558,7 @@ stock SetBusMarker(playerid)
 			}
 			case 4:
 			{
-				SetPlayerRaceCheckpoint(playerid, 2, 111.2325,-214.8443,1.4297, 0.0, 0.0, 0.0, 10.0);
-				pInfo[playerid][pGPSType] = GPS_Type_Job;
-			}
-			case 5:
-			{
-				SetPlayerRaceCheckpoint(playerid, 2, -776.0268,1533.2491,26.9584, 0.0, 0.0, 0.0, 10.0);
-				pInfo[playerid][pGPSType] = GPS_Type_Job;
-			}
-			case 6:
-			{
-				SetPlayerRaceCheckpoint(playerid, 2, -653.7770,-1518.1028,21.3990, 0.0, 0.0, 0.0, 10.0);
-				pInfo[playerid][pGPSType] = GPS_Type_Job;
-			}
-			case 7:
-			{
-				SetPlayerRaceCheckpoint(playerid, 2, 2727.7874,-2409.5784,13.4508, 0.0, 0.0, 0.0, 10.0);
-				pInfo[playerid][pGPSType] = GPS_Type_Job;
-			}
-			case 8:
-			{
-				SetPlayerRaceCheckpoint(playerid, 2, 2417.6965,-2076.8484,13.3099, 0.0, 0.0, 0.0, 10.0);
+				SetPlayerRaceCheckpoint(playerid, 2, 1184.0887,-1753.3162,13.3984, 0.0, 0.0, 0.0, 10.0);
 				pInfo[playerid][pGPSType] = GPS_Type_Job;
 			}
 		}
@@ -9900,13 +9887,13 @@ public SetCarriedObj(playerid)
 		ClearAnimations(playerid, true);
 		SendClientMessage(playerid, -1, Main_Color"Вы добыли камень, теперь отнесите его на склад который находится во внешнем дворе тюрьмы");
 		pInfo[playerid][pGPSType] = GPS_Type_Job;
-		SetPlayerCheckpoint(playerid, 236.6787,1900.7913,18.3294, 3.0);
+		SetPlayerCheckpoint(playerid, 224.6278,1905.9912,17.6406, 3.0);
 		ApplyAnimation(playerid,"CARRY","crry_prtial", 4.0, true, false, false, true, 1, true);
 		SetPlayerAttachedObject(playerid, AttachSlotJob, 3931, 14, 0.2969, -0.2269, 0.0230, 13.1999, 0.0000, 0.0000, 0.3449, 0.2769, 0.6209, 0, 0);
 		SetPVarInt(playerid, "MetallCount", 1);
 
 		new str[100];
-		PrisonMineMetall[MetallIndx][MetallTimer] = 120;
+		PrisonMineMetall[MetallIndx][MetallTimer] = 15;
 		DestroyDynamicObject(PrisonMineMetall[MetallIndx][MetallID]);
 		format(str, sizeof(str), Main_Color"Камень: Уже добыто\nМожно копнуть глубже через "Color_White"%d "Main_Color"секунд", PrisonMineMetall[MetallIndx][MetallTimer]);
 		UpdateDynamic3DTextLabelText(PrisonMineMetall[MetallIndx][MetallText], -1, str);
@@ -10159,7 +10146,7 @@ public OnUnoccupiedVehicleUpdate(vehicleid, playerid, passenger_seat, Float:new_
 
 public OnPlayerUpdate(playerid)
 {
-	if(pInfo[playerid][pAFK] > 2)
+	if(pInfo[playerid][pAFK] > 5)
 	{
 		if(pInfo[playerid][pAuth] && GetPVarInt(playerid, "FirstSpawn") <= gettime())
 		{
@@ -10692,17 +10679,18 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			{
 				case 0: pc_cmd_ahelp(playerid);
 				case 1: pc_cmd_reportlist(playerid);
-				case 2:
+				case 2: pc_cmd_tp(playerid);
+				case 3:
 				{
 					SetPVarInt(playerid, "AC_List", 1);
 					ShowAntiCheatSetting(playerid);
 				}
-				case 3: pc_cmd_payday(playerid);
-				case 4: pc_cmd_gpssettings(playerid);
-				case 5: pc_cmd_fractionsettings(playerid);
-				case 6: pc_cmd_iconsettings(playerid);
-				case 7: pc_cmd_logs(playerid);
-				case 8: pc_cmd_bots(playerid);
+				case 4: pc_cmd_payday(playerid);
+				case 5: pc_cmd_gpssettings(playerid);
+				case 6: pc_cmd_fractionsettings(playerid);
+				case 7: pc_cmd_iconsettings(playerid);
+				case 8: pc_cmd_logs(playerid);
+				case 9: pc_cmd_bots(playerid);
 			}
 			return 1;
 		}
@@ -10847,12 +10835,20 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				case WoodQuest:
 				{
+					format(str, sizeof(str), Main_Color"%s", Quests[indx][QuestName]);
+					ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, str, Color_White"Итак, давай попробуем заработать наши первые деньги. Тут за холмами находится лесопилка – отправляйся туда.\n\
+					Твоя задача – добыть 10 единиц древисины. За это ты получишь 2 EXP и 10.000$.", Color_White"Понятно", "");
+
 					ActorSay(QuestActor, "Итак, давай попробуем заработать наши первые деньги. Тут за холмами находится лесопилка – отправляйся туда.", 3000, playerid);
 					SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Твоя задача – добыть 10 единиц древисины. За это ты получишь 2 EXP и 10.000$.", 3000, playerid);
 					SaveQuest(playerid);
 				}
 				case MedCardQuest:
 				{
+					format(str, sizeof(str), Main_Color"%s", Quests[indx][QuestName]);
+					ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, str, Color_White"Сейчас, нам нужно приобрести медицинскую карту. Её можно купить в Больнице (/gps – Важные места – Больница)\n\
+					Отправляйся туда. Как? - Либо своим ходом, либо такси или дождись автобуса.", Color_White"Понятно", "");
+
 					ActorSay(QuestActor, "Сейчас, нам нужно приобрести медицинскую карту. Её можно купить в Больнице (/gps – Важные места – Больница)", 3000, playerid);
 					SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Отправляйся туда. Как? - Либо своим ходом, либо такси или дождись автобуса.", 3000, playerid);
 					if(pInfo[playerid][pMedCard] == 1) QuestProgress(playerid, _:MedCardQuest, 1);
@@ -10860,6 +10856,11 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				case DriveLicQuest:
 				{
+					format(str, sizeof(str), Main_Color"%s", Quests[indx][QuestName]);
+					ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, str, Color_White"Нам нужны права на автомобиль. Не беспокойся, тебе не нужно будет проходить какой-то маршрут.\n\
+					В нашем штате все лицензии можно приобрести в Мэрии (/gps – Важные места – Мэрия).\n\
+					Как зайдешь в здание, поднимайся на самый последний этаж, а дальше разберешься. Удачи!", Color_White"Понятно", "");
+
 					ActorSay(QuestActor, "Нам нужны права на автомобиль. Не беспокойся, тебе не нужно будет проходить какой-то маршрут.", 3000, playerid);
 					SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "В нашем штате все лицензии можно приобрести в Мэрии (/gps – Важные места – Мэрия).", 3000, playerid);
 					SetTimerEx("ActorSay", 6000, false, "dsd", _:QuestActor, "Как зайдешь в здание, поднимайся на самый последний этаж, а дальше разберешься. Удачи!", 3000, playerid);
@@ -10868,11 +10869,18 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				case BusQuest:
 				{
+					format(str, sizeof(str), Main_Color"%s", Quests[indx][QuestName]);
+					ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, str, Color_White"Нам нужны водители автобуса для развоза новичков. Так, отправляйся на работу водителя-автобуса. Команды, ты и так знаешь.", Color_White"Понятно", "");
+
 					ActorSay(QuestActor, "Нам нужны водители автобуса для развоза новичков. Так, отправляйся на работу водителя-автобуса. Команды, ты и так знаешь.", 3000, playerid);
 					SaveQuest(playerid);
 				}
 				case BankCardQuest:
 				{
+					format(str, sizeof(str), Main_Color"%s", Quests[indx][QuestName]);
+					ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, str, Color_White"Как же так получилось, что у тебя нет банковской карты? А как же ты будешь снимать деньги со своего счёта?\n\
+					Отправляйся в ближайшее банковское отделение и приобрети карту.", Color_White"Понятно", "");
+
 					ActorSay(QuestActor, "Как же так получилось, что у тебя нет банковской карты? А как же ты будешь снимать деньги со своего счёта?", 3000, playerid);
 					SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Отправляйся в ближайшее банковское отделение и приобрети карту.", 3000, playerid);
 					if(pInfo[playerid][pCard]) QuestProgress(playerid, _:BankCardQuest, 1);
@@ -10904,6 +10912,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			- "Main_Color"Обычный чат "Color_White"– активируется нажатием клавиши F6 и написание текста;\n\
 			- "Main_Color"/s "Color_White"– кричать, дальность видимости выше, но не дает возможность двигаться;\n\
 			- "Main_Color"/o "Color_White"– общий чат, видим всем игрокам на сервере;\n\
+			- "Main_Color"/pm "Color_White"– личное сообщение игроку;\n\
 			- "Main_Color"/ad "Color_White"– реклама, стоит денег, выделяется особым цветом;\n\
 			- "Main_Color"/f "Color_White"– чат для мафий/банд, виден только участникам фракции;\n\
 			- "Main_Color"/r "Color_White"– рация, доступна для мирных фракций и закона;\n\
@@ -10973,7 +10982,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					"Main_Color"/eject "Color_White"- Выкинуть всех пассажиров из транспорта\n\
 					"Main_Color"/kiss [id] "Color_White"- Предложить игроку поцеловаться\n\
 					"Main_Color"/iznas [id] "Color_White"- Изнасиловать игрока.\n\
-					"Main_Color"/donat "Color_White"- Открыть меню платных услуг\n\
+					"Main_Color"/donate "Color_White"- Открыть меню платных услуг\n\
 					"Main_Color"/skin "Color_White"- Открыть гардероб\n\
 					"Main_Color"/gps off "Color_White"- Убирает активный маркер/метку с радара\n\
 					"Main_Color"/upgrade "Color_White"- Меню улучшений персонажа", Color_White"Закрыть", "");
@@ -11019,7 +11028,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					"Main_Color"/carcolor "Color_White"- Перекрасить домашний транспорт\n\
 					"Main_Color"/towcar "Color_White"- Эвакуировать транспорт к дому без его ремонта\n\
 					"Main_Color"/fixcar "Color_White"- Эвакуировать транспорт к дому с ремонтом\n\
-					"Main_Color"/platenumber "Color_White"- Изменить номерной знак транспорта", Color_White"Закрыть", "");
+					"Main_Color"/platenumber "Color_White"- Изменить номерной знак транспорта\n\
+					"Main_Color"/spawnchange(/spch) "Color_White"- Изменить место спавна", Color_White"Закрыть", "");
 				}
 				case 4:
 				{
@@ -11052,6 +11062,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				case 4: ShowHouseInfo(playerid);
 				case 5: ShowBusinessInfo(playerid);
 				case 6: ShowPlayerUpgradeMenu(playerid);
+				case 7: ShowPlayerMenu(playerid);
 			}
 			return 1;
 		}
@@ -11079,6 +11090,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			else
 			{
 				SetPVarInt(playerid, "SelectedGPSTitle", listitem+1);
+				SetPVarInt(playerid, "GPS_List", 1);
 				ShowPlayerGPSSubMenu(playerid, listitem+1);
 			}
 			return 1;
@@ -11088,26 +11100,53 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			if(!response)
 			{
 				DeletePVar(playerid, "SelectedGPSTitle");
+				DeletePVar(playerid, "GPS_List");
+				DeletePVar(playerid, "GPS_Next");
+				DeletePVar(playerid, "GPS_Prev");
 				return pc_cmd_gps(playerid, "");
 			}
 			new TitleID = GetPVarInt(playerid, "SelectedGPSTitle");
 			DeletePVar(playerid, "SelectedGPSTitle");
-			for(new i = 0; i < sizeof(GPS[]); i++)
+
+			new List = GetPVarInt(playerid, "GPS_List");
+
+			if(listitem == GetPVarInt(playerid, "GPS_Next"))
 			{
-				if(GPS[TitleID][i][GpsID])
+				SetPVarInt(playerid, "SelectedGPSTitle", TitleID);
+				SetPVarInt(playerid, "GPS_List", List+1);
+				ShowPlayerGPSSubMenu(playerid, TitleID);
+			}
+			else if(listitem == GetPVarInt(playerid, "GPS_Prev"))
+			{
+				SetPVarInt(playerid, "SelectedGPSTitle", TitleID);
+				SetPVarInt(playerid, "GPS_List", List-1);
+				ShowPlayerGPSSubMenu(playerid, TitleID);
+			}
+			else
+			{
+				for(new i = (10*List)-10; i < 10*List; i++)
 				{
-					if(listitem) listitem--;
-					else
+					if(i >= sizeof(GPS[])) break;
+					if(GPS[TitleID][i][GpsID])
 					{
-						if(GetPVarInt(playerid, "TaxiPoint")) SetPlayerTaxiMarker(playerid, GPS[TitleID][i][GpsX], GPS[TitleID][i][GpsY], GPS[TitleID][i][GpsZ]);
+						if(listitem) listitem--;
 						else
 						{
-							if(pInfo[playerid][pGPSType] == GPS_Type_Job) return SendClientMessage(playerid, -1, Color_Grey"На данный момент GPS недоступен так как у вас уже стоит метка с одной из работ.");
-							pInfo[playerid][pGPSType] = GPS_Type_GPS;
-							SetPlayerRaceCheckpoint(playerid, 2, GPS[TitleID][i][GpsX], GPS[TitleID][i][GpsY], GPS[TitleID][i][GpsZ], 0.0, 0.0, 0.0, 10.0);
-							SendClientMessage(playerid, -1, Main_Color"[GPS] "Color_White"Навигатор включен");
+							DeletePVar(playerid, "SelectedGPSTitle");
+							DeletePVar(playerid, "GPS_List");
+							DeletePVar(playerid, "GPS_Next");
+							DeletePVar(playerid, "GPS_Prev");
+
+							if(GetPVarInt(playerid, "TaxiPoint")) SetPlayerTaxiMarker(playerid, GPS[TitleID][i][GpsX], GPS[TitleID][i][GpsY], GPS[TitleID][i][GpsZ]);
+							else
+							{
+								if(pInfo[playerid][pGPSType] == GPS_Type_Job) return SendClientMessage(playerid, -1, Color_Grey"На данный момент GPS недоступен так как у вас уже стоит метка с одной из работ.");
+								pInfo[playerid][pGPSType] = GPS_Type_GPS;
+								SetPlayerRaceCheckpoint(playerid, 2, GPS[TitleID][i][GpsX], GPS[TitleID][i][GpsY], GPS[TitleID][i][GpsZ], 0.0, 0.0, 0.0, 10.0);
+								SendClientMessage(playerid, -1, Main_Color"[GPS] "Color_White"Навигатор включен");
+							}
+							break;
 						}
-						break;
 					}
 				}
 			}
@@ -11544,7 +11583,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				else
 				{
-					if(JobID == Job_Lawyer && pInfo[playerid][pMembers] != Fraction_None && IsGovFraction(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Сотрудникам гос.организаций запрещено работать адвокатами");
+					if(JobID == Job_Lawyer && pInfo[playerid][pMembers] != Fraction_None && IsGovFraction(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Представителям закона запрещено работать адвокатом.");
 					if(JobID == Job_Lawyer && pInfo[playerid][pLevel] < 6) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Должность адвоката доступна с 6 уровня");
 					
 					format(str, sizeof(str), Color_Yellow"Вы успешно устроились на работу "Main_Color"%sа", Jobs[JobID][JobNames]);
@@ -11839,6 +11878,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			format(str, sizeof(str), Color_White"Дом автоматически оплачен до "Main_Color"%s", date(hInfo[HouseID][hTax], 3, "%dd.%mm.%yyyy %hh:%ii"));
 			SendClientMessage(playerid, -1, str);
 			SendClientMessage(playerid, -1, Color_White"Не забудьте оплатить его в ближайшем отделении банка");
+			SendClientMessage(playerid, -1, Main_Color"В случае если налог на доме закончится, система автоматически оплатит налог на 1 день при наличии денег на банковском счету");
 
 			pInfo[playerid][pSpawnChange] = SpawnChange_House;
 			SavePlayerInt(playerid, "SpawnChange", pInfo[playerid][pSpawnChange]);
@@ -12624,7 +12664,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					}
 					case Job_Bus:
 					{
-						SetPVarInt(playerid, "BusRoute", 1+random(8));
+						SetPVarInt(playerid, "BusRoute", 1+random(4));
 						SetPVarInt(playerid, "BusRouteStage", 1);
 						switch(GetPVarInt(playerid, "BusRoute"))
 						{
@@ -12645,30 +12685,9 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 							}
 							case 4:
 							{
-								vInfo[vehicleid][vText] = CreateDynamic3DTextLabel(Main_Color"Маршрут: Деревня новичков – Завод", -1, 0.0, 0.0, 0.0, 10.0, INVALID_PLAYER_ID, vehicleid, 0, 0, 0);
-								SendClientMessage(playerid, -1, Color_Yellow"Вас назначили на маршрут Деревня новичков - Завод");
+								vInfo[vehicleid][vText] = CreateDynamic3DTextLabel(Main_Color"Маршрут: Деревня новичков – Банк Los-Santos", -1, 0.0, 0.0, 0.0, 10.0, INVALID_PLAYER_ID, vehicleid, 0, 0, 0);
+								SendClientMessage(playerid, -1, Color_Yellow"Вас назначили на маршрут Деревня новичков - Банк Los-Santos");
 							}
-							case 5:
-							{
-								vInfo[vehicleid][vText] = CreateDynamic3DTextLabel(Main_Color"Маршрут: Деревня новичков – Шахта", -1, 0.0, 0.0, 0.0, 10.0, INVALID_PLAYER_ID, vehicleid, 0, 0, 0);
-								SendClientMessage(playerid, -1, Color_Yellow"Вас назначили на маршрут Деревня новичков - Шахта");
-							}
-							case 6:
-							{
-								vInfo[vehicleid][vText] = CreateDynamic3DTextLabel(Main_Color"Маршрут: Деревня новичков – Ферма", -1, 0.0, 0.0, 0.0, 10.0, INVALID_PLAYER_ID, vehicleid, 0, 0, 0);
-								SendClientMessage(playerid, -1, Color_Yellow"Вас назначили на маршрут Деревня новичков - Ферма");
-							}
-							case 7:
-							{
-								vInfo[vehicleid][vText] = CreateDynamic3DTextLabel(Main_Color"Маршрут: Деревня новичков – Грузчики", -1, 0.0, 0.0, 0.0, 10.0, INVALID_PLAYER_ID, vehicleid, 0, 0, 0);
-								SendClientMessage(playerid, -1, Color_Yellow"Вас назначили на маршрут Деревня новичков - Грузчики");
-							}
-							case 8:
-							{
-								vInfo[vehicleid][vText] = CreateDynamic3DTextLabel(Main_Color"Маршрут: Деревня новичков – Водитель погрузчика", -1, 0.0, 0.0, 0.0, 10.0, INVALID_PLAYER_ID, vehicleid, 0, 0, 0);
-								SendClientMessage(playerid, -1, Color_Yellow"Вас назначили на маршрут Деревня новичков - Водитель погрузчика");
-							}
-
 						}
 						SetBusMarker(playerid);
 					}
@@ -12781,45 +12800,60 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 		case D_GPS_Remove_Select_Title:
 		{
 			if(!response) return pc_cmd_gpssettings(playerid);
-			new TitleIndx = listitem+1;
-			if(!GetGpsCount(TitleIndx)) return SendClientMessage(playerid, -1, Color_Grey"На данный момент пункты под этим заголовком отсутствуют.");
-			SetPVarInt(playerid, "GPS_Remove_To_Title", TitleIndx);
-			new str[500];
-			new count = 1;
-			for(new i = 0; i < sizeof(GPS[]); i++)
-			{
-				if(GPS[TitleIndx][i][GpsID])
-				{
-					format(str, sizeof(str), "%s"Main_Color"%d. "Color_White"%s\n", str, count, GPS[TitleIndx][i][GpsName]);
-					count++;
-				}
-			}
-			ShowDialog(playerid, D_GPS_Remove, DIALOG_STYLE_LIST, Main_Color"GPS Удаление пункта", str, Color_White"Далее", Color_White"Назад");
+
+			SetPVarInt(playerid, "SelectedGPSTitle", listitem+1);
+			SetPVarInt(playerid, "GPS_List", 1);
+			ShowPlayerGPSSubMenu(playerid, listitem+1, 2);
 			return 1;
 		}
 		case D_GPS_Remove:
 		{
 			if(!response)
 			{
-				DeletePVar(playerid, "GPS_Remove_To_Title");
+				DeletePVar(playerid, "SelectedGPSTitle");
+				DeletePVar(playerid, "GPS_List");
+				DeletePVar(playerid, "GPS_Next");
+				DeletePVar(playerid, "GPS_Prev");
 				return pc_cmd_gpssettings(playerid);
 			}
-			new TitleID = GetPVarInt(playerid, "GPS_Remove_To_Title");
-			DeletePVar(playerid, "GPS_Remove_To_Title");
+			new TitleID = GetPVarInt(playerid, "SelectedGPSTitle");
+			DeletePVar(playerid, "SelectedGPSTitle");
 
-			for(new i = 0; i < sizeof(GPS[]); i++)
+			new List = GetPVarInt(playerid, "GPS_List");
+
+			if(listitem == GetPVarInt(playerid, "GPS_Next"))
 			{
-				if(GPS[TitleID][i][GpsID])
+				SetPVarInt(playerid, "SelectedGPSTitle", TitleID);
+				SetPVarInt(playerid, "GPS_List", List+1);
+				ShowPlayerGPSSubMenu(playerid, TitleID, 2);
+			}
+			else if(listitem == GetPVarInt(playerid, "GPS_Prev"))
+			{
+				SetPVarInt(playerid, "SelectedGPSTitle", TitleID);
+				SetPVarInt(playerid, "GPS_List", List-1);
+				ShowPlayerGPSSubMenu(playerid, TitleID, 2);
+			}
+			else
+			{
+				for(new i = (10*List)-10; i < 10*List; i++)
 				{
-					if(listitem) listitem--;
-					else
+					if(i >= sizeof(GPS[])) break;
+					if(GPS[TitleID][i][GpsID])
 					{
-						RemoveGPS(playerid, i, TitleID);
-						break;
+						if(listitem) listitem--;
+						else
+						{
+							DeletePVar(playerid, "SelectedGPSTitle");
+							DeletePVar(playerid, "GPS_List");
+							DeletePVar(playerid, "GPS_Next");
+							DeletePVar(playerid, "GPS_Prev");
+
+							RemoveGPS(playerid, i, TitleID);
+							break;
+						}
 					}
 				}
 			}
-			return 1;
 		}
 		case D_Business_Buy:
 		{
@@ -12857,6 +12891,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			format(str, sizeof(str), Color_White"Бизнес автоматически оплачен до "Main_Color"%s", date(bInfo[BusinessID][bTax], 3, "%dd.%mm.%yyyy %hh:%ii"));
 			SendClientMessage(playerid, -1, str);
 			SendClientMessage(playerid, -1, Color_White"Не забудьте оплатить его в ближайшем отделении банка");
+			SendClientMessage(playerid, -1, Main_Color"В случае если налог на бизнесе закончится, система автоматически оплатит налог на 1 день при наличии денег на банковском счету");
 			return 1;
 		}
 		case D_Inventory:
@@ -13719,7 +13754,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				format(str, sizeof(str), Color_White"Ваш дом уже оплачен до "Main_Color"%s", date(hInfo[pInfo[playerid][pHouseID]][hTax], 3, "%dd.%mm.%yyyy %hh:%ii"));
 				return SendClientMessage(playerid, -1, str);
 			}
-			new money = day*700;
+			new money = day*HOUSE_COST_DAY;
 
 			if(pInfo[playerid][pMoney] < money)
 			{
@@ -13770,7 +13805,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				format(str, sizeof(str), Color_White"Ваш бизнес уже оплачен до "Main_Color"%s", date(bInfo[pInfo[playerid][pBusinessID]][bTax], 3, "%dd.%mm.%yyyy %hh:%ii"));
 				return SendClientMessage(playerid, -1, str);
 			}
-			new money = day*1500;
+			new money = day*BUSINESS_COST_DAY;
 
 			if(pInfo[playerid][pMoney] < money)
 			{
@@ -14107,9 +14142,9 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				format(str, sizeof(str), Main_Color"Палатка\n\
 				"Main_Color"Арендована: "Color_White"%s\n\
 				"Main_Color"Количество мест: "Color_Green"%d\n\
-				"Color_White"Чтобы посмотреть товары нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", pInfo[Tent[indx][TentPlayer]][pName], Tent[indx][TentSlot]);
+				"Color_White"Чтобы посмотреть товары нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", pInfo[Tent[indx][TentPlayer]][pName], Tent[indx][TentSlot]);
 				UpdateDynamic3DTextLabelText(Tent[indx][TentText], -1, str);
-				SendClientMessage(playerid, -1, Color_Yellow"Палатка арендована на 1 час. Вы можете открыть меню палатки с помощью"Main_Color"["Color_Yellow"~k~~SNEAK_ABOUT~"Main_Color"]");
+				SendClientMessage(playerid, -1, Color_Yellow"Палатка арендована на 1 час. Вы можете открыть меню палатки с помощью"Main_Color"["Color_Yellow KEY_WALK_NAME Main_Color"]");
 				SendClientMessage(playerid, -1, Color_Yellow"Палатка автоматически продлится по истечению 1 часа");
 				SetPVarInt(playerid, "TentRent", indx+1);
 			}
@@ -14274,7 +14309,11 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 		}
 		case D_Main_Menu_TP:
 		{
-			if(!response) return DeletePVar(playerid, "FindHouse");
+			if(!response)
+			{
+				pc_cmd_apanel(playerid);
+				return DeletePVar(playerid, "FindHouse");
+			}
 			new FindHouseListitem = GetPVarInt(playerid, "FindHouse");
 			DeletePVar(playerid, "FindHouse");
 			if(listitem == FindHouseListitem) ShowDialog(playerid, D_TP_House, DIALOG_STYLE_INPUT, Main_Color"Телепорт к дому", Color_White"Введите номер дома в поле ниже чтобы телепортироваться к нему", Color_White"Далее", Color_White"Назад");
@@ -14285,8 +14324,9 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			}
 			else
 			{
+				SetPVarInt(playerid, "GPS_List", 1);
 				SetPVarInt(playerid, "SelectedGPSTitle", listitem+1);
-				ShowPlayerTPSubMenu(playerid, listitem+1);
+				ShowPlayerGPSSubMenu(playerid, listitem+1, 3);
 			}
 			return 1;
 		}
@@ -14295,26 +14335,53 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			if(!response)
 			{
 				DeletePVar(playerid, "SelectedGPSTitle");
+				DeletePVar(playerid, "GPS_List");
+				DeletePVar(playerid, "GPS_Next");
+				DeletePVar(playerid, "GPS_Prev");
 				return pc_cmd_tp(playerid);
 			}
 			new TitleID = GetPVarInt(playerid, "SelectedGPSTitle");
 			DeletePVar(playerid, "SelectedGPSTitle");
-			for(new i = 0; i < sizeof(GPS[]); i++)
+
+			new List = GetPVarInt(playerid, "GPS_List");
+
+			if(listitem == GetPVarInt(playerid, "GPS_Next"))
 			{
-				if(GPS[TitleID][i][GpsID])
+				SetPVarInt(playerid, "SelectedGPSTitle", TitleID);
+				SetPVarInt(playerid, "GPS_List", List+1);
+				ShowPlayerGPSSubMenu(playerid, TitleID, 3);
+			}
+			else if(listitem == GetPVarInt(playerid, "GPS_Prev"))
+			{
+				SetPVarInt(playerid, "SelectedGPSTitle", TitleID);
+				SetPVarInt(playerid, "GPS_List", List-1);
+				ShowPlayerGPSSubMenu(playerid, TitleID, 3);
+			}
+			else
+			{
+				for(new i = (10*List)-10; i < 10*List; i++)
 				{
-					if(listitem) listitem--;
-					else
+					if(i >= sizeof(GPS[])) break;
+					if(GPS[TitleID][i][GpsID])
 					{
-						if(GetPlayerState(playerid) == PLAYER_STATE_ONFOOT) SetPlayerPosition(playerid, GPS[TitleID][i][GpsX], GPS[TitleID][i][GpsY], GPS[TitleID][i][GpsZ]+1.0);
-						else if(GetPlayerState(playerid) == PLAYER_STATE_DRIVER)
+						if(listitem) listitem--;
+						else
 						{
-							new vehicleid = GetPlayerVehicleID(playerid);
-							SetVehiclePos(vehicleid, GPS[TitleID][i][GpsX], GPS[TitleID][i][GpsY], GPS[TitleID][i][GpsZ]+1.0);
-							LinkVehicleToInterior(vehicleid, 0);
-							SetVehicleVirtualWorld(vehicleid, 0);
+							DeletePVar(playerid, "SelectedGPSTitle");
+							DeletePVar(playerid, "GPS_List");
+							DeletePVar(playerid, "GPS_Next");
+							DeletePVar(playerid, "GPS_Prev");
+
+							if(GetPlayerState(playerid) == PLAYER_STATE_ONFOOT) SetPlayerPosition(playerid, GPS[TitleID][i][GpsX], GPS[TitleID][i][GpsY], GPS[TitleID][i][GpsZ]+1.0);
+							else if(GetPlayerState(playerid) == PLAYER_STATE_DRIVER)
+							{
+								new vehicleid = GetPlayerVehicleID(playerid);
+								SetVehiclePos(vehicleid, GPS[TitleID][i][GpsX], GPS[TitleID][i][GpsY], GPS[TitleID][i][GpsZ]+1.0);
+								LinkVehicleToInterior(vehicleid, 0);
+								SetVehicleVirtualWorld(vehicleid, 0);
+							}
+							break;
 						}
-						break;
 					}
 				}
 			}
@@ -15007,7 +15074,11 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			format(str, sizeof(str), "вылечил(а) %s", pInfo[playerid][pName]);
 			ProxDetector(id, MESSAGE_DIST, BitColor_Me, str);
 
-			pInfo[playerid][pHealth] = 100.0;
+
+			new Float:Value = Upgrade[Upg_HealCmd][Upg_Conf_Standart]+(Upgrade[Upg_HealCmd][Upg_Conf_Value]*pInfo[id][pUpgrade][Upg_HealCmd]);
+			if(Value > (Upgrade[Upg_HealCmd][Upg_Max_Points]*Upgrade[Upg_HealCmd][Upg_Conf_Value])+Upgrade[Upg_HealCmd][Upg_Conf_Standart]) Value = (Upgrade[Upg_HealCmd][Upg_Max_Points]*Upgrade[Upg_HealCmd][Upg_Conf_Value])+Upgrade[Upg_HealCmd][Upg_Conf_Standart];
+
+			pInfo[playerid][pHealth] = Value;
 			SetPlayerHealth(playerid, pInfo[playerid][pHealth]);
 			SavePlayerFloat(playerid, "Health", pInfo[playerid][pHealth]);
 
@@ -15614,7 +15685,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 			if(!IsABand(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам");
 
-			if(Iter_Count(FractionMembers[pInfo[playerid][pMembers]]) < 5) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Для объявления войны необходимо минимум 5 человек");
+			if(Iter_Count(FractionMembers[pInfo[playerid][pMembers]]) < 3) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вашей фракции нет онлайна (минимум 3 человек).");
 			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша банда уже с кем-то ведет войну");
 			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Accept) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вашей банде уже кто-то сделал предложение о войне");
 			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Accept_Request) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша банда уже предложила войну кому-то");
@@ -15623,7 +15694,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 			if(FractionID == pInfo[playerid][pMembers]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете объявить войну своей банде");
 
-			if(Iter_Count(FractionMembers[FractionID]) < 5) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"В этой банде менее 5 человек, нельзя объявить войну");
+			if(Iter_Count(FractionMembers[FractionID]) < 3) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У данной фракции нет онлайна (минимум 3 человек).");
 			if(WarStatus[FractionID] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта банда уже с кем-то ведет войну");
 			if(WarStatus[FractionID] == War_Status_Wait_Accept) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этой банде уже кто-то сделал предложение о войне");
 			if(WarStatus[FractionID] == War_Status_Wait_Accept_Request) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта банда уже предложила войну кому-то");
@@ -15650,12 +15721,12 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 			if(!IsABand(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам");
 
-			if(Iter_Count(FractionMembers[pInfo[playerid][pMembers]]) < 5) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Для объявления войны необходимо минимум 5 человек");
+			if(Iter_Count(FractionMembers[pInfo[playerid][pMembers]]) < 3) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вашей фракции нет онлайна (минимум 3 человек).");
 			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша банда уже с кем-то ведет войну");
 			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Accept) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вашей банде уже кто-то сделал предложение о войне");
 			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Accept_Request) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша банда уже предложила войну кому-то");
 
-			if(Iter_Count(FractionMembers[FractionID]) < 5) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"В этой банде менее 5 человек, нельзя объявить войну");
+			if(Iter_Count(FractionMembers[FractionID]) < 3) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У данной фракции нет онлайна (минимум 3 человек).");
 			if(WarStatus[FractionID] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта банда уже с кем-то ведет войну");
 			if(WarStatus[FractionID] == War_Status_Wait_Accept) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этой банде уже кто-то сделал предложение о войне");
 			if(WarStatus[FractionID] == War_Status_Wait_Accept_Request) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта банда уже предложила войну кому-то");
@@ -15703,12 +15774,12 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 			if(!IsABand(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам");
 
-			if(Iter_Count(FractionMembers[pInfo[playerid][pMembers]]) < 5) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Для объявления войны необходимо минимум 5 человек");
+			if(Iter_Count(FractionMembers[pInfo[playerid][pMembers]]) < 3) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вашей фракции нет онлайна (минимум 3 человек).");
 			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша банда уже с кем-то ведет войну");
 			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Accept) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вашей банде уже кто-то сделал предложение о войне");
 			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Accept_Request) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша банда уже предложила войну кому-то");
 
-			if(Iter_Count(FractionMembers[FractionID]) < 5) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"В этой банде менее 5 человек, нельзя объявить войну");
+			if(Iter_Count(FractionMembers[FractionID]) < 3) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У данной фракции нет онлайна (минимум 3 человек).");
 			if(WarStatus[FractionID] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта банда уже с кем-то ведет войну");
 			if(WarStatus[FractionID] == War_Status_Wait_Accept) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этой банде уже кто-то сделал предложение о войне");
 			if(WarStatus[FractionID] == War_Status_Wait_Accept_Request) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта банда уже предложила войну кому-то");
@@ -15852,14 +15923,24 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
             new vehicleid = GetPlayerVehicleID(playerid);
 			if(!vehicleid || vInfo[vehicleid][vType] != VehicleTypeFraction || vInfo[vehicleid][vOwner] != Fraction_StreetRacers) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть в рабочем транспорте");
 
-            if(listitem == GetVehiclePaintJobCount(vInfo[vehicleid][vModel]))
+			new count = GetVehiclePaintJobCount(vInfo[vehicleid][vModel]);
+
+            if(listitem == count*2)
             {
+				ChangeVehicleColor(vehicleid, vInfo[vehicleid][vColor1], vInfo[vehicleid][vColor2]);
                 ChangeVehiclePaintjob(vehicleid, 3);
                 SendClientMessage(playerid, -1, Color_White"Винил снят");
             }
-            else
+            else if(listitem < count)
             {
+				ChangeVehicleColor(vehicleid, vInfo[vehicleid][vColor1], vInfo[vehicleid][vColor2]);
                 ChangeVehiclePaintjob(vehicleid, listitem);
+                SendClientMessage(playerid, -1, Color_White"Винил нанесен");
+            }
+			else
+			{
+				ChangeVehicleColor(vehicleid, 1, 1);
+                ChangeVehiclePaintjob(vehicleid, listitem-count);
                 SendClientMessage(playerid, -1, Color_White"Винил нанесен");
             }
             return 1;
@@ -15962,6 +16043,10 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				{
 					if(WarStatus[pInfo[playerid][pMembers]] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша мафия уже ведет войну за какой-то бизнес");
 					if(WarStatus[bInfo[BusinessID][bMafiaOwner]] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта мафия уже ведет войну за какой-то бизнес");
+					
+					if(Iter_Count(FractionMembers[pInfo[playerid][pMembers]]) < 3) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вашей фракции нет онлайна (минимум 3 человек).");
+					if(Iter_Count(FractionMembers[bInfo[BusinessID][bMafiaOwner]]) < 3) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У этой фракции нет онлайна (минимум 3 человек).");
+
 					if(GetPlayerDistanceFromPoint(playerid, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ]) > 15.0)
 					{
 						SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть возле этого бизнеса");
@@ -16046,6 +16131,18 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					Upgrade[Upg_FSD][Upg_Conf_Standart]+(Upgrade[Upg_FSD][Upg_Conf_Value]*pInfo[playerid][pUpgrade][Upg_FSD]),
 					(Upgrade[Upg_FSD][Upg_Max_Points]*Upgrade[Upg_FSD][Upg_Conf_Value])+Upgrade[Upg_FSD][Upg_Conf_Standart],
 					Upgrade[Upg_FSD][Upg_Conf_Value]);
+					ShowDialog(playerid, D_Upgrade_Accept, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Улучшения", str, Color_White"Далее", Color_White"Назад");
+				}
+				case 3:
+				{
+					new str[300];
+					format(str, sizeof(str), Color_White"Вы желаете улучшить навык \""Main_Color"Количество здоровья при использовании /heal"Color_White"\"\n\
+					Текущий уровень навыка: "Main_Color"%.1f\n\
+					"Color_White"Максимальное значение: "Main_Color"%.1f\n\
+					"Color_White"Увеличение за уровень: "Main_Color"%.1f",
+					Upgrade[Upg_HealCmd][Upg_Conf_Standart]+(Upgrade[Upg_HealCmd][Upg_Conf_Value]*pInfo[playerid][pUpgrade][Upg_HealCmd]),
+					(Upgrade[Upg_HealCmd][Upg_Max_Points]*Upgrade[Upg_HealCmd][Upg_Conf_Value])+Upgrade[Upg_HealCmd][Upg_Conf_Standart],
+					Upgrade[Upg_HealCmd][Upg_Conf_Value]);
 					ShowDialog(playerid, D_Upgrade_Accept, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Улучшения", str, Color_White"Далее", Color_White"Назад");
 				}
 			}
@@ -16639,14 +16736,6 @@ public OnPlayerClickMap(playerid, Float:fX, Float:fY, Float:fZ)
 }
 
 /////////////////////////////CMD///////////////////////////////////////////////
-
-CMD:test(playerid, params[])
-{
-	new page;
-	sscanf(params, "d", page);
-	FirstQuestCamera(playerid, page);
-}
-
 CMD:main(playerid)
 {
 	ShowPlayerMainMenu(playerid);
@@ -16676,6 +16765,7 @@ CMD:bizzwar(playerid)
 {
 	if(!IsAMafia(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только мафиям");
 	if(WarStatus[pInfo[playerid][pMembers]] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша мафия уже ведет войну за какой-то бизнес");
+	if(Iter_Count(FractionMembers[pInfo[playerid][pMembers]]) < 3) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вашей фракции нет онлайна (минимум 3 человек).");
 
 	SetPVarInt(playerid, "Business_List", 1);
 	ShowBusinessList(playerid, 4);
@@ -16816,7 +16906,7 @@ CMD:war(playerid)
 {
 	if(!IsABand(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам");
 
-	if(Iter_Count(FractionMembers[pInfo[playerid][pMembers]]) < 5) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Для объявления войны необходимо минимум 5 человек");
+	if(Iter_Count(FractionMembers[pInfo[playerid][pMembers]]) < 3) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вашей фракции нет онлайна (минимум 3 человек).");
 
 	if(WarStatus[pInfo[playerid][pMembers]] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша банда уже с кем-то ведет войну");
 	if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Accept) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вашей банде уже кто-то сделал предложение о войне");
@@ -16889,10 +16979,11 @@ CMD:paint(playerid)
 
     new count = GetVehiclePaintJobCount(vInfo[vehicleid][vModel]);
     if(!count) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Для этой машины недоступны винилы.");
-    new str[200];
-    for(new i = 0; i < count; i++)
+    new str[300];
+    for(new i = 0; i < count*2; i++)
     {
-        format(str, sizeof(str), "%s"Color_White"Покрасочная работа №%d\n", str, i+1);
+		if(i < count) format(str, sizeof(str), "%s"Color_White"Покрасочная работа №%d\n", str, i+1);
+		else format(str, sizeof(str), "%s"Color_White"Покрасочная работа №%d(Стандартный цвет)\n", str, i+1-count);
     }
     format(str, sizeof(str), "%s"Color_White"Убрать покрасочные работы", str);
     ShowDialog(playerid, D_Paint, DIALOG_STYLE_LIST, Main_Color"Наклейка винилов", str, Color_White"Далее", Color_White"Закрыть");
@@ -16955,12 +17046,18 @@ CMD:usedrugs(playerid, const params[])
 {
 	new count;
 	if(sscanf(params, "d", count)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/usedrugs [Количество грамм]");
+	if(GetPVarInt(playerid, "DrugCD") > gettime()) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы недавно уже принимали наркотики");
 
 	if(count <= 0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Количество грамм должно быть больше 0");
 	if(!RemovePlayerInventory(playerid, ItemDrugs, count)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас нет такого количества наркотиков");
 
     AntiCheatGetHealth(playerid, pInfo[playerid][pHealth]);
     if(pInfo[playerid][pHealth] >= 160.0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы здоровы");
+
+	SetPVarInt(playerid, "DrugCD", gettime()+30);
+
+	SetPVarInt(playerid, "PostDrugEffect", gettime()+8);
+	SetPlayerDrunkLevel(playerid, 50000);
 
 	ProxDetector(playerid, MESSAGE_DIST, BitColor_Me, "достает пакетик с травой");
 
@@ -17541,46 +17638,55 @@ CMD:arrest(playerid, params[])
 	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока у которого хотите посадить в тюрьму");
 	if(!IsPlayerInDynamicArea(playerid, Pickups[ArrestPickup][PickAreaID])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны доставить преступника к воротам тюрьмы");
 
-	SetPVarInt(id, "JailCD", gettime()+5);
-
-	switch(pInfo[id][pWanted])
-	{
-		case 1: pInfo[id][pJail] = 30;
-		case 2: pInfo[id][pJail] = 40;
-		case 3: pInfo[id][pJail] = 50;
-		case 4: pInfo[id][pJail] = 60;
-		case 5: pInfo[id][pJail] = 80;
-		case 6: pInfo[id][pJail] = 100;
-		default: pInfo[id][pJail] = 30;
-	}
-	SavePlayerInt(id, "Jail", pInfo[id][pJail]);
-
-	pInfo[id][pJailedFraction] = pInfo[playerid][pMembers];
-	SavePlayerInt(id, "JailedFraction", pInfo[id][pJailedFraction]);
-
-	if(pInfo[id][pFollow] != -1) DeletePVar(pInfo[id][pFollow], "Following");
-	pInfo[id][pFollow] = -1;
-	SetPlayerSpecialAction(id, SPECIAL_ACTION_NONE);
-	TogglePlayerControllable(id, true);
-
-	new str[300];
-	format(str, sizeof(str), "%s %s[%d] посадил в тюрьму %s[%d] с приоритетом розыска %d", FractionRankName[pInfo[playerid][pMembers]][pInfo[playerid][pRank]], pInfo[playerid][pName], playerid, pInfo[id][pName], id, pInfo[id][pWanted]);
-	SendDMessage(playerid, str);
-
-	format(str, sizeof(str), "%s %s[%d] "Color_White"посадил вас в тюрьму с приоритетом розыска "Main_Color"%d", FractionRankName[pInfo[playerid][pMembers]][pInfo[playerid][pRank]], pInfo[playerid][pName], playerid, pInfo[id][pWanted]);
-	SendClientMessage(id, BitColor_Main, str);
-
-	format(str, sizeof(str), Color_White"Вы попали в тюрьму вам нужно добыть "Main_Color"%d "Color_White"камня чтобы выйти", pInfo[id][pJail]);
-	SendClientMessage(id, BitColor_Main, str);
-
-	pInfo[id][pWanted] = 0;
-	SetPlayerWantedLevel(id, pInfo[id][pWanted]);
-	SavePlayerInt(id, "Wanted", pInfo[id][pWanted]);
-
-	ChangePlayerJob(id, pInfo[id][pJob]);
-	ChangePlayerUnOfficialJob(id, Job_None);
+	ArrestPlayer(id, playerid);
 	SpawnPlayer(id);
 	return 1;
+}
+
+stock ArrestPlayer(playerid, arrestedid = -1)
+{
+	SetPVarInt(playerid, "JailCD", gettime()+5);
+
+	switch(pInfo[playerid][pWanted])
+	{
+		case 1: pInfo[playerid][pJail] = 10;
+		case 2: pInfo[playerid][pJail] = 15;
+		case 3: pInfo[playerid][pJail] = 20;
+		case 4: pInfo[playerid][pJail] = 25;
+		case 5: pInfo[playerid][pJail] = 30;
+		case 6: pInfo[playerid][pJail] = 35;
+		default: pInfo[playerid][pJail] = 10;
+	}
+	SavePlayerInt(playerid, "Jail", pInfo[playerid][pJail]);
+
+	if(arrestedid != -1) pInfo[playerid][pJailedFraction] = pInfo[arrestedid][pMembers];
+	else pInfo[playerid][pJailedFraction] = Fraction_None;
+	SavePlayerInt(playerid, "JailedFraction", pInfo[playerid][pJailedFraction]);
+
+	if(pInfo[playerid][pFollow] != -1) DeletePVar(pInfo[playerid][pFollow], "Following");
+	pInfo[playerid][pFollow] = -1;
+	SetPlayerSpecialAction(playerid, SPECIAL_ACTION_NONE);
+	TogglePlayerControllable(playerid, true);
+
+	new str[300];
+	if(arrestedid != -1)
+	{
+		format(str, sizeof(str), "%s %s[%d] посадил в тюрьму %s[%d] с приоритетом розыска %d", FractionRankName[pInfo[arrestedid][pMembers]][pInfo[arrestedid][pRank]], pInfo[arrestedid][pName], arrestedid, pInfo[playerid][pName], playerid, pInfo[playerid][pWanted]);
+		SendDMessage(arrestedid, str);
+
+		format(str, sizeof(str), "%s %s[%d] "Color_White"посадил вас в тюрьму с приоритетом розыска "Main_Color"%d", FractionRankName[pInfo[arrestedid][pMembers]][pInfo[arrestedid][pRank]], pInfo[arrestedid][pName], arrestedid, pInfo[playerid][pWanted]);
+		SendClientMessage(playerid, BitColor_Main, str);
+	}
+
+	format(str, sizeof(str), Color_White"Вы попали в тюрьму вам нужно добыть "Main_Color"%d "Color_White"камня чтобы выйти", pInfo[playerid][pJail]);
+	SendClientMessage(playerid, BitColor_Main, str);
+
+	pInfo[playerid][pWanted] = 0;
+	SetPlayerWantedLevel(playerid, pInfo[playerid][pWanted]);
+	SavePlayerInt(playerid, "Wanted", pInfo[playerid][pWanted]);
+
+	ChangePlayerJob(playerid, pInfo[playerid][pJob]);
+	ChangePlayerUnOfficialJob(playerid, Job_None);
 }
 
 CMD:take(playerid, params[])
@@ -17800,7 +17906,6 @@ CMD:frisk(playerid, params[])
 	if(!IsPlayerConnected(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не подключен");
 	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
 	if(playerid == id) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ввели свой ID");
-	if(AntiCheatGetSpecialAction(id) != SPECIAL_ACTION_CUFFED) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этот игрок не в наручниках");
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
 	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которого хотите обыскать");
@@ -17812,6 +17917,7 @@ CMD:frisk(playerid, params[])
 		{
 			format(str, sizeof(str), "%s"Color_Red"%s\t"Color_White"%dшт.\n", str, Items[pInventory[id][i][ItemID]][ItemName], GetItemCountInInventory(id, pInventory[id][i][ItemID]));
 		}
+		else format(str, sizeof(str), "%s"Color_White"%s\t%dшт.\n", str, Items[pInventory[id][i][ItemID]][ItemName], GetItemCountInInventory(id, pInventory[id][i][ItemID]));
 	}
 
 	strcat(str, "\n"Color_White"Экипировано:\n");
@@ -17827,6 +17933,24 @@ CMD:frisk(playerid, params[])
 		}
 	}
 	if(!Finded) strcat(str, Color_White"Пусто");
+
+	strcat(str, "\n\n");
+
+	if(pInfo[id][pLicAuto]) strcat(str, Color_Green"Лицензия на управление Т/С\n");
+	else strcat(str, Color_Red"Лицензия на управление Т/С\n");
+
+	if(pInfo[id][pLicMoto]) strcat(str, Color_Green"Лицензия на управление мотоциклами\n");
+	else strcat(str, Color_Red"Лицензия на управление мотоциклами\n");
+
+	if(pInfo[id][pLicBoat]) strcat(str, Color_Green"Лицензия на управление лодками\n");
+	else strcat(str, Color_Red"Лицензия на управление лодками\n");
+
+	if(pInfo[id][pLicPlane]) strcat(str, Color_Green"Лицензия на управление самолетами\n");
+	else strcat(str, Color_Red"Лицензия на управление самолетами\n");
+
+	if(pInfo[id][pLicGun]) strcat(str, Color_Green"Лицензия на оружие\n");
+	else strcat(str, Color_Red"Лицензия на оружие\n");
+
 
 	ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color"Обыск", str, Color_White"Закрыть", "");
 
@@ -18045,14 +18169,29 @@ CMD:suspect(playerid, params[])
 	if(!IsPlayerConnected(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не подключен");
 	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
 	if(playerid == id) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ввели свой ID");
-	if(wanted < 0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Минимальный приоритет розыска 1");
+	if(wanted <= 0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Минимальный приоритет розыска 1");
 	if(wanted > 6) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Максимальный приоритет розыска 6");
 
 	new str[300];
-	format(str, sizeof(str), "%s %s[%d] объявил %s[%d] в розыск с приоритетом %d, по причине: %s", FractionRankName[pInfo[playerid][pMembers]][pInfo[playerid][pRank]], pInfo[playerid][pName], playerid, pInfo[id][pName], id, wanted, message);
+	new PriorityStr[50];
+	switch(wanted)
+	{
+		case 1: strcat(PriorityStr, "одна звезда");
+		case 2: strcat(PriorityStr, "две звезды");
+		case 3: strcat(PriorityStr, "три звезды");
+		case 4: strcat(PriorityStr, "четыре звезды");
+		case 5: strcat(PriorityStr, "пять звезд");
+		case 6: strcat(PriorityStr, "шесть звезд");
+	}
+
+	format(str, sizeof(str), Color_Yellow"%s %s[%d] объявил в розыск %s[%d]. Приоритет: %s. Причина: %s", FractionRankName[pInfo[playerid][pMembers]][pInfo[playerid][pRank]], pInfo[playerid][pName], playerid, pInfo[id][pName], id, PriorityStr, message);
 	SendDMessage(playerid, str);
 
-	format(str, sizeof(str), "%s %s[%d] "Color_White"объявил вас в розыск с приоритетом "Main_Color"%d"Color_White", по причине: "Main_Color"%s", FractionRankName[pInfo[playerid][pMembers]][pInfo[playerid][pRank]], pInfo[playerid][pName], playerid, wanted, message);
+	if(pInfo[playerid][pMembers] == Fraction_FBI) format(str, sizeof(str), Color_Yellow"Агент ФБР объявил(а) тебя в розыск. Приоритет: %s. Причина: %s", PriorityStr, message);
+	else format(str, sizeof(str), Color_Yellow"%s[%d] объявил(а) тебя в розыск. Приоритет: %s. Причина: %s", pInfo[playerid][pName], playerid, PriorityStr, message);
+	SendClientMessage(id, BitColor_Main, str);
+
+	format(str, sizeof(str), Color_Red"***Внимание! Твой уровень розыска ( %s и шести )***", PriorityStr);
 	SendClientMessage(id, BitColor_Main, str);
 
 	pInfo[id][pWanted] = wanted;
@@ -18131,6 +18270,7 @@ CMD:uninvite(playerid, params[])
 	if(pInfo[id][pMembers] != pInfo[playerid][pMembers]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок не состоит в вашей организации");
 
 	UninvitePlayer(id);
+	SpawnPlayer(id);
 
 	new str[400];
 	format(str, sizeof(str), Main_Color"%s %s "Color_White"выгнал "Main_Color"%s "Color_White"из организации по причине: "Main_Color"%s", FractionRankName[pInfo[playerid][pMembers]][pInfo[playerid][pRank]], pInfo[playerid][pName], pInfo[id][pName], message);
@@ -18261,8 +18401,11 @@ CMD:giverank(playerid, params[])
 
 	if(rank > pInfo[id][pRank])
 	{
-		format(str, sizeof(str), Color_White"Вы были повышены до должности "Main_Color"%s", FractionRankName[pInfo[id][pMembers]][rank]);
+		format(str, sizeof(str), Color_Blue"Лидер %s[%d] повысил(а) тебя в ранге. Твой новый ранг: %s.", pInfo[playerid][pName], playerid, FractionRankName[pInfo[id][pMembers]][rank]);
 		SendClientMessage(id, -1, str);
+
+		format(str, sizeof(str), Color_Blue"Вы повысили %s[%d] в ранге. Новый ранг: %s.", pInfo[id][pName], id, FractionRankName[pInfo[id][pMembers]][rank]);
+		SendClientMessage(playerid, -1, str);
 
 		str[0] = EOS;
 		GetPlayerIp(playerid, str, 16);
@@ -18274,8 +18417,11 @@ CMD:giverank(playerid, params[])
 	}
 	else
 	{
-		format(str, sizeof(str), Color_White"Вы были понижены до должности "Main_Color"%s", FractionRankName[pInfo[id][pMembers]][rank]);
+		format(str, sizeof(str), Color_Blue"Лидер %s[%d] понизила(а) тебя в ранге. Твой новый ранг: %s.", pInfo[playerid][pName], playerid, FractionRankName[pInfo[id][pMembers]][rank]);
 		SendClientMessage(id, -1, str);
+
+		format(str, sizeof(str), Color_Blue"Вы понизили %s[%d] в ранге. Новый ранг: %s.", pInfo[id][pName], id, FractionRankName[pInfo[id][pMembers]][rank]);
+		SendClientMessage(playerid, -1, str);
 
 		str[0] = EOS;
 		GetPlayerIp(playerid, str, 16);
@@ -18360,7 +18506,7 @@ CMD:f(playerid, params[])
 CMD:d(playerid, params[])
 {
 	if(pInfo[playerid][pMembers] == Fraction_None) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не состоите не в одной из организаций");
-	if(!IsGovFraction(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступ к этому чату есть только у государственных организаций");
+	if(!IsGovFraction(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Чат доступен только для фракций закона.");
 
 	if(IsMuted(playerid)) return 1;
 	new message[145];
@@ -18375,7 +18521,7 @@ CMD:d(playerid, params[])
 CMD:gov(playerid, params[])
 {
 	if(pInfo[playerid][pMembers] == Fraction_None) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не состоите не в одной из организаций");
-	if(!IsGovFraction(pInfo[playerid][pMembers]) && pInfo[playerid][pMembers] != Fraction_Hospital && pInfo[playerid][pMembers] != Fraction_Taxi) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступ к этому чату есть только у государственных организаций");
+	if(!IsGovFraction(pInfo[playerid][pMembers]) && pInfo[playerid][pMembers] != Fraction_Hospital && pInfo[playerid][pMembers] != Fraction_Taxi) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Функция не доступна для твоей фракции.");
 	if(pInfo[playerid][pRank] < 5) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно с 5 ранга");
 
 	if(GetPVarInt(playerid, "GovCD") > gettime()) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Гос.новости можно использовать раз в 3 минуты");
@@ -18490,12 +18636,12 @@ CMD:aopen(playerid, params[])
 
 	switch(id)
 	{
-		case 0: UpdateDynamic3DTextLabelText(Pickups[HangarOneEnter][PickTextID], -1, Color_White"Ангар №1\nСтатус: "Color_Green"Открыт\n"Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]");
-		case 1: UpdateDynamic3DTextLabelText(Pickups[HangarTwoEnter][PickTextID], -1, Color_White"Ангар №2\nСтатус: "Color_Green"Открыт\n"Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]");
-		case 2: UpdateDynamic3DTextLabelText(Pickups[HangarThreeEnter][PickTextID], -1, Color_White"Ангар №3\nСтатус: "Color_Green"Открыт\n"Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]");
-		case 3: UpdateDynamic3DTextLabelText(Pickups[HangarFourEnter][PickTextID], -1, Color_White"Ангар №4\nСтатус: "Color_Green"Открыт\n"Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]");
-		case 4: UpdateDynamic3DTextLabelText(Pickups[HangarFiveEnter][PickTextID], -1, Color_White"Ангар №5\nСтатус: "Color_Green"Открыт\n"Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]");
-		case 5: UpdateDynamic3DTextLabelText(Pickups[HangarSixEnter][PickTextID], -1, Color_White"Ангар №6\nСтатус: "Color_Green"Открыт\n"Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]");
+		case 0: UpdateDynamic3DTextLabelText(Pickups[HangarOneEnter][PickTextID], -1, Color_White"Ангар №1\nСтатус: "Color_Green"Открыт\n"Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]");
+		case 1: UpdateDynamic3DTextLabelText(Pickups[HangarTwoEnter][PickTextID], -1, Color_White"Ангар №2\nСтатус: "Color_Green"Открыт\n"Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]");
+		case 2: UpdateDynamic3DTextLabelText(Pickups[HangarThreeEnter][PickTextID], -1, Color_White"Ангар №3\nСтатус: "Color_Green"Открыт\n"Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]");
+		case 3: UpdateDynamic3DTextLabelText(Pickups[HangarFourEnter][PickTextID], -1, Color_White"Ангар №4\nСтатус: "Color_Green"Открыт\n"Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]");
+		case 4: UpdateDynamic3DTextLabelText(Pickups[HangarFiveEnter][PickTextID], -1, Color_White"Ангар №5\nСтатус: "Color_Green"Открыт\n"Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]");
+		case 5: UpdateDynamic3DTextLabelText(Pickups[HangarSixEnter][PickTextID], -1, Color_White"Ангар №6\nСтатус: "Color_Green"Открыт\n"Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]");
 	}
 	return 1;
 }
@@ -18504,7 +18650,8 @@ CMD:news(playerid, params[])
 {
 	if(pInfo[playerid][pMembers] != Fraction_SanNews) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только сотрудникам San News");
 	new vehicleid = GetPlayerVehicleID(playerid);
-	if(GetPVarInt(playerid, "InPickup")-1 != SanNewsEnter && (!vehicleid || vInfo[vehicleid][vType] != VehicleTypeFraction || vInfo[vehicleid][vOwner] != pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только в офисе San News либо в фургоне");
+	if(GetPVarInt(playerid, "InPickup")-1 != SanNewsEnter
+	&& (!vehicleid || vInfo[vehicleid][vType] != VehicleTypeFraction || vInfo[vehicleid][vOwner] != pInfo[playerid][pMembers] || vInfo[vehicleid][vModel] != 582 || vInfo[vehicleid][vModel] != 488)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только в офисе San News либо в фургоне/вертолете");
 
 	if(IsMuted(playerid)) return 1;
 	new message[145];
@@ -18987,7 +19134,7 @@ CMD:service(playerid, params[])
 	if(!strcmp(type, "mechanic"))
 	{
 		new str[200];
-		format(str, sizeof(str), Color_Blue2"[Диспетчер] %s[%d] вызывает механика. Приянть вызов (/accept mechanic)", pInfo[playerid][pName], playerid);
+		format(str, sizeof(str), Color_Blue2"[Диспетчер] %s[%d] вызывает механика. Принять вызов (/accept mechanic)", pInfo[playerid][pName], playerid);
 		foreach(new i:Player)
 		{
 			if(pInfo[i][pAuth] && pInfo[i][pJob] == Job_Mechanic && GetPVarInt(i, "MechanicFare"))
@@ -19003,7 +19150,7 @@ CMD:service(playerid, params[])
 	{
 		if(pInfo[playerid][pKnockoutStatus] != Player_In_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не нуждаетесь в помощи медика");
 		new str[200];
-		format(str, sizeof(str), Color_Red2"[Диспетчер] %s[%d] вызывает медика. Приянть вызов (/accept medic)", pInfo[playerid][pName], playerid);
+		format(str, sizeof(str), Color_Red2"[Диспетчер] %s[%d] вызывает медика. Принять вызов (/accept medic)", pInfo[playerid][pName], playerid);
 		foreach(new i:Player)
 		{
 			if(pInfo[i][pAuth] && pInfo[i][pMembers] == Fraction_Hospital && GetPVarInt(i, "MedicDuty"))
@@ -19018,7 +19165,7 @@ CMD:service(playerid, params[])
 	else if(!strcmp(type, "taxi"))
 	{
 		new str[200];
-		format(str, sizeof(str), "[Диспетчер] %s[%d] заказывает такси. Приянть заказ (/accept taxi)", pInfo[playerid][pName], playerid);
+		format(str, sizeof(str), "[Диспетчер] %s[%d] заказывает такси. Принять заказ (/accept taxi)", pInfo[playerid][pName], playerid);
 		foreach(new i:Player)
 		{
 			if(pInfo[i][pAuth] && pInfo[i][pMembers] == Fraction_Taxi && GetPVarInt(i, "TaxiFare"))
@@ -20090,22 +20237,22 @@ CMD:accept(playerid, params[])
 			return 1;
 		}
 
-		if(Iter_Count(FractionMembers[pInfo[playerid][pMembers]]) < 5)
+		if(Iter_Count(FractionMembers[pInfo[playerid][pMembers]]) < 3)
 		{
-			SendRMessageEx(FractionID, "В банде соперника нет 5 человек. Предложение о войне автоматически отклонено");
+			SendRMessageEx(FractionID, "У данной фракции нет онлайна (минимум 3 человек). Предложение о войне автоматически отклонено");
 			ClearGangWar(FractionID);
 
-			SendRMessageEx(pInfo[playerid][pMembers], "В вашей банде менее 5 человек. Предложение о войне автоматически отклонено");
+			SendRMessageEx(pInfo[playerid][pMembers], "У вашей фракции нет онлайна (минимум 3 человек). Предложение о войне автоматически отклонено");
 			ClearGangWar(pInfo[playerid][pMembers]);
 			return 1;
 		}
 
-		if(Iter_Count(FractionMembers[FractionID]) < 5)
+		if(Iter_Count(FractionMembers[FractionID]) < 3)
 		{
-			SendRMessageEx(FractionID, "В вашей банде менее 5 человек. Предложение о войне автоматически отклонено");
+			SendRMessageEx(FractionID, "У вашей фракции нет онлайна (минимум 3 человек). Предложение о войне автоматически отклонено");
 			ClearGangWar(FractionID);
 
-			SendRMessageEx(pInfo[playerid][pMembers], "В банде соперника нет 5 человек. Предложение о войне автоматически отклонено");
+			SendRMessageEx(pInfo[playerid][pMembers], "У данной фракции нет онлайна (минимум 3 человек). Предложение о войне автоматически отклонено");
 			ClearGangWar(pInfo[playerid][pMembers]);
 			return 1;
 		}
@@ -21044,6 +21191,10 @@ CMD:pay(playerid, params[])
 	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
 	if(playerid == id) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ввели свой ID");
 	if(money > 10000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"За один раз можно передать не больше 10.000$");
+	
+	new Float:X, Float:Y, Float:Z;
+	GetPlayerPos(id, X, Y, Z);
+	if(!IsPlayerInRangeOfPoint(playerid, 3.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которому хотите передать деньги");
 
 	GivePlayerMoneyEx(id, money);
 	GivePlayerMoneyEx(playerid, -money);
@@ -21080,7 +21231,7 @@ CMD:time(playerid)
 
 	str[0] = EOS;
 	ConvertedSeconds(pInfo[playerid][pPlayedTime], str);
-	format(str, sizeof(str), Color_White"Отыграно: "Main_Color" %s", str);
+	format(str, sizeof(str), Color_White"Отыграно за час: "Main_Color" %s", str);
 	SendClientMessage(playerid, -1, str);
 
 	if(pInfo[playerid][pDemorgan])
@@ -21419,6 +21570,7 @@ CMD:apanel(playerid)
 	{
 		ShowDialog(playerid, D_APanel, DIALOG_STYLE_LIST, Main_Color"Админ панель", Main_Color"- "Color_White"Команды администратора\n\
 		"Main_Color"- "Color_White"Список репортов\n\
+		"Main_Color"- "Color_White"Меню телепортов\n\
 		"Main_Color"- "Color_White"Настройки античита\n\
 		"Main_Color"- "Color_White"Запустить PayDay\n\
 		"Main_Color"- "Color_White"Настройки GPS\n\
@@ -21429,8 +21581,17 @@ CMD:apanel(playerid)
 	}
 	else
 	{
-		ShowDialog(playerid, D_APanel, DIALOG_STYLE_LIST, Main_Color"Админ панель", Main_Color"- "Color_White"Команды администратора\n\
-		"Main_Color"- "Color_White"Список репортов", Color_White"Далее", Color_White"Отмена");
+		if(pInfo[playerid][pAdmin] == 1)
+		{
+			ShowDialog(playerid, D_APanel, DIALOG_STYLE_LIST, Main_Color"Админ панель", Main_Color"- "Color_White"Команды администратора\n\
+			"Main_Color"- "Color_White"Список репортов", Color_White"Далее", Color_White"Отмена");
+		}
+		else if(pInfo[playerid][pAdmin] >= 2)
+		{
+			ShowDialog(playerid, D_APanel, DIALOG_STYLE_LIST, Main_Color"Админ панель", Main_Color"- "Color_White"Команды администратора\n\
+			"Main_Color"- "Color_White"Список репортов\n\
+			"Main_Color"- "Color_White"Меню телепортов", Color_White"Далее", Color_White"Отмена");
+		}
 	}
 	return 1;
 }
@@ -22955,7 +23116,7 @@ CMD:deletesprunk(playerid)
 CMD:createsprunk(playerid)
 {
 	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
-	if(GetPlayerState(playerid != PLAYER_STATE_ONFOOT)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть на ногах");
+	if(GetPlayerState(playerid) != PLAYER_STATE_ONFOOT) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть на ногах");
 	if(GetPVarInt(playerid, "EditSprunkMachine")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы уже редактируете автомат со Sprunk");
 	new indx = -1;
 	for(new i = 0; i < sizeof(Vending); i++)
@@ -23314,6 +23475,7 @@ stock SaveCar(playerid, vehicleid, bool:msg = true, slot = 0)
 		DestroyVehicle(vInfo[vehicleid][vServerID]);
 		new respawn_delay = 0;
 		if(vInfo[vehicleid][vType] == VehicleTypePlayer) respawn_delay = CarDelayPlayer;
+		else if(vInfo[vehicleid][vType] == VehicleTypeServer) respawn_delay = CarDelayServer;
 		else respawn_delay = CarDelayOther;
 		vInfo[vehicleid][vServerID] = CreateVehicle(vInfo[vehicleid][vModel], vInfo[vehicleid][vX], vInfo[vehicleid][vY], vInfo[vehicleid][vZ], vInfo[vehicleid][vA], vInfo[vehicleid][vColor1], vInfo[vehicleid][vColor2], respawn_delay);
 		SetVehicleParamsEx(vInfo[vehicleid][vServerID], false, false, false, false, false, false, false);
@@ -23651,10 +23813,12 @@ stock ShowPlayerUpgradeMenu(playerid)
 	new SubStr[100];
 	format(str, sizeof(str), Main_Color"1. "Color_White"Уровень здоровья при старте - "Main_Color" %.1f\n\
 	"Main_Color"2. "Color_White"Количество здоровья от наркотиков - "Main_Color" %.1f\n\
-	"Main_Color"3. "Color_White"Количество здоровья после реанимации - "Main_Color" %.1f",
+	"Main_Color"3. "Color_White"Количество здоровья после реанимации - "Main_Color" %.1f\n\
+	"Main_Color"4. "Color_White"Количество здоровья при использовании /heal - "Main_Color" %.1f",
 	Upgrade[Upg_Health][Upg_Conf_Standart]+(Upgrade[Upg_Health][Upg_Conf_Value]*pInfo[playerid][pUpgrade][Upg_Health]),
 	Upgrade[Upg_UseDrugs][Upg_Conf_Standart]+(Upgrade[Upg_UseDrugs][Upg_Conf_Value]*pInfo[playerid][pUpgrade][Upg_UseDrugs]),
-	Upgrade[Upg_FSD][Upg_Conf_Standart]+(Upgrade[Upg_FSD][Upg_Conf_Value]*pInfo[playerid][pUpgrade][Upg_FSD]));
+	Upgrade[Upg_FSD][Upg_Conf_Standart]+(Upgrade[Upg_FSD][Upg_Conf_Value]*pInfo[playerid][pUpgrade][Upg_FSD]),
+	Upgrade[Upg_HealCmd][Upg_Conf_Standart]+(Upgrade[Upg_HealCmd][Upg_Conf_Value]*pInfo[playerid][pUpgrade][Upg_HealCmd]));
 
 	format(SubStr, sizeof(SubStr), Main_Color Project_Name " || "Color_White"Улучшения "Main_Color"%d "Color_White"очков", pInfo[playerid][pUpgradePoint]);
 
@@ -23763,13 +23927,17 @@ stock ShowPlayerMainMenu(playerid)
 
 stock ShowPlayerMenu(playerid)
 {
-	ShowDialog(playerid, D_Main_Menu_Player, DIALOG_STYLE_LIST, Main_Color Project_Name " || "Color_White"Персонаж", Main_Color"1. "Color_White"Статистика\n\
+	new str[500];
+	format(str, sizeof(str), Main_Color"1. "Color_White"Статистика\n\
 	"Main_Color"2. "Color_White"Инвентарь\n\
 	"Main_Color"3. "Color_White"Навыки\n\
 	"Main_Color"4. "Color_White"Лицензии\n\
 	"Main_Color"5. "Color_White"Информация о доме\n\
 	"Main_Color"6. "Color_White"Информация о бизнесе\n\
-	"Main_Color"7. "Color_White"Улучшения", Color_White"Далее", Color_White"Назад");
+	"Main_Color"7. "Color_White"Улучшения\n\
+	"Main_Color"8. "Color_White"Уровень розыска ["Main_Color"%d/6"Color_White"]", pInfo[playerid][pWanted]);
+
+	ShowDialog(playerid, D_Main_Menu_Player, DIALOG_STYLE_LIST, Main_Color Project_Name " || "Color_White"Персонаж", str, Color_White"Далее", Color_White"Назад");
 	return 1;
 }
 
@@ -23792,23 +23960,54 @@ stock ShowPlayerGPSMenu(playerid)
 	return 1;
 }
 
-stock ShowPlayerGPSSubMenu(playerid, TitleID)
+stock ShowPlayerGPSSubMenu(playerid, TitleID, Type = 1) //Type 1 - Стандартный GPS || Type 2 - Панель удаления пунктов GPS || Type 3 - Телепорт
 {
 	if(!GetGpsCount(TitleID)) return SendClientMessage(playerid, -1, Color_Grey"На данный момент GPS в этот раздел не добавлены администрацией.");
 	new str[500];
 	new TitleName[100];
-	format(TitleName, sizeof(TitleName), Main_Color"Навигация || "Color_White"%s", GPSTitle[TitleID][GpsTitleName]);
-	new count = 1;
-	for(new i = 0; i < sizeof(GPS[]); i++)
+
+	new List = GetPVarInt(playerid, "GPS_List");
+	new count = 0;
+	for(new i = (10*List)-10; i < 10*List; i++)
 	{
+		if(i >= sizeof(GPS[])) break;
 		if(GPS[TitleID][i][GpsID])
 		{
-			format(str, sizeof(str), "%s"Main_Color"%d. "Color_White"%s\n", str, count, GPS[TitleID][i][GpsName]);
+			format(str, sizeof(str), "%s"Main_Color"%d. "Color_White"%s\n", str, 1+(10*List)-10+count, GPS[TitleID][i][GpsName]);
 			count++;
 		}
 	}
 
-	ShowDialog(playerid, D_GPS, DIALOG_STYLE_LIST, TitleName, str, Color_White"Далее", Color_White"Назад");
+	if((10*List)-10+count < sizeof(GPS[]) && GPS[TitleID][(10*List)-10+count][GpsID])
+	{
+		SetPVarInt(playerid, "GPS_Next", count);
+		count++;
+		format(str, sizeof(str), "%s"Color_White"Следующая страница\n", str);
+	}
+	else SetPVarInt(playerid, "GPS_Next", -1);
+
+	if(List >= 2)
+	{
+		SetPVarInt(playerid, "GPS_Prev", count);
+		format(str, sizeof(str), "%s"Color_White"Предыдущая страница", str);
+	}
+	else SetPVarInt(playerid, "GPS_Prev", -1);
+
+	if(Type == 2)
+	{
+		format(TitleName, sizeof(TitleName), Main_Color"Удаление || "Color_White"%s", GPSTitle[TitleID][GpsTitleName]);
+		ShowDialog(playerid, D_GPS_Remove, DIALOG_STYLE_LIST, TitleName, str, Color_White"Далее", Color_White"Назад");
+	}
+	else if(Type == 3)
+	{
+		format(TitleName, sizeof(TitleName), Main_Color"Телепорт || "Color_White"%s", GPSTitle[TitleID][GpsTitleName]);
+		ShowDialog(playerid, D_TP, DIALOG_STYLE_LIST, TitleName, str, Color_White"Далее", Color_White"Назад");
+	}
+	else
+	{
+		format(TitleName, sizeof(TitleName), Main_Color"Навигация || "Color_White"%s", GPSTitle[TitleID][GpsTitleName]);
+		ShowDialog(playerid, D_GPS, DIALOG_STYLE_LIST, TitleName, str, Color_White"Далее", Color_White"Назад");
+	}
 	return 1;
 }
 
@@ -24141,6 +24340,7 @@ stock ShowPlayerStat(playerid, ShowID = -1)
 	else format(str, sizeof(str), "%s"Main_Color"Ранг"Color_White": %s\n", str, FractionRankName[pInfo[playerid][pMembers]][pInfo[playerid][pRank]]);
 	format(str, sizeof(str), "%s"Main_Color"Военный билет"Color_White": %s\n", str, (pInfo[playerid][pArmyTicket]) ? Color_Green"V" : Color_Red"X");
 	format(str, sizeof(str), "%s"Main_Color"Мед.карта"Color_White": %s\n", str, (pInfo[playerid][pMedCard] == 1) ? Color_Green"V" : Color_Red"X");
+	format(str, sizeof(str), "%s"Main_Color"Банковская карта"Color_White": %s\n", str, (pInfo[playerid][pCard]) ? Color_Green"V" : Color_Red"X");
 	format(str, sizeof(str), "%s"Main_Color"Деньги в банке"Color_Green": %d$\n", str, pInfo[playerid][pBankMoney]);
 	format(str, sizeof(str), "%s"Main_Color"Деньги"Color_Green": %d$\n", str, pInfo[playerid][pMoney]);
 	format(str, sizeof(str), "%s"Main_Color"Донат"Color_White": %dр\n", str, pInfo[playerid][pDonateMoney]);
@@ -24182,26 +24382,6 @@ stock ShowPlayerTPMenu(playerid)
 	strcat(str, Main_Color"- "Color_White"Бизнесы");
 
 	ShowDialog(playerid, D_Main_Menu_TP, DIALOG_STYLE_LIST, Main_Color Project_Name " || "Color_White"Телепорт", str, Color_White"Далее", Color_White"Назад");
-	return 1;
-}
-
-stock ShowPlayerTPSubMenu(playerid, TitleID)
-{
-	if(!GetGpsCount(TitleID)) return SendClientMessage(playerid, -1, Color_Grey"На данный момент телепорты в этот раздел не добавлены администрацией.");
-	new str[500];
-	new TitleName[100];
-	format(TitleName, sizeof(TitleName), Main_Color"Телепорт || "Color_White"%s", GPSTitle[TitleID][GpsTitleName]);
-	new count = 1;
-	for(new i = 0; i < sizeof(GPS[]); i++)
-	{
-		if(GPS[TitleID][i][GpsID])
-		{
-			format(str, sizeof(str), "%s"Main_Color"%d. "Color_White"%s\n", str, count, GPS[TitleID][i][GpsName]);
-			count++;
-		}
-	}
-
-	ShowDialog(playerid, D_TP, DIALOG_STYLE_LIST, TitleName, str, Color_White"Далее", Color_White"Назад");
 	return 1;
 }
 
@@ -24404,6 +24584,7 @@ public GetCreateVehID(vehicleid, playerid)
 	}
 	new respawn_delay = 0;
 	if(vInfo[vehicleid][vType] == VehicleTypePlayer) respawn_delay = CarDelayPlayer;
+	else if(vInfo[vehicleid][vType] == VehicleTypeServer) respawn_delay = CarDelayServer;
 	else respawn_delay = CarDelayOther;
 	vInfo[vehicleid][vServerID] = CreateVehicle(vInfo[vehicleid][vModel], vInfo[vehicleid][vX], vInfo[vehicleid][vY], vInfo[vehicleid][vZ], vInfo[vehicleid][vA], vInfo[vehicleid][vColor1], vInfo[vehicleid][vColor2], respawn_delay);
 	SetVehicleParamsEx(vInfo[vehicleid][vServerID], false, false, false, false, false, false, false);
@@ -24575,6 +24756,13 @@ stock EndQuest(playerid, QuestID)
 		{
 			case WoodQuest:
 			{
+				format(str, sizeof(str), Main_Color"%s", Quests[QuestID][QuestName]);
+				ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, str, Color_White"Ты справился! Молодец! Кстати, работы делятся на требующие трудоустройства и не требующие.\n\
+				Работа на лесопилке относится к последней категории.\n\
+				Разница в том, что требующих трудоустройства работах у тебя повышается скилл и соответственно оплата за труд.\n\
+				Узнать статистику по работе ты сможешь, прописав универсальную команду /main.\n\
+				Узнать, какие есть другие работы и где они находятся - /gps.", Color_White"Понятно", "");
+
 				ActorSay(QuestActor, "Ты справился! Молодец! Кстати, работы делятся на требующие трудоустройства и не требующие.", 3000, playerid);
 				SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Работа на лесопилке относится к последней категории.", 3000, playerid);
 				SetTimerEx("ActorSay", 6000, false, "dsd", _:QuestActor, "Разница в том, что требующих трудоустройства работах у тебя повышается скилл и соответственно оплата за труд.", 3000, playerid);
@@ -24583,23 +24771,46 @@ stock EndQuest(playerid, QuestID)
 			}
 			case MedCardQuest:
 			{
+				format(str, sizeof(str), Main_Color"%s", Quests[QuestID][QuestName]);
+				ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, str, Color_White"Миссия выполнена. Кстати, мед.карта нужна для приобретения всех лицензий. В больнице ты также можешь сдать сперму за деньги.\n\
+				Иногда мед.работники могут брать кровь у других игроков – за это ты также можешь получить награду.", Color_White"Понятно", "");
+
 				ActorSay(QuestActor, "Миссия выполнена. Кстати, мед.карта нужна для приобретения всех лицензий. В больнице ты также можешь сдать сперму за деньги.", 3000, playerid);
 				SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Иногда мед.работники могут брать кровь у других игроков – за это ты также можешь получить награду.", 3000, playerid);
 			}
 			case DriveLicQuest:
 			{
+				format(str, sizeof(str), Main_Color"%s", Quests[QuestID][QuestName]);
+				ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, str, Color_White"Миссия выполнена. Кстати, в Мэрии ты также сможешь приобрести и другие виды лицензий.\n\
+				Также, там ты сможешь найти рейтинги самых богатых игроков, лидеров и модераторов.", Color_White"Понятно", "");
+
 				ActorSay(QuestActor, "Миссия выполнена. Кстати, в Мэрии ты также сможешь приобрести и другие виды лицензий.", 3000, playerid);
 				SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Также, там ты сможешь найти рейтинги самых богатых игроков, лидеров и модераторов.", 3000, playerid);
 			}
-			case BusQuest: ActorSay(QuestActor, "Молодец! Остальные работы ты сможешь найти в (/gps – Трудоустройства), а доп. заработок в (/gps –доп.заработок)", 3000, playerid);
+			case BusQuest:
+			{
+				format(str, sizeof(str), Main_Color"%s", Quests[QuestID][QuestName]);
+				ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, str, Color_White"Молодец! Остальные работы ты сможешь найти в (/gps – Трудоустройства), а доп. заработок в (/gps –доп.заработок)", Color_White"Понятно", "");
+
+				ActorSay(QuestActor, "Молодец! Остальные работы ты сможешь найти в (/gps – Трудоустройства), а доп. заработок в (/gps –доп.заработок)", 3000, playerid);
+			}
 			case BankCardQuest:
 			{
+				format(str, sizeof(str), Main_Color"%s", Quests[QuestID][QuestName]);
+				ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, str, Color_White"Отлично! Помимо возможности снимать и класть свои деньги на счёт.\n\
+				Ты так же сможешь через банк оплачивать счёта за свои дом или бизнес.\n\
+				Ну и кончено же, переводить крупные суммы другим игрокам.", Color_White"Понятно", "");
+
 				ActorSay(QuestActor, "Отлично! Помимо возможности снимать и класть свои деньги на счёт.", 3000, playerid);
 				SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Ты так же сможешь через банк оплачивать счёта за свои дом или бизнес.", 3000, playerid);
 				SetTimerEx("ActorSay", 6000, false, "dsd", _:QuestActor, "Ну и кончено же, переводить крупные суммы другим игрокам.", 3000, playerid);
 			}
 			case GoodbyeQuest:
 			{
+				format(str, sizeof(str), Main_Color"%s", Quests[QuestID][QuestName]);
+				ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, str, Color_White"Ну вот и все. Дальше – сам.\n\
+				Мы дали тебе некоторую базу для игры на нашем сервере, остальное придёт с опытом игры. Удачи!", Color_White"Понятно", "");
+
 				ActorSay(QuestActor, "Ну вот и все. Дальше – сам.", 3000, playerid);
 				SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Мы дали тебе некоторую базу для игры на нашем сервере, остальное придёт с опытом игры. Удачи!", 3000, playerid);
 			}
@@ -25075,6 +25286,11 @@ public GetRegID(playerid)
 {
 	pInfo[playerid][pID] = cache_insert_id();
 	SavePlayerSkins(playerid);
+
+	new str[300];
+	GetPlayerIp(playerid, str, 16);
+	format(str, sizeof(str), Color_Grey"%s[%d] подключился к серверу (IP: %s | RegIP: %s)", pInfo[playerid][pName], playerid, str, pInfo[playerid][pRegIp]);
+	SendAdminMessage(str);
 }
 
 forward LoadAccount(playerid);
@@ -25142,12 +25358,34 @@ public LoadAccount(playerid)
 	cache_get_value_name_int(0, "PlayedTime", pInfo[playerid][pPlayedTime]);
 	cache_get_value_name_int(0, "DayPlayedTime", pInfo[playerid][pDayPlayedTime]);
 	cache_get_value_name_int(0, "SpawnChange", pInfo[playerid][pSpawnChange]);
+
 	cache_get_value_name_int(0, "TentCD", TempVar);
 	if(TempVar) SetPVarInt(playerid, "TentCD", TempVar);
+	
 	cache_get_value_name_int(0, "SpermCD", TempVar);
 	if(TempVar) SetPVarInt(playerid, "SpermCD", TempVar);
+	
 	cache_get_value_name_int(0, "BloodCD", TempVar);
 	if(TempVar) SetPVarInt(playerid, "BloodCD", TempVar);
+	
+	cache_get_value_name_int(0, "TruckerCD", TempVar);
+	if(TempVar) SetPVarInt(playerid, "TruckerCD", TempVar);
+	
+	cache_get_value_name_int(0, "CarThiefCD", TempVar);
+	if(TempVar) SetPVarInt(playerid, "CarThiefCD", TempVar);
+	
+	cache_get_value_name_int(0, "PilotCD", TempVar);
+	if(TempVar) SetPVarInt(playerid, "PilotCD", TempVar);
+	
+	cache_get_value_name_int(0, "BusCD", TempVar);
+	if(TempVar) SetPVarInt(playerid, "BusCD", TempVar);
+	
+	cache_get_value_name_int(0, "FisherCD", TempVar);
+	if(TempVar) SetPVarInt(playerid, "FisherCD", TempVar);
+	
+	cache_get_value_name_int(0, "LawyerCD", TempVar);
+	if(TempVar) SetPVarInt(playerid, "LawyerCD", TempVar);
+	
 	cache_get_value_name_int(0, "StashDrugs", pInfo[playerid][pStashDrugs]);
 	cache_get_value_name_int(0, "StashMaterials", pInfo[playerid][pStashMaterials]);
 
@@ -25580,6 +25818,12 @@ stock PayDay()
 	PayDayCalled = true;
 
 	{
+		new query[100];
+		mysql_format(DB, query, sizeof(query), "DELETE FROM `log` WHERE `Time` < '%d'", gettime()-(86400*30));
+		mysql_tquery(DB, query);
+	}
+
+	{
 		new MafiaBizzCount[MAX_FRACTION] = {0, ...};
 		foreach(new i: Business)
 		{
@@ -25604,9 +25848,9 @@ stock PayDay()
 		if(!pInfo[i][pAuth]) continue;
 		PlayerStartMusic(i, 1068);
 		SetTimerEx("StopMusic", 10000, false, "d", i);
-		if(pInfo[i][pPlayedTime] < 1200)
+		if(pInfo[i][pPlayedTime] < 2700)
 		{
-			SendClientMessage(i, -1, Color_Yellow"Вы не отыграли 20 минут поэтому не получили PayDay");
+			SendClientMessage(i, -1, Color_Yellow"Ты мало отыграл за этот час, поэтому зарплату и EXP ты не получишь.");
 			continue;
 		}
 		new string[200];
@@ -25666,43 +25910,211 @@ stock PayDay()
 	return 1;
 }
 
+stock SellHouseGov(HouseID, playerid = -1)
+{
+	if(playerid != -1)
+	{
+		SendClientMessage(playerid, -1, Color_White"Ваш "Main_Color"дом "Color_White"был продан государству из-за неуплаты налогов");
+
+		pInfo[playerid][pHouseID] = 0;
+		if(pInfo[playerid][pSpawnChange] == SpawnChange_House)
+		{
+			pInfo[playerid][pSpawnChange] = SpawnChange_Standart;
+			SavePlayerInt(playerid, "SpawnChange", pInfo[playerid][pSpawnChange]);
+		}
+		ClearHouseVehicle(pInfo[playerid][pID], playerid);
+
+		if(hInfo[HouseID][hIsDonate])
+		{
+			pInfo[playerid][pDonateMoney] += hInfo[HouseID][hPrice];
+			SavePlayerInt(playerid, "DonateMoney", pInfo[playerid][pDonateMoney]);
+			SendClientMessage(playerid, -1, Color_White"Стоимость дома была возвращена на ваш донат счет");
+		}
+		else
+		{
+			pInfo[playerid][pBankMoney] += hInfo[HouseID][hPrice];
+			SavePlayerInt(playerid, "BankMoney", pInfo[playerid][pBankMoney]);
+			SendClientMessage(playerid, -1, Color_White"Стоимость дома была возвращена на ваш банковский счет");
+		}
+	}
+	else
+	{
+		ClearHouseVehicle(hInfo[HouseID][hOwnerID]);
+		AddOfflineMessage(hInfo[HouseID][hOwnerID], Color_White"Ваш "Main_Color"дом "Color_White"был продан государству из-за неуплаты налогов");
+		new query[150];
+		mysql_format(DB, query, sizeof(query), "UPDATE `account` SET `SpawnChange` = '%d' WHERE `ID` = '%d' AND `SpawnChange` = '%d'", SpawnChange_Standart, hInfo[HouseID][hOwnerID], SpawnChange_House);
+		mysql_tquery(DB, query);
+
+		if(hInfo[HouseID][hIsDonate])
+		{
+			mysql_format(DB, query, sizeof(query), "UPDATE `account` SET `DonateMoney` = `DonateMoney`+'%d' WHERE `ID` = '%d'", hInfo[HouseID][hPrice], hInfo[HouseID][hOwnerID]);
+			mysql_tquery(DB, query);
+			AddOfflineMessage(hInfo[HouseID][hOwnerID], Color_White"Стоимость дома была возвращена на ваш донат счет");
+		}
+		else
+		{
+			mysql_format(DB, query, sizeof(query), "UPDATE `account` SET `BankMoney` = `BankMoney`+'%d' WHERE `ID` = '%d'", hInfo[HouseID][hPrice], hInfo[HouseID][hOwnerID]);
+			mysql_tquery(DB, query);
+			AddOfflineMessage(hInfo[HouseID][hOwnerID], Color_White"Стоимость дома была возвращена на ваш банковский счет");
+		}
+	}
+
+	hInfo[HouseID][hOwnerID] = 0;
+	SaveHouseNull(hInfo[HouseID][hID], "OwnerID");
+	hInfo[HouseID][hTax] = 0;
+	SaveHouseInt(hInfo[HouseID][hID], "Tax", hInfo[HouseID][hTax]);
+	UpdateHouse(HouseID);
+	return 1;
+}
+
+forward TryToPayHouseTax(HouseID);
+public TryToPayHouseTax(HouseID)
+{
+	foreach(new i: Player)
+	{
+		if(pInfo[i][pAuth] && pInfo[i][pID] == hInfo[HouseID][hOwnerID])
+		{
+			if(pInfo[i][pBankMoney] >= HOUSE_COST_DAY)
+			{
+				SendClientMessage(i, -1, Color_White"Налог на ваш "Main_Color"дом "Color_White"закончился, необходимая сумма была автоматически списана с банковского счета");
+				pInfo[i][pBankMoney] -= HOUSE_COST_DAY;
+				SavePlayerInt(i, "BankMoney", pInfo[i][pBankMoney]);
+
+				hInfo[HouseID][hTax] = gettime()+86400;
+				SaveHouseInt(hInfo[HouseID][hID], "Tax", hInfo[HouseID][hTax]);
+				UpdateHouse(HouseID);
+			}
+			else SellHouseGov(HouseID, i);
+			return 1;
+		}
+	}
+
+	new row = cache_num_rows();
+	if(row)
+	{
+		new BankMoney;
+		cache_get_value_name_int(0, "BankMoney", BankMoney);
+		if(BankMoney >= HOUSE_COST_DAY)
+		{
+			AddOfflineMessage(hInfo[HouseID][hOwnerID], Color_White"Налог на ваш "Main_Color"дом "Color_White"закончился, необходимая сумма была автоматически списана с банковского счета");
+			
+			BankMoney -= HOUSE_COST_DAY;
+			new query[150];
+			mysql_format(DB, query, sizeof(query), "UPDATE `account` SET `BankMoney` = '%d' WHERE `ID` = '%d'", BankMoney, hInfo[HouseID][hOwnerID]);
+			mysql_tquery(DB, query);
+
+			hInfo[HouseID][hTax] = gettime()+86400;
+			SaveHouseInt(hInfo[HouseID][hID], "Tax", hInfo[HouseID][hTax]);
+			UpdateHouse(HouseID);
+		}
+		else SellHouseGov(HouseID);
+	}
+	else SellHouseGov(HouseID);
+	return 1;
+}
+
+stock SellBusinessGov(BusinessID, playerid = -1)
+{
+	if(playerid != -1)
+	{
+		SendClientMessage(playerid, -1, Color_White"Ваш "Main_Color"бизнес "Color_White"был продан государству из-за неуплаты налогов");
+		pInfo[playerid][pBusinessID] = 0;
+
+		if(bInfo[BusinessID][bIsDonate])
+		{
+			pInfo[playerid][pDonateMoney] += bInfo[BusinessID][bPrice];
+			SavePlayerInt(playerid, "DonateMoney", pInfo[playerid][pDonateMoney]);
+			SendClientMessage(playerid, -1, Color_White"Стоимость бизнеса была возвращена на ваш донат счет");
+		}
+		else
+		{
+			pInfo[playerid][pBankMoney] += bInfo[BusinessID][bPrice];
+			SavePlayerInt(playerid, "BankMoney", pInfo[playerid][pBankMoney]);
+			SendClientMessage(playerid, -1, Color_White"Стоимость бизнеса была возвращена на ваш банковский счет");
+		}
+	}
+	else
+	{
+		AddOfflineMessage(bInfo[BusinessID][bOwnerID], Color_White"Ваш "Main_Color"бизнес "Color_White"был продан государству из-за неуплаты налогов");
+
+		new query[150];
+		if(bInfo[BusinessID][bIsDonate])
+		{
+			mysql_format(DB, query, sizeof(query), "UPDATE `account` SET `DonateMoney` = `DonateMoney`+'%d' WHERE `ID` = '%d'", bInfo[BusinessID][bPrice], bInfo[BusinessID][bOwnerID]);
+			mysql_tquery(DB, query);
+			AddOfflineMessage(bInfo[BusinessID][bOwnerID], Color_White"Стоимость бизнеса была возвращена на ваш донат счет");
+		}
+		else
+		{
+			mysql_format(DB, query, sizeof(query), "UPDATE `account` SET `BankMoney` = `BankMoney`+'%d' WHERE `ID` = '%d'", bInfo[BusinessID][bPrice], bInfo[BusinessID][bOwnerID]);
+			mysql_tquery(DB, query);
+			AddOfflineMessage(bInfo[BusinessID][bOwnerID], Color_White"Стоимость бизнеса была возвращена на ваш банковский счет");
+		}
+	}
+
+	bInfo[BusinessID][bOwnerID] = 0;
+	SaveBusinessNull(bInfo[BusinessID][bID], "OwnerID");
+	bInfo[BusinessID][bTax] = 0;
+	SaveBusinessInt(bInfo[BusinessID][bID], "Tax", bInfo[BusinessID][bTax]);
+	UpdateBusiness(BusinessID);
+	return 1;
+}
+
+forward TryToPayBusinessTax(BusinessID);
+public TryToPayBusinessTax(BusinessID)
+{
+	foreach(new i: Player)
+	{
+		if(pInfo[i][pAuth] && pInfo[i][pID] == bInfo[BusinessID][bOwnerID])
+		{
+			if(pInfo[i][pBankMoney] >= BUSINESS_COST_DAY)
+			{
+				SendClientMessage(i, -1, Color_White"Налог на ваш "Main_Color"бизнес "Color_White"закончился, необходимая сумма была автоматически списана с банковского счета");
+				pInfo[i][pBankMoney] -= BUSINESS_COST_DAY;
+				SavePlayerInt(i, "BankMoney", pInfo[i][pBankMoney]);
+
+				bInfo[BusinessID][bTax] = gettime()+86400;
+				SaveBusinessInt(bInfo[BusinessID][bID], "Tax", bInfo[BusinessID][bTax]);
+				UpdateBusiness(BusinessID);
+			}
+			else SellBusinessGov(BusinessID, i);
+			return 1;
+		}
+	}
+
+	new row = cache_num_rows();
+	if(row)
+	{
+		new BankMoney;
+		cache_get_value_name_int(0, "BankMoney", BankMoney);
+		if(BankMoney >= BUSINESS_COST_DAY)
+		{
+			AddOfflineMessage(bInfo[BusinessID][bOwnerID], Color_White"Налог на ваш "Main_Color"бизнес "Color_White"закончился, необходимая сумма была автоматически списана с банковского счета");
+			
+			BankMoney -= BUSINESS_COST_DAY;
+			new query[150];
+			mysql_format(DB, query, sizeof(query), "UPDATE `account` SET `BankMoney` = '%d' WHERE `ID` = '%d'", BankMoney, bInfo[BusinessID][bOwnerID]);
+			mysql_tquery(DB, query);
+
+			bInfo[BusinessID][bTax] = gettime()+86400;
+			SaveBusinessInt(bInfo[BusinessID][bID], "Tax", bInfo[BusinessID][bTax]);
+			UpdateBusiness(BusinessID);
+		}
+		else SellBusinessGov(BusinessID);
+	}
+	else SellBusinessGov(BusinessID);
+	return 1;
+}
+
 stock PropertyTax()
 {
 	foreach(new i:Houses)
 	{
 		if(hInfo[i][hOwnerID] && hInfo[i][hTax] < gettime())
 		{
-			new bool:Finded = false;
-			foreach(new j: Player)
-			{
-				if(pInfo[j][pAuth] && pInfo[j][pID] == hInfo[i][hOwnerID])
-				{
-					SendClientMessage(j, -1, Color_White"Ваш "Main_Color"дом "Color_White"был продан государству из-за неуплаты налогов");
-					pInfo[j][pHouseID] = 0;
-					if(pInfo[j][pSpawnChange] == SpawnChange_House)
-					{
-						pInfo[j][pSpawnChange] = SpawnChange_Standart;
-						SavePlayerInt(j, "SpawnChange", pInfo[j][pSpawnChange]);
-					}
-					Finded = true;
-					ClearHouseVehicle(pInfo[i][pID], i);
-					break;
-				}
-			}
-			if(!Finded)
-			{
-				ClearHouseVehicle(hInfo[i][hOwnerID]);
-				AddOfflineMessage(hInfo[i][hOwnerID], Color_White"Ваш "Main_Color"дом "Color_White"был продан государству из-за неуплаты налогов");
-				new query[150];
-				mysql_format(DB, query, sizeof(query), "UPDATE `account` SET `SpawnChange` = '%d' WHERE `ID` = '%d' AND `SpawnChange` = '%d'", SpawnChange_Standart, hInfo[i][hOwnerID], SpawnChange_House);
-				mysql_tquery(DB, query);
-			}
-
-			hInfo[i][hOwnerID] = 0;
-			SaveHouseNull(hInfo[i][hID], "OwnerID");
-			hInfo[i][hTax] = 0;
-			SaveHouseInt(hInfo[i][hID], "Tax", hInfo[i][hTax]);
-			UpdateHouse(i);
+			new query[150];
+			mysql_format(DB, query, sizeof(query), "SELECT * FROM `account` WHERE `ID` = '%d'", hInfo[i][hOwnerID]);
+			mysql_tquery(DB, query, "TryToPayHouseTax", "d", i);
 		}
 	}
 
@@ -25710,24 +26122,9 @@ stock PropertyTax()
 	{
 		if(bInfo[i][bOwnerID] && bInfo[i][bTax] < gettime())
 		{
-			new bool:Finded = false;
-			foreach(new j: Player)
-			{
-				if(pInfo[j][pAuth] && pInfo[j][pID] == bInfo[i][bOwnerID])
-				{
-					SendClientMessage(j, -1, Color_White"Ваш "Main_Color"бизнес "Color_White"был продан государству из-за неуплаты налогов");
-					pInfo[j][pBusinessID] = 0;
-					Finded = true;
-					break;
-				}
-			}
-			if(!Finded) AddOfflineMessage(bInfo[i][bOwnerID], Color_White"Ваш "Main_Color"бизнес "Color_White"был продан государству из-за неуплаты налогов");
-
-			bInfo[i][bOwnerID] = 0;
-			SaveBusinessNull(bInfo[i][bID], "OwnerID");
-			bInfo[i][bTax] = 0;
-			SaveBusinessInt(bInfo[i][bID], "Tax", bInfo[i][bTax]);
-			UpdateBusiness(i);
+			new query[150];
+			mysql_format(DB, query, sizeof(query), "SELECT * FROM `account` WHERE `ID` = '%d'", bInfo[i][bOwnerID]);
+			mysql_tquery(DB, query, "TryToPayBusinessTax", "d", i);
 		}
 	}
 	return 1;
@@ -25820,9 +26217,13 @@ public SecondTimer()
 	ServerMessage++;
 	if(ServerMessage == 1800) //30 минут
 	{
-		SendAllMessage(Color_White"***");
+		SendAllMessage(Main_Color"***");
 		SendAllMessage(Color_White"Ты играешь на сервере"Main_Color" "Project_Name" "Color_White". Сайт нашего сервера – "Main_Color Project_Site);
-		SendAllMessage(Color_White"***");
+		SendAllMessage(Color_White"Купить игровые привилегии или просто пожертвовать на развитие проекта - "Main_Color"/donate");
+		SendAllMessage(Color_White"На этом наш сервер может жить и развиваться!");
+		SendAllMessage(Main_Color"***");
+
+		ServerMessage = 0;
 	}
 
 	foreach(new i:Business)
@@ -26057,7 +26458,7 @@ public SecondTimer()
 			{
 				LumberjackTree[i][TreeTimer] = 0;
 				LumberjackTree[i][TreeID] = CreateDynamicObject(687, LumberjackTree[i][TreeX], LumberjackTree[i][TreeY], LumberjackTree[i][TreeZ], 0.0, 0.0, 0.0, 0, 0);
-				format(str, sizeof(str), Main_Color"Дерево: Можно срубить\n["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\nЧтобы срубить");
+				format(str, sizeof(str), Main_Color"Дерево: Можно срубить\n["Color_White KEY_WALK_NAME Main_Color"]\nЧтобы срубить");
 			}
 			UpdateDynamic3DTextLabelText(LumberjackTree[i][TreeText], -1, str);
 		}
@@ -26074,7 +26475,7 @@ public SecondTimer()
 			{
 				FarmPlant[i][PlantTimer] = 0;
 				FarmPlant[i][PlantID] = CreateDynamicObject(804, FarmPlant[i][PlantX], FarmPlant[i][PlantY], FarmPlant[i][PlantZ], 0.0, 0.0, 0.0, 0, 0);
-				format(str, sizeof(str), Main_Color"Урожай: Готово к сбору\n["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\nЧтобы собрать");
+				format(str, sizeof(str), Main_Color"Урожай: Готово к сбору\n["Color_White KEY_WALK_NAME Main_Color"]\nЧтобы собрать");
 			}
 			UpdateDynamic3DTextLabelText(FarmPlant[i][PlantText], -1, str);
 		}
@@ -26091,7 +26492,7 @@ public SecondTimer()
 			{
 				MineMetall[i][MetallTimer] = 0;
 				MineMetall[i][MetallID] = CreateDynamicObject(3929+random(3), MineMetall[i][MetallX], MineMetall[i][MetallY], MineMetall[i][MetallZ], MineMetall[i][MetallRX], MineMetall[i][MetallRY], MineMetall[i][MetallRZ], 2, 0);
-				format(str, sizeof(str), Main_Color"Руда: Готово к добыче\n["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\nЧтобы добыть");
+				format(str, sizeof(str), Main_Color"Руда: Готово к добыче\n["Color_White KEY_WALK_NAME Main_Color"]\nЧтобы добыть");
 			}
 			UpdateDynamic3DTextLabelText(MineMetall[i][MetallText], -1, str);
 		}
@@ -26108,7 +26509,7 @@ public SecondTimer()
 			{
 				PrisonMineMetall[i][MetallTimer] = 0;
 				PrisonMineMetall[i][MetallID] = CreateDynamicObject(3929+random(3), PrisonMineMetall[i][MetallX], PrisonMineMetall[i][MetallY], PrisonMineMetall[i][MetallZ], PrisonMineMetall[i][MetallRX], PrisonMineMetall[i][MetallRY], PrisonMineMetall[i][MetallRZ], 2, 0);
-				format(str, sizeof(str), Main_Color"Руда: Готово к добыче\n["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\nЧтобы добыть");
+				format(str, sizeof(str), Main_Color"Руда: Готово к добыче\n["Color_White KEY_WALK_NAME Main_Color"]\nЧтобы добыть");
 			}
 			UpdateDynamic3DTextLabelText(PrisonMineMetall[i][MetallText], -1, str);
 		}
@@ -26187,7 +26588,7 @@ public SecondTimer()
 
 		pInfo[i][pAFK]++;
 
-		if(pInfo[i][pAFK] > 2)
+		if(pInfo[i][pAFK] > 5)
 		{
 			new str[100];
 			ConvertedSeconds(pInfo[i][pAFK], str);
@@ -26203,6 +26604,12 @@ public SecondTimer()
 		{
 			pInfo[i][pPlayedTime]++;
 			pInfo[i][pDayPlayedTime]++;
+		}
+
+		if(GetPVarInt(i, "PostDrugEffect") && GetPVarInt(i, "PostDrugEffect") < gettime())
+		{
+			SetPlayerDrunkLevel(i, 0);
+			DeletePVar(i, "PostDrugEffect");
 		}
 
         if(pInfo[i][pMembers] != Fraction_None && WarStatus[pInfo[i][pMembers]] == War_Status_War)
@@ -26712,7 +27119,7 @@ public SecondTimer()
 							}
 							case 4:
 							{
-								GameTextForPlayer(i, "~w~~k~~SNEAK_ABOUT~", 3000, 3);
+								GameTextForPlayer(i, "~w~"KEY_WALK_NAME, 3000, 3);
 								SetPVarInt(i, "CarJackMiniGameKeys", KEY_WALK);
 							}
 							case 5:
@@ -27003,7 +27410,7 @@ public SecondTimer()
 						else RemovePlayerAttachedObject(i, AttachSlotJob);
 					}
 
-					SetPlayerPosition(i, 234.3806, 1957.0878, 18.3294, 89.9933, 0, 0);
+					SetPlayerPosition(i, 208.3521, 1918.8027, 17.6406, 177.3568, 0, 0);
 				}
 			}
 			else
@@ -27014,7 +27421,7 @@ public SecondTimer()
 					format(str, sizeof(str), "%s[%d] пытался покинуть тюрьму", pInfo[i][pName], i);
 					SendAdminMessage(str);
 
-					SetPlayerPosition(i, 234.3806, 1957.0878, 18.3294, 89.9933, 0, 0);
+					SetPlayerPosition(i, 208.3521, 1918.8027, 17.6406, 177.3568, 0, 0);
 				}
 			}
 		}
@@ -29515,6 +29922,9 @@ stock RemovePlayerObject(playerid)
     RemoveBuildingForPlayer(playerid, 1977, 0.0, 0.0, 0.0, 6000.0);
 	//////////////////
 	//Prison
+	RemoveBuildingForPlayer(playerid, 2887, 213.0821, 1875.7795, 17.6406, 200.25); //light
+	RemoveBuildingForPlayer(playerid, 2888, 213.0821, 1875.7795, 17.6406, 200.25); //light
+	RemoveBuildingForPlayer(playerid, 2889, 213.0821, 1875.7795, 17.6406, 200.25); //light
 	RemoveBuildingForPlayer(playerid, 3366, 276.6563, 2023.7578, 16.6328, 0.25);
 	RemoveBuildingForPlayer(playerid, 3366, 276.6563, 1989.5469, 16.6328, 0.25);
 	RemoveBuildingForPlayer(playerid, 3366, 276.6563, 1955.7656, 16.6328, 0.25);
@@ -30458,7 +30868,7 @@ stock CreateMineMetall()
 	for(new i = 0; i < sizeof(MineMetall); i++)
 	{
 		MineMetall[i][MetallID] = CreateDynamicObject(3929+random(3), MineMetall[i][MetallX], MineMetall[i][MetallY], MineMetall[i][MetallZ], MineMetall[i][MetallRX], MineMetall[i][MetallRY], MineMetall[i][MetallRZ], 2, 0);
-		MineMetall[i][MetallText] = CreateDynamic3DTextLabel(Main_Color"Руда: Готово к добыче\n["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\nЧтобы добыть", -1, MineMetall[i][MetallX], MineMetall[i][MetallY], MineMetall[i][MetallZ]+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 0);
+		MineMetall[i][MetallText] = CreateDynamic3DTextLabel(Main_Color"Руда: Готово к добыче\n["Color_White KEY_WALK_NAME Main_Color"]\nЧтобы добыть", -1, MineMetall[i][MetallX], MineMetall[i][MetallY], MineMetall[i][MetallZ]+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 0);
 		MineMetall[i][MetallArea] = CreateDynamicSphere(MineMetall[i][MetallX], MineMetall[i][MetallY], MineMetall[i][MetallZ], 2.0, 2, 0);
 		MineMetall[i][MetallTimer] = 0;
 	}
@@ -30466,7 +30876,7 @@ stock CreateMineMetall()
 	for(new i = 0; i < sizeof(PrisonMineMetall); i++)
 	{
 		PrisonMineMetall[i][MetallID] = CreateDynamicObject(3929+random(3), PrisonMineMetall[i][MetallX], PrisonMineMetall[i][MetallY], PrisonMineMetall[i][MetallZ], PrisonMineMetall[i][MetallRX], PrisonMineMetall[i][MetallRY], PrisonMineMetall[i][MetallRZ], 100, 16);
-		PrisonMineMetall[i][MetallText] = CreateDynamic3DTextLabel(Main_Color"Камень: Готово к добыче\n["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\nЧтобы добыть", -1, PrisonMineMetall[i][MetallX], PrisonMineMetall[i][MetallY], PrisonMineMetall[i][MetallZ]+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 100, 16);
+		PrisonMineMetall[i][MetallText] = CreateDynamic3DTextLabel(Main_Color"Камень: Готово к добыче\n["Color_White KEY_WALK_NAME Main_Color"]\nЧтобы добыть", -1, PrisonMineMetall[i][MetallX], PrisonMineMetall[i][MetallY], PrisonMineMetall[i][MetallZ]+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 100, 16);
 		PrisonMineMetall[i][MetallArea] = CreateDynamicSphere(PrisonMineMetall[i][MetallX], PrisonMineMetall[i][MetallY], PrisonMineMetall[i][MetallZ], 2.0, 100, 16);
 		PrisonMineMetall[i][MetallTimer] = 0;
 	}
@@ -30478,7 +30888,7 @@ stock CreateFarmPlant()
 	for(new i = 0; i < sizeof(FarmPlant); i++)
 	{
 		FarmPlant[i][PlantID] = CreateDynamicObject(804, FarmPlant[i][PlantX], FarmPlant[i][PlantY], FarmPlant[i][PlantZ], 0.0, 0.0, 0.0, 0, 0);
-		FarmPlant[i][PlantText] = CreateDynamic3DTextLabel(Main_Color"Урожай: Готово к сбору\n["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\nЧтобы собрать", -1, FarmPlant[i][PlantX], FarmPlant[i][PlantY], FarmPlant[i][PlantZ]+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+		FarmPlant[i][PlantText] = CreateDynamic3DTextLabel(Main_Color"Урожай: Готово к сбору\n["Color_White KEY_WALK_NAME Main_Color"]\nЧтобы собрать", -1, FarmPlant[i][PlantX], FarmPlant[i][PlantY], FarmPlant[i][PlantZ]+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 		FarmPlant[i][PlantArea] = CreateDynamicSphere(FarmPlant[i][PlantX], FarmPlant[i][PlantY], FarmPlant[i][PlantZ], 2.0, 0, 0);
 		FarmPlant[i][PlantTimer] = 0;
 	}
@@ -30490,7 +30900,7 @@ stock CreateLubberjackTree()
 	for(new i = 0; i < sizeof(LumberjackTree); i++)
 	{
 		LumberjackTree[i][TreeID] = CreateDynamicObject(687, LumberjackTree[i][TreeX], LumberjackTree[i][TreeY], LumberjackTree[i][TreeZ], 0.0, 0.0, 0.0, 0, 0);
-		LumberjackTree[i][TreeText] = CreateDynamic3DTextLabel(Main_Color"Дерево: Можно срубить\n["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\nЧтобы срубить", -1, LumberjackTree[i][TreeX], LumberjackTree[i][TreeY], LumberjackTree[i][TreeZ]+2.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+		LumberjackTree[i][TreeText] = CreateDynamic3DTextLabel(Main_Color"Дерево: Можно срубить\n["Color_White KEY_WALK_NAME Main_Color"]\nЧтобы срубить", -1, LumberjackTree[i][TreeX], LumberjackTree[i][TreeY], LumberjackTree[i][TreeZ]+2.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 		LumberjackTree[i][TreeArea] = CreateDynamicSphere(LumberjackTree[i][TreeX], LumberjackTree[i][TreeY], LumberjackTree[i][TreeZ], 2.0, 0, 0);
 		LumberjackTree[i][TreeTimer] = 0;
 	}
@@ -30503,7 +30913,7 @@ stock Create3DText()
 	Texts3D[LiveText] = CreateDynamic3DTextLabel(Main_Color"Эфир\n"Color_White"Статус: "Color_Red"Оффлайн", -1, 172.6447,-117.1719,1076.5938, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 6, 6);
 
 	CreateDynamic3DTextLabel(Main_Color"Подплывите сюда чтобы разгрузить рыбу", -1, 2099.3953,-106.5395,1.0695, 30.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
-	CreateDynamic3DTextLabel(Main_Color"Тайник\n["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]\nЧтобы открыть", -1, -240.2665,-1.2341,1046.3240, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 17);
+	CreateDynamic3DTextLabel(Main_Color"Тайник\n["Color_White KEY_WALK_NAME Main_Color"]\nЧтобы открыть", -1, -240.2665,-1.2341,1046.3240, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 17);
 	
 	CreateDynamic3DTextLabel(Main_Color"Обучение", -1, 2217.5854,-1153.7849,1025.7969, 30.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 15);
 	return 1;
@@ -30518,7 +30928,7 @@ stock CreateActors()
 stock CreateAreas()
 {
 	Areas[DemorganArea] = CreateDynamicRectangle(40.9290, 897.1449, 1.2233, 942.8676, 2, 0);
-	Areas[JailArea] = CreateDynamicRectangle(109.4103, 1814.4352, 243.9080, 1965.7610, 0, 0);
+	Areas[JailArea] = CreateDynamicRectangle(119.9374, 1951.4340, 234.5913, 1869.9835, 0, 0);
 	Areas[JailMineArea] = CreateDynamicRectangle(885.1450,-2814.9128, 1126.8024,-2564.0798, 100, 16);
 	Areas[TruckerLoadArea] = CreateDynamicRectangle(-123.9430, -351.1932, -106.1304, -305.8714, 0, 0);
 	Areas[CarThiefArea] = CreateDynamicCircle(2518.5730, -1464.0786, 10.0, 0, 0);
@@ -30543,7 +30953,7 @@ stock CreateGates()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GatePoliceFirst][GateArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Gate);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GatePoliceFirst][GateArea],  E_STREAMER_INDX, GatePoliceFirst);
 	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White"H"Main_Color"]\n\
-	"Color_White"или "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GatePoliceFirst][GateClose][0], Gate[GatePoliceFirst][GateClose][1]+3.2, Gate[GatePoliceFirst][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	"Color_White"или "Main_Color"["Color_White KEY_WALK_NAME Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GatePoliceFirst][GateClose][0], Gate[GatePoliceFirst][GateClose][1]+3.2, Gate[GatePoliceFirst][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Gate[GatePoliceFirst][GateStatus] = false;
 
 	Gate[GatePoliceSecond][GateFraction] = Fraction_Police;
@@ -30555,7 +30965,7 @@ stock CreateGates()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GatePoliceSecond][GateArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Gate);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GatePoliceSecond][GateArea],  E_STREAMER_INDX, GatePoliceSecond);
 	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White"H"Main_Color"]\n\
-	"Color_White"или "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GatePoliceSecond][GateClose][0]-6.0, Gate[GatePoliceSecond][GateClose][1], Gate[GatePoliceSecond][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	"Color_White"или "Main_Color"["Color_White KEY_WALK_NAME Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GatePoliceSecond][GateClose][0]-6.0, Gate[GatePoliceSecond][GateClose][1], Gate[GatePoliceSecond][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Gate[GatePoliceSecond][GateStatus] = false;
 
 	Gate[GateArmyFirst][GateFraction] = Fraction_Army;
@@ -30567,7 +30977,7 @@ stock CreateGates()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateArmyFirst][GateArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Gate);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateArmyFirst][GateArea],  E_STREAMER_INDX, GateArmyFirst);
 	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White"H"Main_Color"]\n\
-	"Color_White"или "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateArmyFirst][GateClose][0], Gate[GateArmyFirst][GateClose][1], Gate[GateArmyFirst][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	"Color_White"или "Main_Color"["Color_White KEY_WALK_NAME Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateArmyFirst][GateClose][0], Gate[GateArmyFirst][GateClose][1], Gate[GateArmyFirst][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Gate[GateArmyFirst][GateStatus] = false;
 
 	Gate[GateArmySecond][GateFraction] = Fraction_Army;
@@ -30579,7 +30989,7 @@ stock CreateGates()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateArmySecond][GateArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Gate);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateArmySecond][GateArea],  E_STREAMER_INDX, GateArmySecond);
 	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White"H"Main_Color"]\n\
-	"Color_White"или "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateArmySecond][GateClose][0], Gate[GateArmySecond][GateClose][1], Gate[GateArmySecond][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	"Color_White"или "Main_Color"["Color_White KEY_WALK_NAME Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateArmySecond][GateClose][0], Gate[GateArmySecond][GateClose][1], Gate[GateArmySecond][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Gate[GateArmySecond][GateStatus] = false;
 
 	Gate[GateFBIFirst][GateFraction] = Fraction_FBI;
@@ -30591,7 +31001,7 @@ stock CreateGates()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateFBIFirst][GateArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Gate);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateFBIFirst][GateArea],  E_STREAMER_INDX, GateFBIFirst);
 	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White"H"Main_Color"]\n\
-	"Color_White"или "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateFBIFirst][GateClose][0], Gate[GateFBIFirst][GateClose][1]+3.2, Gate[GateFBIFirst][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	"Color_White"или "Main_Color"["Color_White KEY_WALK_NAME Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateFBIFirst][GateClose][0], Gate[GateFBIFirst][GateClose][1]+3.2, Gate[GateFBIFirst][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Gate[GateFBIFirst][GateStatus] = false;
 
 	Gate[GateFBISecond][GateFraction] = Fraction_FBI;
@@ -30606,7 +31016,7 @@ stock CreateGates()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateFBISecond][GateArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Gate);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateFBISecond][GateArea],  E_STREAMER_INDX, GateFBISecond);
 	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White"H"Main_Color"]\n\
-	"Color_White"или "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateFBISecond][GateClose][0]+11.0, Gate[GateFBISecond][GateClose][1], Gate[GateFBISecond][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	"Color_White"или "Main_Color"["Color_White KEY_WALK_NAME Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateFBISecond][GateClose][0]+11.0, Gate[GateFBISecond][GateClose][1], Gate[GateFBISecond][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Gate[GateFBISecond][GateStatus] = false;
 
 	Gate[GateFBIThird][GateFraction] = Fraction_FBI;
@@ -30618,7 +31028,7 @@ stock CreateGates()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateFBIThird][GateArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Gate);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateFBIThird][GateArea],  E_STREAMER_INDX, GateFBIThird);
 	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White"H"Main_Color"]\n\
-	"Color_White"или "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateFBIThird][GateClose][0], Gate[GateFBIThird][GateClose][1]-3.2, Gate[GateFBIThird][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	"Color_White"или "Main_Color"["Color_White KEY_WALK_NAME Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateFBIThird][GateClose][0], Gate[GateFBIThird][GateClose][1]-3.2, Gate[GateFBIThird][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Gate[GateFBIThird][GateStatus] = false;
 
 	Gate[GateHospitalOne][GateFraction] = Fraction_Hospital;
@@ -30632,7 +31042,7 @@ stock CreateGates()
 	Gate[GateHospitalOne][GateArea] = CreateDynamicSphere(Gate[GateHospitalOne][GateClose][0], Gate[GateHospitalOne][GateClose][1]+0.7, Gate[GateHospitalOne][GateClose][2]+1.0, 1.0, 4, 5);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateHospitalOne][GateArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Gate);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateHospitalOne][GateArea],  E_STREAMER_INDX, GateHospitalOne);
-	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, Gate[GateHospitalOne][GateClose][0], Gate[GateHospitalOne][GateClose][1]+0.7, Gate[GateHospitalOne][GateClose][2]+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 4, 5);
+	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, Gate[GateHospitalOne][GateClose][0], Gate[GateHospitalOne][GateClose][1]+0.7, Gate[GateHospitalOne][GateClose][2]+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 4, 5);
 	Gate[GateHospitalOne][GateStatus] = false;
 
 	Gate[GateHospitalTwo][GateFraction] = Fraction_Hospital;
@@ -30646,7 +31056,7 @@ stock CreateGates()
 	Gate[GateHospitalTwo][GateArea] = CreateDynamicSphere(Gate[GateHospitalTwo][GateClose][0], Gate[GateHospitalTwo][GateClose][1]+0.7, Gate[GateHospitalTwo][GateClose][2]+1.0, 1.0, 4, 5);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateHospitalTwo][GateArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Gate);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateHospitalTwo][GateArea],  E_STREAMER_INDX, GateHospitalTwo);
-	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, Gate[GateHospitalTwo][GateClose][0], Gate[GateHospitalTwo][GateClose][1]+0.7, Gate[GateHospitalTwo][GateClose][2]+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 4, 5);
+	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, Gate[GateHospitalTwo][GateClose][0], Gate[GateHospitalTwo][GateClose][1]+0.7, Gate[GateHospitalTwo][GateClose][2]+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 4, 5);
 	Gate[GateHospitalTwo][GateStatus] = false;
 
 	Gate[GateHospitalThree][GateFraction] = Fraction_Hospital;
@@ -30660,7 +31070,7 @@ stock CreateGates()
 	Gate[GateHospitalThree][GateArea] = CreateDynamicSphere(Gate[GateHospitalThree][GateClose][0], Gate[GateHospitalThree][GateClose][1]-0.7, Gate[GateHospitalThree][GateClose][2]+1.0, 1.0, 4, 5);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateHospitalThree][GateArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Gate);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateHospitalThree][GateArea],  E_STREAMER_INDX, GateHospitalThree);
-	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, Gate[GateHospitalThree][GateClose][0], Gate[GateHospitalThree][GateClose][1]-0.7, Gate[GateHospitalThree][GateClose][2]+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 4, 5);
+	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, Gate[GateHospitalThree][GateClose][0], Gate[GateHospitalThree][GateClose][1]-0.7, Gate[GateHospitalThree][GateClose][2]+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 4, 5);
 	Gate[GateHospitalThree][GateStatus] = false;
 
 	Gate[GateHospitalFour][GateFraction] = Fraction_Hospital;
@@ -30672,7 +31082,7 @@ stock CreateGates()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateHospitalFour][GateArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Gate);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateHospitalFour][GateArea],  E_STREAMER_INDX, GateHospitalFour);
 	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White"H"Main_Color"]\n\
-	"Color_White"или "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateHospitalFour][GateClose][0]-3.5, Gate[GateHospitalFour][GateClose][1], Gate[GateHospitalFour][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	"Color_White"или "Main_Color"["Color_White KEY_WALK_NAME Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateHospitalFour][GateClose][0]-3.5, Gate[GateHospitalFour][GateClose][1], Gate[GateHospitalFour][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Gate[GateHospitalFour][GateStatus] = false;
 
 	Gate[GateHospitalFive][GateFraction] = Fraction_Hospital;
@@ -30684,7 +31094,7 @@ stock CreateGates()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateHospitalFive][GateArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Gate);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateHospitalFive][GateArea],  E_STREAMER_INDX, GateHospitalFive);
 	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White"H"Main_Color"]\n\
-	"Color_White"или "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateHospitalFive][GateClose][0], Gate[GateHospitalFive][GateClose][1]+3.5, Gate[GateHospitalFive][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	"Color_White"или "Main_Color"["Color_White KEY_WALK_NAME Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateHospitalFive][GateClose][0], Gate[GateHospitalFive][GateClose][1]+3.5, Gate[GateHospitalFive][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Gate[GateHospitalFive][GateStatus] = false;
 
 	Gate[GateTaxiFirst][GateFraction] = Fraction_Taxi;
@@ -30699,7 +31109,7 @@ stock CreateGates()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateTaxiFirst][GateArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Gate);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateTaxiFirst][GateArea],  E_STREAMER_INDX, GateTaxiFirst);
 	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White"H"Main_Color"]\n\
-	"Color_White"или "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateTaxiFirst][GateClose][0]+11.5, Gate[GateTaxiFirst][GateClose][1], Gate[GateTaxiFirst][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	"Color_White"или "Main_Color"["Color_White KEY_WALK_NAME Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateTaxiFirst][GateClose][0]+11.5, Gate[GateTaxiFirst][GateClose][1], Gate[GateTaxiFirst][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Gate[GateTaxiFirst][GateStatus] = false;
 
     Gate[GateStreetRacers][GateFraction] = Fraction_StreetRacers;
@@ -30711,7 +31121,7 @@ stock CreateGates()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateStreetRacers][GateArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Gate);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateStreetRacers][GateArea],  E_STREAMER_INDX, GateStreetRacers);
 	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White"H"Main_Color"]\n\
-	"Color_White"или "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateStreetRacers][GateClose][0], Gate[GateStreetRacers][GateClose][1]-6.0, Gate[GateStreetRacers][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	"Color_White"или "Main_Color"["Color_White KEY_WALK_NAME Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateStreetRacers][GateClose][0], Gate[GateStreetRacers][GateClose][1]-6.0, Gate[GateStreetRacers][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Gate[GateStreetRacers][GateStatus] = false;
 
 	Gate[GateYakuza][GateFraction] = Fraction_Yakuza;
@@ -30723,7 +31133,7 @@ stock CreateGates()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateYakuza][GateArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Gate);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateYakuza][GateArea],  E_STREAMER_INDX, GateYakuza);
 	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White"H"Main_Color"]\n\
-	"Color_White"или "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateYakuza][GateClose][0]+2.3, Gate[GateYakuza][GateClose][1], Gate[GateYakuza][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	"Color_White"или "Main_Color"["Color_White KEY_WALK_NAME Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateYakuza][GateClose][0]+2.3, Gate[GateYakuza][GateClose][1], Gate[GateYakuza][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Gate[GateYakuza][GateStatus] = false;
 
 	Gate[GateLaCosaNostraOne][GateFraction] = Fraction_LaCosaNostra;
@@ -30735,7 +31145,7 @@ stock CreateGates()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateLaCosaNostraOne][GateArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Gate);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateLaCosaNostraOne][GateArea],  E_STREAMER_INDX, GateLaCosaNostraOne);
 	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White"H"Main_Color"]\n\
-	"Color_White"или "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateLaCosaNostraOne][GateClose][0], Gate[GateLaCosaNostraOne][GateClose][1], Gate[GateLaCosaNostraOne][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	"Color_White"или "Main_Color"["Color_White KEY_WALK_NAME Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateLaCosaNostraOne][GateClose][0], Gate[GateLaCosaNostraOne][GateClose][1], Gate[GateLaCosaNostraOne][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Gate[GateLaCosaNostraOne][GateStatus] = false;
 
 	Gate[GateLaCosaNostraTwo][GateFraction] = Fraction_LaCosaNostra;
@@ -30747,7 +31157,7 @@ stock CreateGates()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateLaCosaNostraTwo][GateArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Gate);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateLaCosaNostraTwo][GateArea],  E_STREAMER_INDX, GateLaCosaNostraTwo);
 	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White"H"Main_Color"]\n\
-	"Color_White"или "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateLaCosaNostraTwo][GateClose][0], Gate[GateLaCosaNostraTwo][GateClose][1], Gate[GateLaCosaNostraTwo][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	"Color_White"или "Main_Color"["Color_White KEY_WALK_NAME Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateLaCosaNostraTwo][GateClose][0], Gate[GateLaCosaNostraTwo][GateClose][1], Gate[GateLaCosaNostraTwo][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Gate[GateLaCosaNostraTwo][GateStatus] = false;
 
 	Gate[GateRussiaMafia][GateFraction] = Fraction_RussiaMafia;
@@ -30762,7 +31172,7 @@ stock CreateGates()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateRussiaMafia][GateArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Gate);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Gate[GateRussiaMafia][GateArea],  E_STREAMER_INDX, GateRussiaMafia);
 	CreateDynamic3DTextLabel(Color_White"Чтобы открыть нажмите "Main_Color"["Color_White"H"Main_Color"]\n\
-	"Color_White"или "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateRussiaMafia][GateClose][0]-8.2722, Gate[GateRussiaMafia][GateClose][1]+8.0735, Gate[GateRussiaMafia][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	"Color_White"или "Main_Color"["Color_White KEY_WALK_NAME Main_Color"] "Color_White"если вы не за рулем", -1, Gate[GateRussiaMafia][GateClose][0]-8.2722, Gate[GateRussiaMafia][GateClose][1]+8.0735, Gate[GateRussiaMafia][GateClose][2], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Gate[GateRussiaMafia][GateStatus] = false;
 }
 
@@ -30780,9 +31190,9 @@ stock CreatePickups()
 	new str[100];
 
 	Pickups[SpawnExit][PickJob] = Job_None;
-	Pickups[SpawnExit][PickID] = CreateDynamicPickup(1318, 1, 2214.3848,-1150.4180,1025.7969, 1, 15);
+	Pickups[SpawnExit][PickID] = CreateDynamicPickup(19132, 1, 2214.3848,-1150.4180,1025.7969, 1, 15);
 	Pickups[SpawnExit][PickAreaID] = CreateDynamicSphere(2214.3848,-1150.4180,1025.7969, 2.0, 1, 15);
-	Pickups[SpawnExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 2214.3848,-1150.4180,1025.7969+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 15);
+	Pickups[SpawnExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 2214.3848,-1150.4180,1025.7969+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 15);
 	Pickups[SpawnExit][PickAngle] = 280.1327;
 	Pickups[SpawnExit][IsPickTP] = true;
 	Pickups[SpawnExit][PickTpPickID] = SpawnEnter;
@@ -30790,9 +31200,9 @@ stock CreatePickups()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[SpawnExit][PickAreaID],  E_STREAMER_INDX, SpawnExit);
 
 	Pickups[SpawnEnter][PickJob] = Job_None;
-	Pickups[SpawnEnter][PickID] = CreateDynamicPickup(1318, 1, -2191.9792,-2255.1287,30.6955, 0, 0);
+	Pickups[SpawnEnter][PickID] = CreateDynamicPickup(19132, 1, -2191.9792,-2255.1287,30.6955, 0, 0);
 	Pickups[SpawnEnter][PickAreaID] = CreateDynamicSphere(-2191.9792,-2255.1287,30.6955, 2.0, 0, 0);
-	Pickups[SpawnEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -2191.9792,-2255.1287,30.6955+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[SpawnEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -2191.9792,-2255.1287,30.6955+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[SpawnEnter][PickAngle] = 146.4427;
 	Pickups[SpawnEnter][IsPickTP] = true;
 	Pickups[SpawnEnter][PickTpPickID] = SpawnExit;
@@ -30866,9 +31276,9 @@ stock CreatePickups()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[DriverDeliveryJob][PickAreaID],  E_STREAMER_INDX, DriverDeliveryJob);
 
 	Pickups[CityHallExit][PickJob] = Job_None;
-	Pickups[CityHallExit][PickID] = CreateDynamicPickup(1318, 1, 390.7688,173.8386,1008.3828, 1, 3);
+	Pickups[CityHallExit][PickID] = CreateDynamicPickup(19132, 1, 390.7688,173.8386,1008.3828, 1, 3);
 	Pickups[CityHallExit][PickAreaID] = CreateDynamicSphere(390.7688,173.8386,1008.3828, 2.0, 1, 3);
-	Pickups[CityHallExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 390.7688,173.8386,1008.3828+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 3);
+	Pickups[CityHallExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 390.7688,173.8386,1008.3828+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 3);
 	Pickups[CityHallExit][PickAngle] = 92.0090;
 	Pickups[CityHallExit][IsPickTP] = true;
 	Pickups[CityHallExit][PickTpPickID] = CityHallEnter;
@@ -30876,9 +31286,9 @@ stock CreatePickups()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CityHallExit][PickAreaID],  E_STREAMER_INDX, CityHallExit);
 
 	Pickups[CityHallEnter][PickJob] = Job_None;
-	Pickups[CityHallEnter][PickID] = CreateDynamicPickup(1318, 1, -2766.3103,375.6552,6.3347, 0, 0);
+	Pickups[CityHallEnter][PickID] = CreateDynamicPickup(19132, 1, -2766.3103,375.6552,6.3347, 0, 0);
 	Pickups[CityHallEnter][PickAreaID] = CreateDynamicSphere(-2766.3103,375.6552,6.3347, 2.0, 0, 0);
-	Pickups[CityHallEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -2766.3103,375.6552,6.3347+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[CityHallEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -2766.3103,375.6552,6.3347+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[CityHallEnter][PickAngle] = 275.3803;
 	Pickups[CityHallEnter][IsPickTP] = true;
 	Pickups[CityHallEnter][PickTpPickID] = CityHallExit;
@@ -30938,9 +31348,9 @@ stock CreatePickups()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[FarmJob][PickAreaID],  E_STREAMER_INDX, FarmJob);
 
 	Pickups[MineEnter][PickJob] = Job_None;
-	Pickups[MineEnter][PickID] = CreateDynamicPickup(1318, 1, -724.8881,1539.1771,40.4921, 0, 0);
+	Pickups[MineEnter][PickID] = CreateDynamicPickup(19132, 1, -724.8881,1539.1771,40.4921, 0, 0);
 	Pickups[MineEnter][PickAreaID] = CreateDynamicSphere(-724.8881,1539.1771,40.4921, 2.0, 0, 0);
-	Pickups[MineEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -724.8881,1539.1771,40.4921+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[MineEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -724.8881,1539.1771,40.4921+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[MineEnter][PickAngle] = 89.8860;
 	Pickups[MineEnter][IsPickTP] = true;
 	Pickups[MineEnter][PickTpPickID] = MineExit;
@@ -30948,9 +31358,9 @@ stock CreatePickups()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[MineEnter][PickAreaID],  E_STREAMER_INDX, MineEnter);
 
 	Pickups[MineExit][PickJob] = Job_None;
-	Pickups[MineExit][PickID] = CreateDynamicPickup(1318, 1, -690.5645,-1746.8440,801.0569, 2, 0);
+	Pickups[MineExit][PickID] = CreateDynamicPickup(19132, 1, -690.5645,-1746.8440,801.0569, 2, 0);
 	Pickups[MineExit][PickAreaID] = CreateDynamicSphere(-690.5645,-1746.8440,801.0569, 2.0, 2, 0);
-	Pickups[MineExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -690.5645,-1746.8440,801.0569+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 0);
+	Pickups[MineExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -690.5645,-1746.8440,801.0569+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 0);
 	Pickups[MineExit][PickAngle] = 269.2728;
 	Pickups[MineExit][IsPickTP] = true;
 	Pickups[MineExit][PickTpPickID] = MineEnter;
@@ -31040,9 +31450,9 @@ stock CreatePickups()
 
 	Pickups[PoliceExit][PickJob] = Job_None;
 	Pickups[PoliceExit][PickFraction] = Fraction_None;
-	Pickups[PoliceExit][PickID] = CreateDynamicPickup(1318, 1, 246.8181,62.4736,1003.6406, 1, 6);
+	Pickups[PoliceExit][PickID] = CreateDynamicPickup(19132, 1, 246.8181,62.4736,1003.6406, 1, 6);
 	Pickups[PoliceExit][PickAreaID] = CreateDynamicSphere(246.8181,62.4736,1003.6406, 2.0, 1, 6);
-	Pickups[PoliceExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 246.8181,62.4736,1003.6406+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 6);
+	Pickups[PoliceExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 246.8181,62.4736,1003.6406+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 6);
 	Pickups[PoliceExit][PickAngle] = 357.5265;
 	Pickups[PoliceExit][IsPickTP] = true;
 	Pickups[PoliceExit][PickTpPickID] = PoliceEnter;
@@ -31051,9 +31461,9 @@ stock CreatePickups()
 
 	Pickups[PoliceEnter][PickJob] = Job_None;
 	Pickups[PoliceEnter][PickFraction] = Fraction_Police;
-	Pickups[PoliceEnter][PickID] = CreateDynamicPickup(1318, 1, 1524.4840,-1677.8702,6.2188, 0, 0);
+	Pickups[PoliceEnter][PickID] = CreateDynamicPickup(19132, 1, 1524.4840,-1677.8702,6.2188, 0, 0);
 	Pickups[PoliceEnter][PickAreaID] = CreateDynamicSphere(1524.4840,-1677.8702,6.2188, 2.0, 0, 0);
-	Pickups[PoliceEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 1524.4840,-1677.8702,6.2188+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[PoliceEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 1524.4840,-1677.8702,6.2188+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[PoliceEnter][PickAngle] = 266.6223;
 	Pickups[PoliceEnter][IsPickTP] = true;
 	Pickups[PoliceEnter][PickTpPickID] = PoliceExit;
@@ -31062,9 +31472,9 @@ stock CreatePickups()
 
 	Pickups[ArmyExit][PickJob] = Job_None;
 	Pickups[ArmyExit][PickFraction] = Fraction_None;
-	Pickups[ArmyExit][PickID] = CreateDynamicPickup(1318, 1, 145.9330,1890.6322,2049.2261, 2, 1);
+	Pickups[ArmyExit][PickID] = CreateDynamicPickup(19132, 1, 145.9330,1890.6322,2049.2261, 2, 1);
 	Pickups[ArmyExit][PickAreaID] = CreateDynamicSphere(145.9330,1890.6322,2049.2261, 2.0, 2, 1);
-	Pickups[ArmyExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 145.9330,1890.6322,2049.2261+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 1);
+	Pickups[ArmyExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 145.9330,1890.6322,2049.2261+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 1);
 	Pickups[ArmyExit][PickAngle] = 260.4279;
 	Pickups[ArmyExit][IsPickTP] = true;
 	Pickups[ArmyExit][PickTpPickID] = ArmyEnter;
@@ -31073,9 +31483,9 @@ stock CreatePickups()
 
 	Pickups[ArmyEnter][PickJob] = Job_None;
 	Pickups[ArmyEnter][PickFraction] = Fraction_Army;
-	Pickups[ArmyEnter][PickID] = CreateDynamicPickup(1318, 1, -329.7326,1537.0398,76.6117, 0, 0);
+	Pickups[ArmyEnter][PickID] = CreateDynamicPickup(19132, 1, -329.7326,1537.0398,76.6117, 0, 0);
 	Pickups[ArmyEnter][PickAreaID] = CreateDynamicSphere(-329.7326,1537.0398,76.6117, 2.0, 0, 0);
-	Pickups[ArmyEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -329.7326,1537.0398,76.6117+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[ArmyEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -329.7326,1537.0398,76.6117+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[ArmyEnter][PickAngle] = 188.6739;
 	Pickups[ArmyEnter][IsPickTP] = true;
 	Pickups[ArmyEnter][PickTpPickID] = ArmyExit;
@@ -31084,9 +31494,9 @@ stock CreatePickups()
 
 	Pickups[FBIExit][PickJob] = Job_None;
 	Pickups[FBIExit][PickFraction] = Fraction_None;
-	Pickups[FBIExit][PickID] = CreateDynamicPickup(1318, 1, 322.1500,302.2935,999.1484, 3, 5);
+	Pickups[FBIExit][PickID] = CreateDynamicPickup(19132, 1, 322.1500,302.2935,999.1484, 3, 5);
 	Pickups[FBIExit][PickAreaID] = CreateDynamicSphere(322.1500,302.2935,999.1484, 2.0, 3, 5);
-	Pickups[FBIExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 322.1500,302.2935,999.1484+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 3, 5);
+	Pickups[FBIExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 322.1500,302.2935,999.1484+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 3, 5);
 	Pickups[FBIExit][PickAngle] = 2.8410;
 	Pickups[FBIExit][IsPickTP] = true;
 	Pickups[FBIExit][PickTpPickID] = FBIEnter;
@@ -31095,9 +31505,9 @@ stock CreatePickups()
 
 	Pickups[FBIEnter][PickJob] = Job_None;
 	Pickups[FBIEnter][PickFraction] = Fraction_FBI;
-	Pickups[FBIEnter][PickID] = CreateDynamicPickup(1318, 1, -1594.2108,716.2722,-4.9063, 0, 0);
+	Pickups[FBIEnter][PickID] = CreateDynamicPickup(19132, 1, -1594.2108,716.2722,-4.9063, 0, 0);
 	Pickups[FBIEnter][PickAreaID] = CreateDynamicSphere(-1594.2108,716.2722,-4.9063, 2.0, 0, 0);
-	Pickups[FBIEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -1594.2108,716.2722,-4.9063+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[FBIEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -1594.2108,716.2722,-4.9063+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[FBIEnter][PickAngle] = 268.5279;
 	Pickups[FBIEnter][IsPickTP] = true;
 	Pickups[FBIEnter][PickTpPickID] = FBIExit;
@@ -31133,9 +31543,9 @@ stock CreatePickups()
 
 	Pickups[PrisonExit][PickJob] = Job_None;
 	Pickups[PrisonExit][PickFraction] = Fraction_None;
-	Pickups[PrisonExit][PickID] = CreateDynamicPickup(1318, 1, 945.3094,-2744.8264,42.1289, 100, 16);
+	Pickups[PrisonExit][PickID] = CreateDynamicPickup(19132, 1, 945.3094,-2744.8264,42.1289, 100, 16);
 	Pickups[PrisonExit][PickAreaID] = CreateDynamicSphere(945.3094,-2744.8264,42.1289, 2.0, 100, 16);
-	Pickups[PrisonExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 945.3094,-2744.8264,42.1289+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 100, 16);
+	Pickups[PrisonExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 945.3094,-2744.8264,42.1289+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 100, 16);
 	Pickups[PrisonExit][PickAngle] = 329.5774;
 	Pickups[PrisonExit][IsPickTP] = true;
 	Pickups[PrisonExit][PickTpPickID] = PrisonEnter;
@@ -31144,9 +31554,9 @@ stock CreatePickups()
 
 	Pickups[PrisonEnter][PickJob] = Job_None;
 	Pickups[PrisonEnter][PickFraction] = Fraction_None;
-	Pickups[PrisonEnter][PickID] = CreateDynamicPickup(1318, 1, 213.9141,1875.5636,13.1470, 0, 0);
+	Pickups[PrisonEnter][PickID] = CreateDynamicPickup(19132, 1, 213.9141,1875.5636,13.1470, 0, 0);
 	Pickups[PrisonEnter][PickAreaID] = CreateDynamicSphere(213.9141,1875.5636,13.1470, 2.0, 0, 0);
-	Pickups[PrisonEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 213.9141,1875.5636,13.1470+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[PrisonEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 213.9141,1875.5636,13.1470+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[PrisonEnter][PickAngle] = 6.7915;
 	Pickups[PrisonEnter][IsPickTP] = true;
 	Pickups[PrisonEnter][PickTpPickID] = PrisonExit;
@@ -31227,9 +31637,9 @@ stock CreatePickups()
 
 	Pickups[PoliceEnterRoof][PickJob] = Job_None;
 	Pickups[PoliceEnterRoof][PickFraction] = Fraction_Police;
-	Pickups[PoliceEnterRoof][PickID] = CreateDynamicPickup(1318, 1, 246.4296,88.1521,1003.6406, 1, 6);
+	Pickups[PoliceEnterRoof][PickID] = CreateDynamicPickup(19132, 1, 246.4296,88.1521,1003.6406, 1, 6);
 	Pickups[PoliceEnterRoof][PickAreaID] = CreateDynamicSphere(246.4296,88.1521,1003.6406, 2.0, 1, 6);
-	Pickups[PoliceEnterRoof][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 246.4296,88.1521,1003.6406+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 6);
+	Pickups[PoliceEnterRoof][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 246.4296,88.1521,1003.6406+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 6);
 	Pickups[PoliceEnterRoof][PickAngle] = 179.7212;
 	Pickups[PoliceEnterRoof][IsPickTP] = true;
 	Pickups[PoliceEnterRoof][PickTpPickID] = PoliceExitRoof;
@@ -31238,9 +31648,9 @@ stock CreatePickups()
 
 	Pickups[PoliceExitRoof][PickJob] = Job_None;
 	Pickups[PoliceExitRoof][PickFraction] = Fraction_Police;
-	Pickups[PoliceExitRoof][PickID] = CreateDynamicPickup(1318, 1, 1564.1764,-1666.9120,28.3956, 0, 0);
+	Pickups[PoliceExitRoof][PickID] = CreateDynamicPickup(19132, 1, 1564.1764,-1666.9120,28.3956, 0, 0);
 	Pickups[PoliceExitRoof][PickAreaID] = CreateDynamicSphere(1564.1764,-1666.9120,28.3956, 2.0, 0, 0);
-	Pickups[PoliceExitRoof][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 1564.1764,-1666.9120,28.3956+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[PoliceExitRoof][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 1564.1764,-1666.9120,28.3956+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[PoliceExitRoof][PickAngle] = 5.6354;
 	Pickups[PoliceExitRoof][IsPickTP] = true;
 	Pickups[PoliceExitRoof][PickTpPickID] = PoliceEnterRoof;
@@ -31249,9 +31659,9 @@ stock CreatePickups()
 
 	Pickups[HospitalExit][PickJob] = Job_None;
 	Pickups[HospitalExit][PickFraction] = Fraction_None;
-	Pickups[HospitalExit][PickID] = CreateDynamicPickup(1318, 1, -319.3812,1052.8435,1028.0284, 4, 5);
+	Pickups[HospitalExit][PickID] = CreateDynamicPickup(19132, 1, -319.3812,1052.8435,1028.0284, 4, 5);
 	Pickups[HospitalExit][PickAreaID] = CreateDynamicSphere(-319.3812,1052.8435,1028.0284, 2.0, 4, 5);
-	Pickups[HospitalExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -319.3812,1052.8435,1028.0284+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 4, 5);
+	Pickups[HospitalExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -319.3812,1052.8435,1028.0284+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 4, 5);
 	Pickups[HospitalExit][PickAngle] = 179.3749;
 	Pickups[HospitalExit][IsPickTP] = true;
 	Pickups[HospitalExit][PickTpPickID] = HospitalEnter;
@@ -31260,9 +31670,9 @@ stock CreatePickups()
 
 	Pickups[HospitalEnter][PickJob] = Job_None;
 	Pickups[HospitalEnter][PickFraction] = Fraction_None;
-	Pickups[HospitalEnter][PickID] = CreateDynamicPickup(1318, 1, -318.7607,1048.2343,20.3403, 0, 0);
+	Pickups[HospitalEnter][PickID] = CreateDynamicPickup(19132, 1, -318.7607,1048.2343,20.3403, 0, 0);
 	Pickups[HospitalEnter][PickAreaID] = CreateDynamicSphere(-318.7607,1048.2343,20.3403, 2.0, 0, 0);
-	Pickups[HospitalEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -318.7607,1048.2343,20.3403+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[HospitalEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -318.7607,1048.2343,20.3403+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[HospitalEnter][PickAngle] = 357.2018;
 	Pickups[HospitalEnter][IsPickTP] = true;
 	Pickups[HospitalEnter][PickTpPickID] = HospitalExit;
@@ -31327,9 +31737,9 @@ stock CreatePickups()
 
 	Pickups[TaxiExit][PickJob] = Job_None;
 	Pickups[TaxiExit][PickFraction] = Fraction_None;
-	Pickups[TaxiExit][PickID] = CreateDynamicPickup(1318, 1, -2029.7529,-119.6229,1035.1719, 5, 3);
+	Pickups[TaxiExit][PickID] = CreateDynamicPickup(19132, 1, -2029.7529,-119.6229,1035.1719, 5, 3);
 	Pickups[TaxiExit][PickAreaID] = CreateDynamicSphere(-2029.7529,-119.6229,1035.1719, 2.0, 5, 3);
-	Pickups[TaxiExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -2029.7529,-119.6229,1035.1719+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 5, 3);
+	Pickups[TaxiExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -2029.7529,-119.6229,1035.1719+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 5, 3);
 	Pickups[TaxiExit][PickAngle] = 357.7379;
 	Pickups[TaxiExit][IsPickTP] = true;
 	Pickups[TaxiExit][PickTpPickID] = TaxiEnter;
@@ -31338,9 +31748,9 @@ stock CreatePickups()
 
 	Pickups[TaxiEnter][PickJob] = Job_None;
 	Pickups[TaxiEnter][PickFraction] = Fraction_Taxi;
-	Pickups[TaxiEnter][PickID] = CreateDynamicPickup(1318, 1, -539.9884,-506.4533,25.5234, 0, 0);
+	Pickups[TaxiEnter][PickID] = CreateDynamicPickup(19132, 1, -539.9884,-506.4533,25.5234, 0, 0);
 	Pickups[TaxiEnter][PickAreaID] = CreateDynamicSphere(-539.9884,-506.4533,25.5234, 2.0, 0, 0);
-	Pickups[TaxiEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -539.9884,-506.4533,25.5234+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[TaxiEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -539.9884,-506.4533,25.5234+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[TaxiEnter][PickAngle] = 356.8785;
 	Pickups[TaxiEnter][IsPickTP] = true;
 	Pickups[TaxiEnter][PickTpPickID] = TaxiExit;
@@ -31357,9 +31767,9 @@ stock CreatePickups()
 
 	Pickups[SanNewsExit][PickJob] = Job_None;
 	Pickups[SanNewsExit][PickFraction] = Fraction_None;
-	Pickups[SanNewsExit][PickID] = CreateDynamicPickup(1318, 1, 162.3705,-121.8512,1071.3750, 6, 6);
+	Pickups[SanNewsExit][PickID] = CreateDynamicPickup(19132, 1, 162.3705,-121.8512,1071.3750, 6, 6);
 	Pickups[SanNewsExit][PickAreaID] = CreateDynamicSphere(162.3705,-121.8512,1071.3750, 2.0, 6, 6);
-	Pickups[SanNewsExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 162.3705,-121.8512,1071.3750+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 6, 6);
+	Pickups[SanNewsExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 162.3705,-121.8512,1071.3750+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 6, 6);
 	Pickups[SanNewsExit][PickAngle] = 179.1911;
 	Pickups[SanNewsExit][IsPickTP] = true;
 	Pickups[SanNewsExit][PickTpPickID] = SanNewsEnter;
@@ -31368,9 +31778,9 @@ stock CreatePickups()
 
 	Pickups[SanNewsEnter][PickJob] = Job_None;
 	Pickups[SanNewsEnter][PickFraction] = Fraction_SanNews;
-	Pickups[SanNewsEnter][PickID] = CreateDynamicPickup(1318, 1, -2521.0850,-624.9506,132.7842, 0, 0);
+	Pickups[SanNewsEnter][PickID] = CreateDynamicPickup(19132, 1, -2521.0850,-624.9506,132.7842, 0, 0);
 	Pickups[SanNewsEnter][PickAreaID] = CreateDynamicSphere(-2521.0850,-624.9506,132.7842, 2.0, 0, 0);
-	Pickups[SanNewsEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -2521.0850,-624.9506,132.7842+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[SanNewsEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -2521.0850,-624.9506,132.7842+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[SanNewsEnter][PickAngle] = 3.1872;
 	Pickups[SanNewsEnter][IsPickTP] = true;
 	Pickups[SanNewsEnter][PickTpPickID] = SanNewsExit;
@@ -31387,9 +31797,9 @@ stock CreatePickups()
 
 	Pickups[HangarOneExit][PickJob] = Job_None;
 	Pickups[HangarOneExit][PickFraction] = Fraction_None;
-	Pickups[HangarOneExit][PickID] = CreateDynamicPickup(1318, 1, 390.7688,173.8386,1008.3828, 2, 3);
+	Pickups[HangarOneExit][PickID] = CreateDynamicPickup(19132, 1, 390.7688,173.8386,1008.3828, 2, 3);
 	Pickups[HangarOneExit][PickAreaID] = CreateDynamicSphere(390.7688,173.8386,1008.3828, 2.0, 2, 3);
-	Pickups[HangarOneExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 390.7688,173.8386,1008.3828+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 3);
+	Pickups[HangarOneExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 390.7688,173.8386,1008.3828+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 3);
 	Pickups[HangarOneExit][PickAngle] = 92.0090;
 	Pickups[HangarOneExit][IsPickTP] = true;
 	Pickups[HangarOneExit][PickTpPickID] = HangarOneEnter;
@@ -31398,7 +31808,7 @@ stock CreatePickups()
 
 	Pickups[HangarOneEnter][PickJob] = Job_None;
 	Pickups[HangarOneEnter][PickFraction] = Fraction_None;
-	Pickups[HangarOneEnter][PickID] = CreateDynamicPickup(1318, 1, 901.2533,-1202.6208,16.9832, 0, 0);
+	Pickups[HangarOneEnter][PickID] = CreateDynamicPickup(19132, 1, 901.2533,-1202.6208,16.9832, 0, 0);
 	Pickups[HangarOneEnter][PickAreaID] = CreateDynamicSphere(901.2533,-1202.6208,16.9832, 2.0, 0, 0);
 	Pickups[HangarOneEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Ангар №1\nСтатус: "Color_Red"Закрыт", -1, 901.2533,-1202.6208,16.9832+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[HangarOneEnter][PickAngle] = 177.6956;
@@ -31409,9 +31819,9 @@ stock CreatePickups()
 
 	Pickups[HangarTwoExit][PickJob] = Job_None;
 	Pickups[HangarTwoExit][PickFraction] = Fraction_None;
-	Pickups[HangarTwoExit][PickID] = CreateDynamicPickup(1318, 1, -1128.6901,1066.2426,1345.7438, 2, 10);
+	Pickups[HangarTwoExit][PickID] = CreateDynamicPickup(19132, 1, -1128.6901,1066.2426,1345.7438, 2, 10);
 	Pickups[HangarTwoExit][PickAreaID] = CreateDynamicSphere(-1128.6901,1066.2426,1345.7438, 2.0, 2, 10);
-	Pickups[HangarTwoExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -1128.6901,1066.2426,1345.7438+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 10);
+	Pickups[HangarTwoExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -1128.6901,1066.2426,1345.7438+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 10);
 	Pickups[HangarTwoExit][PickAngle] = -92.0090;
 	Pickups[HangarTwoExit][IsPickTP] = true;
 	Pickups[HangarTwoExit][PickTpPickID] = HangarTwoEnter;
@@ -31420,7 +31830,7 @@ stock CreatePickups()
 
 	Pickups[HangarTwoEnter][PickJob] = Job_None;
 	Pickups[HangarTwoEnter][PickFraction] = Fraction_None;
-	Pickups[HangarTwoEnter][PickID] = CreateDynamicPickup(1318, 1, 867.4136,-1202.6198,16.9766, 0, 0);
+	Pickups[HangarTwoEnter][PickID] = CreateDynamicPickup(19132, 1, 867.4136,-1202.6198,16.9766, 0, 0);
 	Pickups[HangarTwoEnter][PickAreaID] = CreateDynamicSphere(867.4136,-1202.6198,16.9766, 2.0, 0, 0);
 	Pickups[HangarTwoEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Ангар №2\nСтатус: "Color_Red"Закрыт", -1, 867.4136,-1202.6198,16.9766+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[HangarTwoEnter][PickAngle] = 176.4423;
@@ -31431,9 +31841,9 @@ stock CreatePickups()
 
 	Pickups[HangarThreeExit][PickJob] = Job_None;
 	Pickups[HangarThreeExit][PickFraction] = Fraction_None;
-	Pickups[HangarThreeExit][PickID] = CreateDynamicPickup(1318, 1, 772.3735,-5.5129,1000.7286, 2, 5);
+	Pickups[HangarThreeExit][PickID] = CreateDynamicPickup(19132, 1, 772.3735,-5.5129,1000.7286, 2, 5);
 	Pickups[HangarThreeExit][PickAreaID] = CreateDynamicSphere(772.3735,-5.5129,1000.7286, 2.0, 2, 5);
-	Pickups[HangarThreeExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 772.3735,-5.5129,1000.7286+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 5);
+	Pickups[HangarThreeExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 772.3735,-5.5129,1000.7286+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 5);
 	Pickups[HangarThreeExit][PickAngle] = 4.3973;
 	Pickups[HangarThreeExit][IsPickTP] = true;
 	Pickups[HangarThreeExit][PickTpPickID] = HangarThreeEnter;
@@ -31442,7 +31852,7 @@ stock CreatePickups()
 
 	Pickups[HangarThreeEnter][PickJob] = Job_None;
 	Pickups[HangarThreeEnter][PickFraction] = Fraction_None;
-	Pickups[HangarThreeEnter][PickID] = CreateDynamicPickup(1318, 1, 830.9946,-1202.6180,16.9766, 0, 0);
+	Pickups[HangarThreeEnter][PickID] = CreateDynamicPickup(19132, 1, 830.9946,-1202.6180,16.9766, 0, 0);
 	Pickups[HangarThreeEnter][PickAreaID] = CreateDynamicSphere(830.9946,-1202.6180,16.9766, 2.0, 0, 0);
 	Pickups[HangarThreeEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Ангар №3\nСтатус: "Color_Red"Закрыт", -1, 830.9946,-1202.6180,16.9766+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[HangarThreeEnter][PickAngle] = 179.2391;
@@ -31453,9 +31863,9 @@ stock CreatePickups()
 
 	Pickups[HangarFourExit][PickJob] = Job_None;
 	Pickups[HangarFourExit][PickFraction] = Fraction_None;
-	Pickups[HangarFourExit][PickID] = CreateDynamicPickup(1318, 1, -1497.2578,1605.8265,1052.5313, 2, 14);
+	Pickups[HangarFourExit][PickID] = CreateDynamicPickup(19132, 1, -1497.2578,1605.8265,1052.5313, 2, 14);
 	Pickups[HangarFourExit][PickAreaID] = CreateDynamicSphere(-1497.2578,1605.8265,1052.5313, 2.0, 2, 14);
-	Pickups[HangarFourExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -1497.2578,1605.8265,1052.5313+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 14);
+	Pickups[HangarFourExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -1497.2578,1605.8265,1052.5313+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 14);
 	Pickups[HangarFourExit][PickAngle] = 269.1431;
 	Pickups[HangarFourExit][IsPickTP] = true;
 	Pickups[HangarFourExit][PickTpPickID] = HangarFourEnter;
@@ -31464,7 +31874,7 @@ stock CreatePickups()
 
 	Pickups[HangarFourEnter][PickJob] = Job_None;
 	Pickups[HangarFourEnter][PickFraction] = Fraction_None;
-	Pickups[HangarFourEnter][PickID] = CreateDynamicPickup(1318, 1, 860.8143,-1245.2002,14.7578, 0, 0);
+	Pickups[HangarFourEnter][PickID] = CreateDynamicPickup(19132, 1, 860.8143,-1245.2002,14.7578, 0, 0);
 	Pickups[HangarFourEnter][PickAreaID] = CreateDynamicSphere(860.8143,-1245.2002,14.7578, 2.0, 0, 0);
 	Pickups[HangarFourEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Ангар №4\nСтатус: "Color_Red"Закрыт", -1, 860.8143,-1245.2002,14.7578+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[HangarFourEnter][PickAngle] = 277.3134;
@@ -31475,9 +31885,9 @@ stock CreatePickups()
 
 	Pickups[HangarFiveExit][PickJob] = Job_None;
 	Pickups[HangarFiveExit][PickFraction] = Fraction_None;
-	Pickups[HangarFiveExit][PickID] = CreateDynamicPickup(1318, 1, 2214.3848,-1150.4180,1025.7969, 2, 15);
+	Pickups[HangarFiveExit][PickID] = CreateDynamicPickup(19132, 1, 2214.3848,-1150.4180,1025.7969, 2, 15);
 	Pickups[HangarFiveExit][PickAreaID] = CreateDynamicSphere(2214.3848,-1150.4180,1025.7969, 2.0, 2, 15);
-	Pickups[HangarFiveExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 2214.3848,-1150.4180,1025.7969+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 15);
+	Pickups[HangarFiveExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 2214.3848,-1150.4180,1025.7969+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 15);
 	Pickups[HangarFiveExit][PickAngle] = 269.1431;
 	Pickups[HangarFiveExit][IsPickTP] = true;
 	Pickups[HangarFiveExit][PickTpPickID] = HangarFiveEnter;
@@ -31486,7 +31896,7 @@ stock CreatePickups()
 
 	Pickups[HangarFiveEnter][PickJob] = Job_None;
 	Pickups[HangarFiveEnter][PickFraction] = Fraction_None;
-	Pickups[HangarFiveEnter][PickID] = CreateDynamicPickup(1318, 1, 860.8149,-1255.5018,14.7578, 0, 0);
+	Pickups[HangarFiveEnter][PickID] = CreateDynamicPickup(19132, 1, 860.8149,-1255.5018,14.7578, 0, 0);
 	Pickups[HangarFiveEnter][PickAreaID] = CreateDynamicSphere(860.8149,-1255.5018,14.7578, 2.0, 0, 0);
 	Pickups[HangarFiveEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Ангар №5\nСтатус: "Color_Red"Закрыт", -1, 860.8149,-1255.5018,14.7578+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[HangarFiveEnter][PickAngle] = 270.1067;
@@ -31497,9 +31907,9 @@ stock CreatePickups()
 
 	Pickups[HangarSixExit][PickJob] = Job_None;
 	Pickups[HangarSixExit][PickFraction] = Fraction_None;
-	Pickups[HangarSixExit][PickID] = CreateDynamicPickup(1318, 1, -1444.2249,929.7787,1036.4819, 3, 15);
+	Pickups[HangarSixExit][PickID] = CreateDynamicPickup(19132, 1, -1444.2249,929.7787,1036.4819, 3, 15);
 	Pickups[HangarSixExit][PickAreaID] = CreateDynamicSphere(-1444.2249,929.7787,1036.4819, 2.0, 3, 15);
-	Pickups[HangarSixExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -1444.2249,929.7787,1036.4819+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 3, 15);
+	Pickups[HangarSixExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -1444.2249,929.7787,1036.4819+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 3, 15);
 	Pickups[HangarSixExit][PickAngle] = 355.3575;
 	Pickups[HangarSixExit][IsPickTP] = true;
 	Pickups[HangarSixExit][PickTpPickID] = HangarSixEnter;
@@ -31508,7 +31918,7 @@ stock CreatePickups()
 
 	Pickups[HangarSixEnter][PickJob] = Job_None;
 	Pickups[HangarSixEnter][PickFraction] = Fraction_None;
-	Pickups[HangarSixEnter][PickID] = CreateDynamicPickup(1318, 1, 845.1177,-1293.0297,13.6500, 0, 0);
+	Pickups[HangarSixEnter][PickID] = CreateDynamicPickup(19132, 1, 845.1177,-1293.0297,13.6500, 0, 0);
 	Pickups[HangarSixEnter][PickAreaID] = CreateDynamicSphere(845.1177,-1293.0297,13.6500, 2.0, 0, 0);
 	Pickups[HangarSixEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Ангар №6\nСтатус: "Color_Red"Закрыт", -1, 845.1177,-1293.0297,13.6500+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[HangarSixEnter][PickAngle] = 271.3600;
@@ -31519,9 +31929,9 @@ stock CreatePickups()
 
 	Pickups[SanNewsRoofExit][PickJob] = Job_None;
 	Pickups[SanNewsRoofExit][PickFraction] = Fraction_SanNews;
-	Pickups[SanNewsRoofExit][PickID] = CreateDynamicPickup(1318, 1, 161.1399,-116.0658,1076.5938, 6, 6);
+	Pickups[SanNewsRoofExit][PickID] = CreateDynamicPickup(19132, 1, 161.1399,-116.0658,1076.5938, 6, 6);
 	Pickups[SanNewsRoofExit][PickAreaID] = CreateDynamicSphere(161.1399,-116.0658,1076.5938, 2.0, 6, 6);
-	Pickups[SanNewsRoofExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 161.1399,-116.0658,1076.5938+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 6, 6);
+	Pickups[SanNewsRoofExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 161.1399,-116.0658,1076.5938+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 6, 6);
 	Pickups[SanNewsRoofExit][PickAngle] = 272.7104;
 	Pickups[SanNewsRoofExit][IsPickTP] = true;
 	Pickups[SanNewsRoofExit][PickTpPickID] = SanNewsRoofEnter;
@@ -31530,9 +31940,9 @@ stock CreatePickups()
 
 	Pickups[SanNewsRoofEnter][PickJob] = Job_None;
 	Pickups[SanNewsRoofEnter][PickFraction] = Fraction_SanNews;
-	Pickups[SanNewsRoofEnter][PickID] = CreateDynamicPickup(1318, 1, -2539.4661,-683.5377,147.9063, 0, 0);
+	Pickups[SanNewsRoofEnter][PickID] = CreateDynamicPickup(19132, 1, -2539.4661,-683.5377,147.9063, 0, 0);
 	Pickups[SanNewsRoofEnter][PickAreaID] = CreateDynamicSphere(-2539.4661,-683.5377,147.9063, 2.0, 0, 0);
-	Pickups[SanNewsRoofEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -2539.4661,-683.5377,147.9063+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[SanNewsRoofEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -2539.4661,-683.5377,147.9063+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[SanNewsRoofEnter][PickAngle] = 359.3066;
 	Pickups[SanNewsRoofEnter][IsPickTP] = true;
 	Pickups[SanNewsRoofEnter][PickTpPickID] = SanNewsRoofExit;
@@ -31586,9 +31996,9 @@ stock CreatePickups()
 
 	Pickups[StashExit][PickJob] = Job_None;
 	Pickups[StashExit][PickFraction] = Fraction_None;
-	Pickups[StashExit][PickID] = CreateDynamicPickup(1318, 1, -236.2969,-14.6626,1046.3240, 1, 17);
+	Pickups[StashExit][PickID] = CreateDynamicPickup(19132, 1, -236.2969,-14.6626,1046.3240, 1, 17);
 	Pickups[StashExit][PickAreaID] = CreateDynamicSphere(-236.2969,-14.6626,1046.3240, 2.0, 1, 17);
-	Pickups[StashExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -236.2969,-14.6626,1046.3240+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 17);
+	Pickups[StashExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -236.2969,-14.6626,1046.3240+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 17);
 	Pickups[StashExit][PickAngle] = 0.9817;
 	Pickups[StashExit][IsPickTP] = true;
 	Pickups[StashExit][PickTpPickID] = StashEnter;
@@ -31597,9 +32007,9 @@ stock CreatePickups()
 
 	Pickups[StashEnter][PickJob] = Job_None;
 	Pickups[StashEnter][PickFraction] = Fraction_None;
-	Pickups[StashEnter][PickID] = CreateDynamicPickup(1318, 1, -2106.8921,-194.4499,35.3203, 0, 0);
+	Pickups[StashEnter][PickID] = CreateDynamicPickup(19132, 1, -2106.8921,-194.4499,35.3203, 0, 0);
 	Pickups[StashEnter][PickAreaID] = CreateDynamicSphere(-2106.8921,-194.4499,35.3203, 2.0, 0, 0);
-	Pickups[StashEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -2106.8921,-194.4499,35.3203+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[StashEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -2106.8921,-194.4499,35.3203+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[StashEnter][PickAngle] = 175.6169;
 	Pickups[StashEnter][IsPickTP] = true;
 	Pickups[StashEnter][PickTpPickID] = StashExit;
@@ -31608,9 +32018,9 @@ stock CreatePickups()
 
 	Pickups[VagosExit][PickJob] = Job_None;
 	Pickups[VagosExit][PickFraction] = Fraction_None;
-	Pickups[VagosExit][PickID] = CreateDynamicPickup(1318, 1, 309.3895,311.7142,1003.3047, 1, 4);
+	Pickups[VagosExit][PickID] = CreateDynamicPickup(19132, 1, 309.3895,311.7142,1003.3047, 1, 4);
 	Pickups[VagosExit][PickAreaID] = CreateDynamicSphere(309.3895,311.7142,1003.3047, 2.0, 1, 4);
-	Pickups[VagosExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 309.3895,311.7142,1003.3047+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 4);
+	Pickups[VagosExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 309.3895,311.7142,1003.3047+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 4);
 	Pickups[VagosExit][PickAngle] = 177.9381;
 	Pickups[VagosExit][IsPickTP] = true;
 	Pickups[VagosExit][PickTpPickID] = VagosEnter;
@@ -31619,9 +32029,9 @@ stock CreatePickups()
 
 	Pickups[VagosEnter][PickJob] = Job_None;
 	Pickups[VagosEnter][PickFraction] = Fraction_Vagos;
-	Pickups[VagosEnter][PickID] = CreateDynamicPickup(1318, 1, 2770.6865,-1628.7218,12.1775, 0, 0);
+	Pickups[VagosEnter][PickID] = CreateDynamicPickup(19132, 1, 2770.6865,-1628.7218,12.1775, 0, 0);
 	Pickups[VagosEnter][PickAreaID] = CreateDynamicSphere(2770.6865,-1628.7218,12.1775, 2.0, 0, 0);
-	Pickups[VagosEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 2770.6865,-1628.7218,12.1775+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[VagosEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 2770.6865,-1628.7218,12.1775+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[VagosEnter][PickAngle] = 356.2637;
 	Pickups[VagosEnter][IsPickTP] = true;
 	Pickups[VagosEnter][PickTpPickID] = VagosExit;
@@ -31638,9 +32048,9 @@ stock CreatePickups()
 
 	Pickups[BallasExit][PickJob] = Job_None;
 	Pickups[BallasExit][PickFraction] = Fraction_None;
-	Pickups[BallasExit][PickID] = CreateDynamicPickup(1318, 1, -68.8422,1351.1971,1080.2109, 1, 6);
+	Pickups[BallasExit][PickID] = CreateDynamicPickup(19132, 1, -68.8422,1351.1971,1080.2109, 1, 6);
 	Pickups[BallasExit][PickAreaID] = CreateDynamicSphere(-68.8422,1351.1971,1080.2109, 2.0, 1, 6);
-	Pickups[BallasExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -68.8422,1351.1971,1080.2109+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 6);
+	Pickups[BallasExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -68.8422,1351.1971,1080.2109+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 6);
 	Pickups[BallasExit][PickAngle] = 359.7001;
 	Pickups[BallasExit][IsPickTP] = true;
 	Pickups[BallasExit][PickTpPickID] = BallasEnter;
@@ -31649,9 +32059,9 @@ stock CreatePickups()
 
 	Pickups[BallasEnter][PickJob] = Job_None;
 	Pickups[BallasEnter][PickFraction] = Fraction_Ballas;
-	Pickups[BallasEnter][PickID] = CreateDynamicPickup(1318, 1, 2324.4167,-1218.8423,27.9766, 0, 0);
+	Pickups[BallasEnter][PickID] = CreateDynamicPickup(19132, 1, 2324.4167,-1218.8423,27.9766, 0, 0);
 	Pickups[BallasEnter][PickAreaID] = CreateDynamicSphere(2324.4167,-1218.8423,27.9766, 2.0, 0, 0);
-	Pickups[BallasEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 2324.4167,-1218.8423,27.9766+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[BallasEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 2324.4167,-1218.8423,27.9766+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[BallasEnter][PickAngle] = 182.3986;
 	Pickups[BallasEnter][IsPickTP] = true;
 	Pickups[BallasEnter][PickTpPickID] = BallasExit;
@@ -31668,9 +32078,9 @@ stock CreatePickups()
 
 	Pickups[AztecasExit][PickJob] = Job_None;
 	Pickups[AztecasExit][PickFraction] = Fraction_None;
-	Pickups[AztecasExit][PickID] = CreateDynamicPickup(1318, 1, 422.4292,2536.4910,10.0000, 1, 10);
+	Pickups[AztecasExit][PickID] = CreateDynamicPickup(19132, 1, 422.4292,2536.4910,10.0000, 1, 10);
 	Pickups[AztecasExit][PickAreaID] = CreateDynamicSphere(422.4292,2536.4910,10.0000, 2.0, 1, 10);
-	Pickups[AztecasExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 422.4292,2536.4910,10.0000+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 10);
+	Pickups[AztecasExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 422.4292,2536.4910,10.0000+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 10);
 	Pickups[AztecasExit][PickAngle] = 91.9571;
 	Pickups[AztecasExit][IsPickTP] = true;
 	Pickups[AztecasExit][PickTpPickID] = AztecasEnter;
@@ -31679,9 +32089,9 @@ stock CreatePickups()
 
 	Pickups[AztecasEnter][PickJob] = Job_None;
 	Pickups[AztecasEnter][PickFraction] = Fraction_Aztecas;
-	Pickups[AztecasEnter][PickID] = CreateDynamicPickup(1318, 1, 1804.1490,-2124.9016,13.9424, 0, 0);
+	Pickups[AztecasEnter][PickID] = CreateDynamicPickup(19132, 1, 1804.1490,-2124.9016,13.9424, 0, 0);
 	Pickups[AztecasEnter][PickAreaID] = CreateDynamicSphere(1804.1490,-2124.9016,13.9424, 2.0, 0, 0);
-	Pickups[AztecasEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 1804.1490,-2124.9016,13.9424+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[AztecasEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 1804.1490,-2124.9016,13.9424+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[AztecasEnter][PickAngle] = 4.4149;
 	Pickups[AztecasEnter][IsPickTP] = true;
 	Pickups[AztecasEnter][PickTpPickID] = AztecasExit;
@@ -31698,9 +32108,9 @@ stock CreatePickups()
 
 	Pickups[GroveExit][PickJob] = Job_None;
 	Pickups[GroveExit][PickFraction] = Fraction_None;
-	Pickups[GroveExit][PickID] = CreateDynamicPickup(1318, 1, 2524.0283,-1679.3945,1015.4986, 1, 1);
+	Pickups[GroveExit][PickID] = CreateDynamicPickup(19132, 1, 2524.0283,-1679.3945,1015.4986, 1, 1);
 	Pickups[GroveExit][PickAreaID] = CreateDynamicSphere(2524.0283,-1679.3945,1015.4986, 2.0, 1, 1);
-	Pickups[GroveExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 2524.0283,-1679.3945,1015.4986+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 1);
+	Pickups[GroveExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 2524.0283,-1679.3945,1015.4986+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 1);
 	Pickups[GroveExit][PickAngle] = 262.2298;
 	Pickups[GroveExit][IsPickTP] = true;
 	Pickups[GroveExit][PickTpPickID] = GroveEnter;
@@ -31709,9 +32119,9 @@ stock CreatePickups()
 
 	Pickups[GroveEnter][PickJob] = Job_None;
 	Pickups[GroveEnter][PickFraction] = Fraction_Grove;
-	Pickups[GroveEnter][PickID] = CreateDynamicPickup(1318, 1, 2523.2708,-1679.3291,15.4970, 0, 0);
+	Pickups[GroveEnter][PickID] = CreateDynamicPickup(19132, 1, 2523.2708,-1679.3291,15.4970, 0, 0);
 	Pickups[GroveEnter][PickAreaID] = CreateDynamicSphere(2523.2708,-1679.3291,15.4970, 2.0, 0, 0);
-	Pickups[GroveEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 2523.2708,-1679.3291,15.4970+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[GroveEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 2523.2708,-1679.3291,15.4970+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[GroveEnter][PickAngle] = 93.6783;
 	Pickups[GroveEnter][IsPickTP] = true;
 	Pickups[GroveEnter][PickTpPickID] = GroveExit;
@@ -31728,9 +32138,9 @@ stock CreatePickups()
 
 	Pickups[RifaExit][PickJob] = Job_None;
 	Pickups[RifaExit][PickFraction] = Fraction_None;
-	Pickups[RifaExit][PickID] = CreateDynamicPickup(1318, 1, -229.2149,1401.1981,27.7656, 1, 18);
+	Pickups[RifaExit][PickID] = CreateDynamicPickup(19132, 1, -229.2149,1401.1981,27.7656, 1, 18);
 	Pickups[RifaExit][PickAreaID] = CreateDynamicSphere(-229.2149,1401.1981,27.7656, 2.0, 1, 18);
-	Pickups[RifaExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -229.2149,1401.1981,27.7656+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 18);
+	Pickups[RifaExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -229.2149,1401.1981,27.7656+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 18);
 	Pickups[RifaExit][PickAngle] = 265.1119;
 	Pickups[RifaExit][IsPickTP] = true;
 	Pickups[RifaExit][PickTpPickID] = RifaEnter;
@@ -31739,9 +32149,9 @@ stock CreatePickups()
 
 	Pickups[RifaEnter][PickJob] = Job_None;
 	Pickups[RifaEnter][PickFraction] = Fraction_Rifa;
-	Pickups[RifaEnter][PickID] = CreateDynamicPickup(1318, 1, -2454.6731,-135.9262,26.1888, 0, 0);
+	Pickups[RifaEnter][PickID] = CreateDynamicPickup(19132, 1, -2454.6731,-135.9262,26.1888, 0, 0);
 	Pickups[RifaEnter][PickAreaID] = CreateDynamicSphere(-2454.6731,-135.9262,26.1888, 2.0, 0, 0);
-	Pickups[RifaEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -2454.6731,-135.9262,26.1888+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[RifaEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -2454.6731,-135.9262,26.1888+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[RifaEnter][PickAngle] = 89.6844;
 	Pickups[RifaEnter][IsPickTP] = true;
 	Pickups[RifaEnter][PickTpPickID] = RifaExit;
@@ -31758,9 +32168,9 @@ stock CreatePickups()
 
 	Pickups[StreetRacersExit][PickJob] = Job_None;
 	Pickups[StreetRacersExit][PickFraction] = Fraction_None;
-	Pickups[StreetRacersExit][PickID] = CreateDynamicPickup(1318, 1, -2670.7085,599.9630,375.1918, 2, 18);
+	Pickups[StreetRacersExit][PickID] = CreateDynamicPickup(19132, 1, -2670.7085,599.9630,375.1918, 2, 18);
 	Pickups[StreetRacersExit][PickAreaID] = CreateDynamicSphere(-2670.7085,599.9630,375.1918, 2.0, 2, 18);
-	Pickups[StreetRacersExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -2670.7085,599.9630,375.1918+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 18);
+	Pickups[StreetRacersExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -2670.7085,599.9630,375.1918+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 2, 18);
 	Pickups[StreetRacersExit][PickAngle] = 1.5771;
 	Pickups[StreetRacersExit][IsPickTP] = true;
 	Pickups[StreetRacersExit][PickTpPickID] = StreetRacersEnter;
@@ -31769,9 +32179,9 @@ stock CreatePickups()
 
 	Pickups[StreetRacersEnter][PickJob] = Job_None;
 	Pickups[StreetRacersEnter][PickFraction] = Fraction_StreetRacers;
-	Pickups[StreetRacersEnter][PickID] = CreateDynamicPickup(1318, 1,-1715.8240, 1018.1724, 17.9178, 0, 0);
+	Pickups[StreetRacersEnter][PickID] = CreateDynamicPickup(19132, 1,-1715.8240, 1018.1724, 17.9178, 0, 0);
 	Pickups[StreetRacersEnter][PickAreaID] = CreateDynamicSphere(-1715.8240,1018.1724,17.9178, 2.0, 0, 0);
-	Pickups[StreetRacersEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -1715.8240,1018.1724,17.9178+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[StreetRacersEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -1715.8240,1018.1724,17.9178+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[StreetRacersEnter][PickAngle] = 95.5062;
 	Pickups[StreetRacersEnter][IsPickTP] = true;
 	Pickups[StreetRacersEnter][PickTpPickID] = StreetRacersExit;
@@ -31788,9 +32198,9 @@ stock CreatePickups()
 
 	Pickups[BikersExit][PickJob] = Job_None;
 	Pickups[BikersExit][PickFraction] = Fraction_None;
-	Pickups[BikersExit][PickID] = CreateDynamicPickup(1318, 1, -229.2149,1401.1981,27.7656, 3, 18);
+	Pickups[BikersExit][PickID] = CreateDynamicPickup(19132, 1, -229.2149,1401.1981,27.7656, 3, 18);
 	Pickups[BikersExit][PickAreaID] = CreateDynamicSphere(-229.2149,1401.1981,27.7656, 2.0, 3, 18);
-	Pickups[BikersExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -229.2149,1401.1981,27.7656+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 3, 18);
+	Pickups[BikersExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -229.2149,1401.1981,27.7656+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 3, 18);
 	Pickups[BikersExit][PickAngle] = 265.1119;
 	Pickups[BikersExit][IsPickTP] = true;
 	Pickups[BikersExit][PickTpPickID] = BikersEnter;
@@ -31799,9 +32209,9 @@ stock CreatePickups()
 
 	Pickups[BikersEnter][PickJob] = Job_None;
 	Pickups[BikersEnter][PickFraction] = Fraction_Bikers;
-	Pickups[BikersEnter][PickID] = CreateDynamicPickup(1318, 1, -300.4522,2658.2339,63.1989, 0, 0);
+	Pickups[BikersEnter][PickID] = CreateDynamicPickup(19132, 1, -300.4522,2658.2339,63.1989, 0, 0);
 	Pickups[BikersEnter][PickAreaID] = CreateDynamicSphere(-300.4522,2658.2339,63.1989, 2.0, 0, 0);
-	Pickups[BikersEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -300.4522,2658.2339,63.1989+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[BikersEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -300.4522,2658.2339,63.1989+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[BikersEnter][PickAngle] = 4.2553;
 	Pickups[BikersEnter][IsPickTP] = true;
 	Pickups[BikersEnter][PickTpPickID] = BikersExit;
@@ -31818,9 +32228,9 @@ stock CreatePickups()
 
 	Pickups[FarmOfTruthExit][PickJob] = Job_None;
 	Pickups[FarmOfTruthExit][PickFraction] = Fraction_None;
-	Pickups[FarmOfTruthExit][PickID] = CreateDynamicPickup(1318, 1, -229.2149,1401.1981,27.7656, 4, 18);
+	Pickups[FarmOfTruthExit][PickID] = CreateDynamicPickup(19132, 1, -229.2149,1401.1981,27.7656, 4, 18);
 	Pickups[FarmOfTruthExit][PickAreaID] = CreateDynamicSphere(-229.2149,1401.1981,27.7656, 2.0, 4, 18);
-	Pickups[FarmOfTruthExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -229.2149,1401.1981,27.7656+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 4, 18);
+	Pickups[FarmOfTruthExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -229.2149,1401.1981,27.7656+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 4, 18);
 	Pickups[FarmOfTruthExit][PickAngle] = 265.1119;
 	Pickups[FarmOfTruthExit][IsPickTP] = true;
 	Pickups[FarmOfTruthExit][PickTpPickID] = FarmOfTruthEnter;
@@ -31829,9 +32239,9 @@ stock CreatePickups()
 
 	Pickups[FarmOfTruthEnter][PickJob] = Job_None;
 	Pickups[FarmOfTruthEnter][PickFraction] = Fraction_FarmOfTruth;
-	Pickups[FarmOfTruthEnter][PickID] = CreateDynamicPickup(1318, 1, -1061.4097,-1205.4667,129.7565, 0, 0);
+	Pickups[FarmOfTruthEnter][PickID] = CreateDynamicPickup(19132, 1, -1061.4097,-1205.4667,129.7565, 0, 0);
 	Pickups[FarmOfTruthEnter][PickAreaID] = CreateDynamicSphere(-1061.4097,-1205.4667,129.7565, 2.0, 0, 0);
-	Pickups[FarmOfTruthEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -1061.4097,-1205.4667,129.7565+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[FarmOfTruthEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -1061.4097,-1205.4667,129.7565+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[FarmOfTruthEnter][PickAngle] = 270.2953;
 	Pickups[FarmOfTruthEnter][IsPickTP] = true;
 	Pickups[FarmOfTruthEnter][PickTpPickID] = FarmOfTruthExit;
@@ -31848,9 +32258,9 @@ stock CreatePickups()
 
     Pickups[RussiaMafiaExit][PickJob] = Job_None;
 	Pickups[RussiaMafiaExit][PickFraction] = Fraction_None;
-	Pickups[RussiaMafiaExit][PickID] = CreateDynamicPickup(1318, 1, -229.2149,1401.1981,27.7656, 5, 18);
+	Pickups[RussiaMafiaExit][PickID] = CreateDynamicPickup(19132, 1, -229.2149,1401.1981,27.7656, 5, 18);
 	Pickups[RussiaMafiaExit][PickAreaID] = CreateDynamicSphere(-229.2149,1401.1981,27.7656, 2.0, 5, 18);
-	Pickups[RussiaMafiaExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -229.2149,1401.1981,27.7656+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 5, 18);
+	Pickups[RussiaMafiaExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -229.2149,1401.1981,27.7656+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 5, 18);
 	Pickups[RussiaMafiaExit][PickAngle] = 265.1119;
 	Pickups[RussiaMafiaExit][IsPickTP] = true;
 	Pickups[RussiaMafiaExit][PickTpPickID] = RussiaMafiaEnter;
@@ -31859,9 +32269,9 @@ stock CreatePickups()
 
 	Pickups[RussiaMafiaEnter][PickJob] = Job_None;
 	Pickups[RussiaMafiaEnter][PickFraction] = Fraction_RussiaMafia;
-	Pickups[RussiaMafiaEnter][PickID] = CreateDynamicPickup(1318, 1, 2137.5657,-2282.5322,20.6719, 0, 0);
+	Pickups[RussiaMafiaEnter][PickID] = CreateDynamicPickup(19132, 1, 2137.5657,-2282.5322,20.6719, 0, 0);
 	Pickups[RussiaMafiaEnter][PickAreaID] = CreateDynamicSphere(2137.5657,-2282.5322,20.6719, 2.0, 0, 0);
-	Pickups[RussiaMafiaEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 2137.5657,-2282.5322,20.6719+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[RussiaMafiaEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 2137.5657,-2282.5322,20.6719+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[RussiaMafiaEnter][PickAngle] = 320.4562;
 	Pickups[RussiaMafiaEnter][IsPickTP] = true;
 	Pickups[RussiaMafiaEnter][PickTpPickID] = RussiaMafiaExit;
@@ -31878,9 +32288,9 @@ stock CreatePickups()
 
     Pickups[LaCosaNostraExit][PickJob] = Job_None;
 	Pickups[LaCosaNostraExit][PickFraction] = Fraction_None;
-	Pickups[LaCosaNostraExit][PickID] = CreateDynamicPickup(1318, 1, 140.2926,1365.9287,1083.8594, 1, 5);
+	Pickups[LaCosaNostraExit][PickID] = CreateDynamicPickup(19132, 1, 140.2926,1365.9287,1083.8594, 1, 5);
 	Pickups[LaCosaNostraExit][PickAreaID] = CreateDynamicSphere(140.2926,1365.9287,1083.8594, 2.0, 1, 5);
-	Pickups[LaCosaNostraExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 140.2926,1365.9287,1083.8594+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 5);
+	Pickups[LaCosaNostraExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 140.2926,1365.9287,1083.8594+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 1, 5);
 	Pickups[LaCosaNostraExit][PickAngle] = 7.6772;
 	Pickups[LaCosaNostraExit][IsPickTP] = true;
 	Pickups[LaCosaNostraExit][PickTpPickID] = LaCosaNostraEnter;
@@ -31889,9 +32299,9 @@ stock CreatePickups()
 
 	Pickups[LaCosaNostraEnter][PickJob] = Job_None;
 	Pickups[LaCosaNostraEnter][PickFraction] = Fraction_LaCosaNostra;
-	Pickups[LaCosaNostraEnter][PickID] = CreateDynamicPickup(1318, 1,1091.6683,2121.7529,15.3504, 0, 0);
+	Pickups[LaCosaNostraEnter][PickID] = CreateDynamicPickup(19132, 1,1091.6683,2121.7529,15.3504, 0, 0);
 	Pickups[LaCosaNostraEnter][PickAreaID] = CreateDynamicSphere(1091.6683,2121.7529,15.3504, 2.0, 0, 0);
-	Pickups[LaCosaNostraEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, 1091.6683,2121.7529,15.3504+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[LaCosaNostraEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 1091.6683,2121.7529,15.3504+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[LaCosaNostraEnter][PickAngle] = 181.9271;
 	Pickups[LaCosaNostraEnter][IsPickTP] = true;
 	Pickups[LaCosaNostraEnter][PickTpPickID] = LaCosaNostraExit;
@@ -31908,9 +32318,9 @@ stock CreatePickups()
 
     Pickups[YakuzaExit][PickJob] = Job_None;
 	Pickups[YakuzaExit][PickFraction] = Fraction_None;
-	Pickups[YakuzaExit][PickID] = CreateDynamicPickup(1318, 1, -2158.6958,643.1111,1052.3750, 3, 1);
+	Pickups[YakuzaExit][PickID] = CreateDynamicPickup(19132, 1, -2158.6958,643.1111,1052.3750, 3, 1);
 	Pickups[YakuzaExit][PickAreaID] = CreateDynamicSphere(-2158.6958,643.1111,1052.3750, 2.0, 3, 1);
-	Pickups[YakuzaExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -2158.6958,643.1111,1052.3750+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 3, 1);
+	Pickups[YakuzaExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -2158.6958,643.1111,1052.3750+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 3, 1);
 	Pickups[YakuzaExit][PickAngle] = 187.4092;
 	Pickups[YakuzaExit][IsPickTP] = true;
 	Pickups[YakuzaExit][PickTpPickID] = YakuzaEnter;
@@ -31919,9 +32329,9 @@ stock CreatePickups()
 
 	Pickups[YakuzaEnter][PickJob] = Job_None;
 	Pickups[YakuzaEnter][PickFraction] = Fraction_Yakuza;
-	Pickups[YakuzaEnter][PickID] = CreateDynamicPickup(1318, 1,-2172.4546,679.9202,55.1614, 0, 0);
+	Pickups[YakuzaEnter][PickID] = CreateDynamicPickup(19132, 1,-2172.4546,679.9202,55.1614, 0, 0);
 	Pickups[YakuzaEnter][PickAreaID] = CreateDynamicSphere(-2172.4546,679.9202,55.1614, 2.0, 0, 0);
-	Pickups[YakuzaEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White"~k~~SNEAK_ABOUT~"Main_Color"]", -1, -2172.4546,679.9202,55.1614+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[YakuzaEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -2172.4546,679.9202,55.1614+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[YakuzaEnter][PickAngle] = 97.4114;
 	Pickups[YakuzaEnter][IsPickTP] = true;
 	Pickups[YakuzaEnter][PickTpPickID] = YakuzaExit;
@@ -31935,6 +32345,22 @@ stock CreatePickups()
 	Pickups[CommandHelpYakuza][IsPickTP] = false;
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpYakuza][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[CommandHelpYakuza][PickAreaID],  E_STREAMER_INDX, CommandHelpYakuza);
+
+	Pickups[GunDeallerHelp][PickJob] = Job_None;
+	Pickups[GunDeallerHelp][PickID] = CreateDynamicPickup(1239, 1, 2446.0159,-1980.6974,13.5469, 0, 0);
+	Pickups[GunDeallerHelp][PickAreaID] = CreateDynamicSphere(2446.0159,-1980.6974,13.5469, 1.0, 0, 0);
+	Pickups[GunDeallerHelp][PickTextID] = CreateDynamic3DTextLabel(Main_Color"Инструкция", -1, 2446.0159,-1980.6974,13.5469+0.5, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[GunDeallerHelp][IsPickTP] = false;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GunDeallerHelp][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GunDeallerHelp][PickAreaID],  E_STREAMER_INDX, GunDeallerHelp);
+
+	Pickups[DrugDeallerHelp][PickJob] = Job_None;
+	Pickups[DrugDeallerHelp][PickID] = CreateDynamicPickup(1239, 1, 2165.2627,-1673.5865,15.0794, 0, 0);
+	Pickups[DrugDeallerHelp][PickAreaID] = CreateDynamicSphere(2165.2627,-1673.5865,15.0794, 1.0, 0, 0);
+	Pickups[DrugDeallerHelp][PickTextID] = CreateDynamic3DTextLabel(Main_Color"Инструкция", -1, 2165.2627,-1673.5865,15.0794+0.5, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[DrugDeallerHelp][IsPickTP] = false;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[DrugDeallerHelp][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[DrugDeallerHelp][PickAreaID],  E_STREAMER_INDX, DrugDeallerHelp);
 	return 1;
 }
 
@@ -31952,20 +32378,8 @@ stock CreateBusStop()
 	CreateDynamicObject(1257, -293.20959, 1481.95935, 75.80553,   2.56560, -6.73470, 4.38000, 0, 0); //Остановка армия
 	CreateDynamic3DTextLabel(Main_Color"Остановка: Армия", -1, -293.20959, 1481.95935, 75.80553, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 
-	CreateDynamicObject(1257, 111.34648, -220.71567, 1.82980,   0.00000, 0.00000, -90.00000, 0, 0); //Остановка завод
-	CreateDynamic3DTextLabel(Main_Color"Остановка: Завод", -1, 111.34648, -220.71567, 1.82980, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
-
-	CreateDynamicObject(1257, -775.95282, 1528.56860, 27.53100,   0.00000, 0.00000, -90.00000, 0, 0); //Остановка шахта
-	CreateDynamic3DTextLabel(Main_Color"Остановка: Шахта", -1, -775.95282, 1528.56860, 27.53100, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
-
-	CreateDynamicObject(1257, -647.78687, -1518.48840, 22.37073,   0.00000, 0.00000, -3.60000, 0, 0); //Остановка ферма
-	CreateDynamic3DTextLabel(Main_Color"Остановка: Ферма", -1, -647.78687, -1518.48840, 22.37073, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
-
-	CreateDynamicObject(1257, 2727.79590, -2414.01978, 13.85571,   0.00000, 0.00000, -90.00000, 0, 0); //Остановка грузчики
-	CreateDynamic3DTextLabel(Main_Color"Остановка: Грузчики", -1, 2727.79590, -2414.01978, 13.85571, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
-
-	CreateDynamicObject(1257, 2422.60327, -2076.66724, 13.75021,   0.00000, 0.00000, 0.00000, 0, 0); //Остановка водитель погрузчика
-	CreateDynamic3DTextLabel(Main_Color"Остановка: Водитель погрузчика", -1, 2422.60327, -2076.66724, 13.75021, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	CreateDynamicObject(1257, 1187.98022, -1753.50037, 13.84330,   0.00000, 0.00000, 0.00000, 0, 0); //Остановка Банк Los-Santos
+	CreateDynamic3DTextLabel(Main_Color"Остановка: Банк Los-Santos", -1, 1187.98022, -1753.50037, 13.84330, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	return 1;
 }
 

@@ -1,26 +1,15 @@
 	new tmpobjid, vw = 1, int = 15;
 	tmpobjid = CreateDynamicObject(19805, 2227.485595, -1137.106201, 1030.638305, 0.000000, 0.000000, 0.000000, vw, int); 
-	SetDynamicObjectMaterialText(tmpobjid, 0, Color_White"Добро пожаловать на сервер\n"Main_Color Project_Name Color_White"\n\n\n\
+	SetDynamicObjectMaterialText(tmpobjid, 0, Color_White"Добро пожаловать на \n"Main_Color Project_Name Color_White"\n\n\n\
 	"Color_White"Мы рады видеть вас на нашем проекте\n\
-	"Color_White"и надеемся, что вы\n\
-	"Color_White"проведете свое время с удовольствием\n\
-	"Color_White"Первым делом\n\
-	"Color_White"мы рекомендуем сходить в мэрию\n\
-	"Color_White"и получить лицензии\n\
-	"Color_White"В дальнейшем они вам очень сильно пригодятся!\n\n\
-	"Color_White"В данный момент, наш игровой сервер находиться\n\
-	"Color_White"в разработке.\n\
-	"Color_White"Вы можете следить за разработкой\n\
-	"Color_White"на нашем сайте.\n\
-	"Color_White"Там же, Вы можете предложить свои идеи\n\
-	"Color_White"для сервера.\n\
-	"Color_White"Сайт сервера - ogrm-project.ru", 140, "Calibri", 26, 1, 0xFFFFFFFF, 0x00000001, 1);
+	"Color_White"и надеемся, что ты отлично проведешь свое время!\n\
+	"Color_White"Сайт нашего сервера - "Main_Color Project_Site, 140, "Calibri", 26, 1, 0xFFFFFFFF, 0x00000001, 1);
 	
 	tmpobjid = CreateDynamicObject(3077, 2226.035146, -1149.614135, 1024.726806, 0.000000, 0.000000, 90.999893, vw, int);
 	SetDynamicObjectMaterialText(tmpobjid, 1, "-", 140, "Calibri", 26, 1, 0, 0, 1);
 	SetDynamicObjectMaterialText(tmpobjid, 0, "-", 140, "Calibri", 26, 1, 0x00000002, 0x00000002, 1);
 	tmpobjid = CreateDynamicObject(3077, 2226.025146, -1149.614135, 1024.726806, 0.000000, 0.000000, 90.999893, vw, int); 
-	SetDynamicObjectMaterialText(tmpobjid, 0, "На нащем сервере есть\n\
+	SetDynamicObjectMaterialText(tmpobjid, 0, "На нашем сервере есть\n\
 	"Color_White"несколько различных организаций\n\
 	"Color_White"Вы сами можете выбрать кем хотите стать\n\n\n\
 	"Color_White"Вступить в банду или мафию\n\
