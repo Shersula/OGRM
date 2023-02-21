@@ -16623,7 +16623,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 			foreach(new i:Business)
 			{
-				if(!bInfo[i][bID] || bInfo[i][bThiefStatus] == Thief_Status_None) continue;
+				if(!bInfo[i][bID] || (bInfo[i][bThiefStatus] == Thief_Status_None && bInfo[i][bRob] < gettime())) continue;
 				if(!listitem)
 				{
 					if(pInfo[playerid][pGPSType] == GPS_Type_Job) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас уже установлена метка с одной из работ, вы не можете сменить её");
@@ -33350,7 +33350,7 @@ stock CreatePickups()
 	Pickups[ChurchPick][PickFraction] = Fraction_None;
 	Pickups[ChurchPick][PickID] = CreateDynamicPickup(1240, 1, 2214.6396,-1332.7240,252.4141, 6, 3);
 	Pickups[ChurchPick][PickAreaID] = CreateDynamicSphere(2214.6396,-1332.7240,252.4141, 2.0, 6, 3);
-	Pickups[ChurchPick][PickTextID] = CreateDynamic3DTextLabel(Color_White"Изучение стиля боя "Main_Color"\""Color_White"Таек-ван-до"Main_Color"\"", -1, 2214.6396,-1332.7240,252.4141+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 6, 3);
+	Pickups[ChurchPick][PickTextID] = CreateDynamic3DTextLabel(Main_Color"Регистрация брака", -1, 2214.6396,-1332.7240,252.4141+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 6, 3);
 	Pickups[ChurchPick][IsPickTP] = false;
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[ChurchPick][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[ChurchPick][PickAreaID],  E_STREAMER_INDX, ChurchPick);
