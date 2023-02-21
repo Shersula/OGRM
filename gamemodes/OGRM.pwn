@@ -2697,6 +2697,7 @@ stock SaveAccount(playerid)
 
 	SavePlayerInt(playerid, "PlayedTime", pInfo[playerid][pPlayedTime]);
 	SavePlayerInt(playerid, "DayPlayedTime", pInfo[playerid][pDayPlayedTime]);
+	SavePlayerInt(playerid, "LastOnline", gettime());
 
 	AntiCheatGetHealth(playerid, pInfo[playerid][pHealth]);
 	SavePlayerFloat(playerid, "Health", pInfo[playerid][pHealth]);
@@ -2879,6 +2880,7 @@ public OnGameModeInit()
 
 	LotteryMoney = 0;
 	LotteryStarted = false;
+	mysql_tquery(DB, "DELETE FROM `lottery` WHERE 1");
 
 	SetTimer("SecondTimer", 1000, true);
 	SetTimer("VehicleProcessor", 500, true);
@@ -28412,8 +28414,7 @@ stock GetWeekDay()
  		month += 12;
  		year--;
   	}
-	new WeekDay = (((13*month+3)/5 + day + year + year/4 - year/100 + year/400) % 7)+1;
-	WeekDay--;
+	new WeekDay = ((13*month+3)/5 + day + year + year/4 - year/100 + year/400) % 7;
   	return WeekDay;
 }
 
