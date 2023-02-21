@@ -402,7 +402,7 @@ enum
 	AttachFreeSlot6,
 	AttachFreeSlot7,
 	AttachFreeSlot8,
-	AttachFreeSlot9,
+	AttachSlotOther,
 	AttachSlotJob
 };
 
@@ -910,12 +910,16 @@ enum MaterialShipmentInfo
 	Float:ShipmentY,
 	Float:ShipmentZ
 };
-#define MAX_ShipmentMaterials	4
+#define MAX_ShipmentMaterials	8
 new ShipmentMaterials[MAX_ShipmentMaterials][MaterialShipmentInfo] = {
-{0, 0, Text3D:0, 0, -1296.8068,512.1161,11.1953}, // 0
-{0, 0, Text3D:0, 0, -1297.7362,498.8451,11.1953}, // 1
-{0, 0, Text3D:0, 0, -1308.2817,510.5305,11.1953}, // 2
-{0, 0, Text3D:0, 0, -1293.2781,495.7536,11.1953} // 3
+{0, 0, Text3D:0, 0, 2540.8464, 2775.5405, 10.8203}, // 0
+{0, 0, Text3D:0, 0, 2551.4229, 2775.9778, 10.8203}, // 1
+{0, 0, Text3D:0, 0, 2562.1426, 2775.8889, 10.8203}, // 2
+{0, 0, Text3D:0, 0, 2571.9297, 2774.7627, 10.8203}, // 3
+{0, 0, Text3D:0, 0, 2569.8757, 2769.5876, 10.8203}, // 4
+{0, 0, Text3D:0, 0, 2570.1445, 2759.0142, 10.8203}, // 5
+{0, 0, Text3D:0, 0, 2570.0051, 2748.5911, 10.8203}, // 6
+{0, 0, Text3D:0, 0, 2569.1711, 2738.8445, 10.8130}  // 7
 };
 ////////////////////////////////
 /////////////LIVE///////////////
@@ -1050,6 +1054,13 @@ new WarBet[MAX_FRACTION] = {0, ...};
 #define BusinessCasinoFourDragons	25
 #define BusinessMarketplace			26
 #define BusinessAmmo				27
+#define BusinessClub1				28
+#define BusinessClub2				29
+#define BusinessClub3				30
+#define BusinessClub4				31
+#define BusinessClub5				32
+#define BusinessSexShopCompany		33
+#define BusinessSexShop				34
 
 enum BusinessTypeInfo
 {
@@ -1098,7 +1109,14 @@ new BusinessType[][BusinessTypeInfo] = {
 	{2233.9819,1714.7529,1012.3828,181.7314, {2199.4180,1604.6610,1005.0625}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {2197.5671,1604.2137,1005.0625,283.5887}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, 1,  "Казино Калигула", 25, true}, //BusinessCasinoCaligula
 	{2019.0757,1017.7703,996.8750,92.5987, {1955.4764,1017.8624,992.4688}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {1953.7996,1017.8046,992.4688,271.0320}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, 10,  "Казино 4 дракона", 25, true}, //BusinessCasinoFourDragons
 	{0.0, 0.0, 0.0, 0.0, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, 0,  "Торговая площадка", 56, true}, //BusinessMarketplace
-	{285.3001,-41.6660,1001.5156,359.4669, {296.5964,-38.5338,1001.5156}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {296.6187,-40.2154,1001.5156,359.3220}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, 1,  "Амуниция", 6, true} //BusinessAmmo
+	{285.3001,-41.6660,1001.5156,359.4669, {296.5964,-38.5338,1001.5156}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {296.6187,-40.2154,1001.5156,359.3220}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, 1,  "Амуниция", 6, true}, //BusinessAmmo
+	{1212.1173,-25.8760,1000.9531,177.7966, {1207.1776,-30.9196,1000.9531}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {1206.2324,-30.9432,1000.9606,268.8092}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, 3, "The Big Spread Ranch", 49, true}, //BusinessClub1
+	{1204.7057,-13.8498,1000.9219,356.3980, {1215.1870,-13.1788,1000.9219}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {1215.1648,-15.2612,1000.9219,2.4963}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, 2, "The Pig Pen", 49, true}, //BusinessClub2
+	{493.4488,-24.9275,1000.6719,353.8678, {499.9031,-20.6479,1000.6797}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {501.6992,-20.5087,1000.6797,92.0872}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, 17, "Club", 49, true}, //BusinessClub3
+	{-2636.5452,1402.4646,906.4609,5.1245, {-2653.9451,1413.1626,906.2734}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {-2655.5076,1413.1783,906.2734,269.4120}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, 3, "The Pleasure Domes", 49, true}, //BusinessClub4
+	{-794.8716,489.2835,1376.1953,7.6546, {-782.9613,500.0759,1371.7422}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {-782.7897,498.3216,1371.7422,359.6530}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, 1, "Liberty City", 49, true}, //BusinessClub5
+	{0.0, 0.0, 0.0, 0.0, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, 0, "Sex Shop Company", 21, true}, //BusinessSexShopCompany
+	{-100.3938,-25.0369,1000.7188,356.7844, {-105.5348,-10.6157,1000.7188}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {-105.6302,-8.9152,1000.7188,183.3645}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, 3,  "Sex Shop", 21, false} //BusinessSexShop
 };
 
 #define Business_World			5000
@@ -1111,7 +1129,9 @@ enum BusinessInfo
 	bID,
 	bOwnerID,
 	bOwnerName[MAX_PLAYER_NAME+1],
+	bName[51],
 	bPrice,
+	bEnterPrice,
 	bNeedLevel,
 	bool:bIsDonate,
 	Float:bX,
@@ -1149,7 +1169,8 @@ enum BusinessInfo
 	bMafiaOwner,
 	bBizzWarCD,
 	bBizzWarGangZone,
-	bBizzWarZone
+	bBizzWarZone,
+	bRob
 };
 new bInfo[MAX_BUSINESS+1][BusinessInfo]; //+1 - на 0 индекс который не используется
 new Iterator:Business<MAX_BUSINESS+1>; //+1 - на 0 индекс который не используется
@@ -1158,7 +1179,9 @@ stock ClearBusiness(BusinessID)
 	bInfo[BusinessID][bID] = 0;
 	bInfo[BusinessID][bOwnerID] = 0;
 	bInfo[BusinessID][bOwnerName][0] = EOS;
+	bInfo[BusinessID][bName][0] = EOS;
 	bInfo[BusinessID][bPrice] = 0;
+	bInfo[BusinessID][bEnterPrice] = 0;
 	bInfo[BusinessID][bNeedLevel] = 0;
 	bInfo[BusinessID][bIsDonate] = false;
 	bInfo[BusinessID][bX] = 0.0;
@@ -1172,6 +1195,7 @@ stock ClearBusiness(BusinessID)
 	bInfo[BusinessID][bType] = 0;
 	bInfo[BusinessID][bTax] = 0;
 	bInfo[BusinessID][bMoney] = 0;
+	bInfo[BusinessID][bRob] = 0;
 
 	if(bInfo[BusinessID][bPickup] && IsValidDynamicPickup(bInfo[BusinessID][bPickup])) DestroyDynamicPickup(bInfo[BusinessID][bPickup]);
 	bInfo[BusinessID][bPickup] = 0;
@@ -1761,7 +1785,19 @@ new Gate[MAX_GATE][GateInfo];
 #define CommandHelpYakuza		119
 #define GunDeallerHelp			120
 #define DrugDeallerHelp			121
-#define MAX_PICK 				122
+#define GumLSEnter				122
+#define GumLSExit				123
+#define GumLSPick				124
+#define GumSFEnter				125
+#define GumSFExit				126
+#define GumSFPick				127
+#define GumLVEnter				128
+#define GumLVExit				129
+#define GumLVPick				130
+#define ChurchEnter				131
+#define ChurchExit				132
+#define ChurchPick				133
+#define MAX_PICK 				134
 
 enum PickupInfo
 {
@@ -1866,12 +1902,14 @@ enum
 	D_CreateBusiness_MoneyType,
 	D_CreateBusiness_Price,
 	D_CreateBusiness_NeedLevel,
+	D_CreateBusiness_Name,
 	D_EditBusiness,
 	D_EditBusiness_Type,
 	D_EditBusiness_MoneyType,
 	D_EditBusiness_Price,
 	D_EditBusiness_NeedLevel,
 	D_EditBusiness_MafiaOwner,
+	D_EditBusiness_Name,
 	D_Inventory,
 	D_Inventory_SubMenu,
 	D_Inventory_Drop,
@@ -1890,6 +1928,7 @@ enum
 	D_Bank_Tax_House,
 	D_Bank_Tax_Business,
 	D_Bank_Buy_Card,
+	D_Bank_Business,
 	D_Hospital_Buy_Card,
 	D_Buy_Cloth,
 	D_Select_Skin,
@@ -1961,7 +2000,17 @@ enum
 	D_Guide_Msg_2,
 	D_Guide_Msg_3,
 	D_Guide_Msg_4,
-	D_Guide_Msg_5
+	D_Guide_Msg_5,
+	D_Club_Sell_Menu,
+	D_Sex_Shop_Menu,
+	D_Learn_Boxing,
+	D_Learn_Kung_Fu,
+	D_Learn_Taekwondo,
+	D_Learn_Standart,
+	D_Church,
+	D_Church_Wedding,
+	D_Church_Wedding_Accept,
+	D_Church_Divorce
 };
 
 stock ShowDialog(playerid, dialogid, style, const caption[], const info[], const button1[], const button2[])
@@ -2118,7 +2167,11 @@ enum
 	ItemAK47,
 	ItemM4,
 	ItemEmptyBarrel,
-	ItemDress
+	ItemDress,
+	ItemDildo1,
+	ItemDildo2,
+	ItemVibrator1,
+	ItemVibrator2
 }
 
 enum ItemsInfo
@@ -2163,7 +2216,11 @@ new Items[][ItemsInfo] =
 	{355, -1, "AK-47", 30, 100},
 	{356, -1, "M4", 31, 100},
 	{935, -1, "Пустая бочка", 0, 0},
-	{2386, -1, "Одежда", 0, 0}
+	{2386, -1, "Одежда", 0, 0},
+	{322, -1, "Односторонний фаллоимитатор", 11, 1},
+	{321, -1, "Двусторонний фаллоимитатор", 10, 1},
+	{324, -1, "Вибратор", 13, 1},
+	{323, -1, "Вибратор увеличенного диаметра", 12, 1}
 };
 
 #define Max_Slots 	31
@@ -2397,7 +2454,11 @@ enum PlayerInfo
 	pKnockoutStatus,
 	bool:pStealSkin,
 	pDayPlayedTime,
-	pQuests[MAX_QUEST]
+	pQuests[MAX_QUEST],
+	pRobCount,
+	pFightStyle,
+	pMarriedID,
+	pMarriedName[MAX_PLAYER_NAME+1]
 };
 new pInfo[MAX_PLAYERS][PlayerInfo];
 new Iterator:Admins<MAX_PLAYERS>;
@@ -2483,6 +2544,8 @@ stock ClearAccount(playerid)
 	pInfo[playerid][pJailNoFree] = false;
 	pInfo[playerid][pJailedFraction] = Fraction_None;
 	pInfo[playerid][pWarn] = 0;
+	pInfo[playerid][pMarriedID] = 0;
+	pInfo[playerid][pMarriedName][0] = EOS;
 
 	if(pInfo[playerid][pMembers] != Fraction_None)
 	{
@@ -2536,6 +2599,8 @@ stock ClearAccount(playerid)
 	pInfo[playerid][pKnockoutStatus] = Player_No_Knockout;
 	pInfo[playerid][pStealSkin] = false;
 	pInfo[playerid][pDayPlayedTime] = 0;
+	pInfo[playerid][pRobCount] = 0;
+	pInfo[playerid][pFightStyle] = FIGHT_STYLE_NORMAL;
 
 	for(new i = 0; i < MAX_QUEST; i++) pInfo[playerid][pQuests][i] = _:QuestNotTaken;
 
@@ -2851,6 +2916,7 @@ public OnGameModeInit()
 	#include <mapping/interior/Stash>
 	#include <mapping/interior/Vagos>
 	#include <mapping/interior/StreetRacers>
+	#include <mapping/interior/Church>
 
 	#include <mapping/exterior/spawn>
 	#include <mapping/exterior/Moder-Bridge>
@@ -2946,6 +3012,18 @@ public OnPlayerDisconnect(playerid, reason)
 	RemovePlayerOnCheaterPanel(playerid);
 
 	UnrentTent(playerid);
+
+	if(GetPVarInt(playerid, "InviteWedding"))
+	{
+		DeletePVar(GetPVarInt(playerid, "InviteWedding")-1, "InvitedWedding");
+		DeletePVar(playerid, "InviteWedding");
+	}
+
+	if(GetPVarInt(playerid, "InvitedWedding"))
+	{
+		DeletePVar(GetPVarInt(playerid, "InvitedWedding")-1, "InviteWedding");
+		DeletePVar(playerid, "InvitedWedding");
+	}
 
 	if(GetPVarInt(playerid, "Kidnapped_Player"))
 	{
@@ -3354,7 +3432,13 @@ public OnPlayerSpawn(playerid)
 	if(!pInfo[playerid][pAnimLoad]) PreloadAllAnimLibs(playerid);
 	StopMusic(playerid);
 
+	SetPlayerFightingStyle(playerid, pInfo[playerid][pFightStyle]);
+
     SetPlayerTeam(playerid, NO_TEAM);
+	SetPlayerSpecialAction(playerid, SPECIAL_ACTION_NONE);
+
+	SetPlayerDrunkLevel(playerid, 0);
+	ClearDrunkItem(playerid);
 
 	TextDrawShowForPlayer(playerid, GlobalTimeTD);
 	TextDrawShowForPlayer(playerid, SiteTD);
@@ -3410,16 +3494,12 @@ public OnPlayerSpawn(playerid)
 
 	if(pInfo[playerid][pDemorgan])
 	{
-		ResetPlayerWeapons(playerid);
-		SavePlayerWeapon(playerid);
 		new rand = random(sizeof(RandomDemorganPos));
 		SetPlayerPosition(playerid, RandomDemorganPos[rand][0], RandomDemorganPos[rand][1], RandomDemorganPos[rand][2], RandomDemorganPos[rand][3], 2, 0);
 		SetSkin(playerid, 264, true);
 	}
 	else if(pInfo[playerid][pJail])
 	{
-		ResetPlayerWeapons(playerid);
-		SavePlayerWeapon(playerid);
 		SetPlayerPosition(playerid, 208.3521, 1918.8027, 17.6406, 177.3568, 0, 0);
 		SetSkin(playerid, pInfo[playerid][pSkins][pInfo[playerid][pSkin]]);
 
@@ -4657,6 +4737,13 @@ stock GetGpsCount(TitleID)
 	return count;
 }
 
+stock GetBusinessName(BusinessID, const outstr[], size = sizeof(outstr))
+{
+	if(BusinessType[bInfo[BusinessID][bType]][IsCompany] && bInfo[BusinessID][bType] >= BusinessClub1 && bInfo[BusinessID][bType] <= BusinessClub5) strmid(outstr, bInfo[BusinessID][bName], 0, strlen(bInfo[BusinessID][bName]), size);
+	else strmid(outstr, BusinessType[bInfo[BusinessID][bType]][bName], 0, strlen(BusinessType[bInfo[BusinessID][bType]][bName]), size);
+	return 1;
+}
+
 forward LoadBusiness();
 public LoadBusiness()
 {
@@ -4680,12 +4767,14 @@ public LoadBusiness()
 			else cache_get_value_name_int(i, "OwnerID", bInfo[indx][bOwnerID]);
 
 			cache_get_value_name_int(i, "Price", bInfo[indx][bPrice]);
+			cache_get_value_name_int(i, "EnterPrice", bInfo[indx][bEnterPrice]);
 			cache_get_value_name_int(i, "NeedLevel", bInfo[indx][bNeedLevel]);
 			cache_get_value_name_int(i, "Type", bInfo[indx][bType]);
 			cache_get_value_name_int(i, "Tax", bInfo[indx][bTax]);
 			cache_get_value_name_int(i, "Money", bInfo[indx][bMoney]);
 			cache_get_value_name_int(i, "MafiaOwner", bInfo[indx][bMafiaOwner]);
 			cache_get_value_name_int(i, "BizzWarCD", bInfo[indx][bBizzWarCD]);
+			cache_get_value_name_int(i, "Rob", bInfo[indx][bRob]);
 
 			cache_get_value_name_bool(i, "IsDonate", bInfo[indx][bIsDonate]);
 
@@ -4697,6 +4786,8 @@ public LoadBusiness()
 			cache_get_value_name_float(i, "CarY", bInfo[indx][bCarY]);
 			cache_get_value_name_float(i, "CarZ", bInfo[indx][bCarZ]);
 			cache_get_value_name_float(i, "CarA", bInfo[indx][bCarA]);
+
+			cache_get_value_name(i, "Name", bInfo[indx][bName], 51);
 
 			UpdateBusiness(bInfo[indx][bID]);
 		}
@@ -4781,9 +4872,11 @@ stock UpdateBusiness(BusinessID)
 
 		bInfo[BusinessID][bMapIcon] = CreateDynamicMapIcon(bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], BusinessType[bInfo[BusinessID][bType]][bMapIcon], 0, 0, 0);
 
+		str[0] = EOS;
+		GetBusinessName(BusinessID, str);
 		if(!BusinessType[bInfo[BusinessID][bType]][IsCompany])
 		{
-			format(str, sizeof(str), Main_Color"%s\n"Main_Color"Бизнес №"Color_White"%d", BusinessType[bInfo[BusinessID][bType]][bName], bInfo[BusinessID][bID]);
+			format(str, sizeof(str), Main_Color"%s\n"Main_Color"Бизнес №"Color_White"%d", str, bInfo[BusinessID][bID]);
 		}
 		else
 		{
@@ -4793,7 +4886,7 @@ stock UpdateBusiness(BusinessID)
 			"Main_Color"Цена"Color_White": "Color_Green"%d%s\n\
 			"Main_Color"Требуемый уровень"Color_White": %d\n\
 			"Main_Color"Крышует"Color_White": %s",
-			BusinessType[bInfo[BusinessID][bType]][bName],
+			str,
 			bInfo[BusinessID][bID],
 			bInfo[BusinessID][bPrice],
 			(bInfo[BusinessID][bIsDonate]) ? (" донат рублей"):("$"),
@@ -4894,20 +4987,38 @@ public GetBusinesOwnerName(BusinessID)
 
 		bInfo[BusinessID][bMapIcon] = CreateDynamicMapIcon(bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], BusinessType[bInfo[BusinessID][bType]][bMapIcon], 0, 0, 0);
 
+		str[0] = EOS;
+		GetBusinessName(BusinessID, str);
 		if(!BusinessType[bInfo[BusinessID][bType]][IsCompany])
 		{
-			format(str, sizeof(str), Main_Color"%s\n"Main_Color"Бизнес №"Color_White"%d", BusinessType[bInfo[BusinessID][bType]][bName], bInfo[BusinessID][bID]);
+			format(str, sizeof(str), Main_Color"%s\n"Main_Color"Бизнес №"Color_White"%d", str, bInfo[BusinessID][bID]);
 		}
 		else
 		{
-			format(str, sizeof(str), Main_Color"%s\n\
-			"Main_Color"Бизнес №"Color_White"%d\n\
-			"Main_Color"Владелец"Color_White": %s\n\
-			"Main_Color"Крышует"Color_White": %s",
-			BusinessType[bInfo[BusinessID][bType]][bName],
-			bInfo[BusinessID][bID],
-			bInfo[BusinessID][bOwnerName],
-			FractionName[bInfo[BusinessID][bMafiaOwner]]);
+			if(bInfo[BusinessID][bEnterPrice])
+			{
+				format(str, sizeof(str), Main_Color"%s\n\
+				"Main_Color"Бизнес №"Color_White"%d\n\
+				"Main_Color"Стоимость входа"Color_White": "Color_Green"%d$\n\
+				"Main_Color"Владелец"Color_White": %s\n\
+				"Main_Color"Крышует"Color_White": %s",
+				str,
+				bInfo[BusinessID][bID],
+				bInfo[BusinessID][bEnterPrice],
+				bInfo[BusinessID][bOwnerName],
+				FractionName[bInfo[BusinessID][bMafiaOwner]]);
+			}
+			else
+			{
+				format(str, sizeof(str), Main_Color"%s\n\
+				"Main_Color"Бизнес №"Color_White"%d\n\
+				"Main_Color"Владелец"Color_White": %s\n\
+				"Main_Color"Крышует"Color_White": %s",
+				str,
+				bInfo[BusinessID][bID],
+				bInfo[BusinessID][bOwnerName],
+				FractionName[bInfo[BusinessID][bMafiaOwner]]);
+			}
 		}
 
 		if(BusinessType[bInfo[BusinessID][bType]][bInt])
@@ -4974,7 +5085,8 @@ stock CreatePickAndActorBusiness(BusinessID)
 	if(bInfo[BusinessID][bType] == BusinessCasinoCaligula || bInfo[BusinessID][bType] == BusinessCasinoFourDragons
 	|| bInfo[BusinessID][bType] == BusinessCasinoBeginner || bInfo[BusinessID][bType] == BusinessBankFillial
 	|| bInfo[BusinessID][bType] == BusinessGeneralStore1 || bInfo[BusinessID][bType] == BusinessGeneralStore2
-	|| bInfo[BusinessID][bType] == BusinessGeneralStore3) skinid = 171+random(2);
+	|| bInfo[BusinessID][bType] == BusinessGeneralStore3 || (bInfo[BusinessID][bType] >= BusinessClub1 && bInfo[BusinessID][bType] <= BusinessClub5)
+	|| bInfo[BusinessID][bType] == BusinessSexShop) skinid = 171+random(2);
 	else if(bInfo[BusinessID][bType] == BusinessKFC) skinid = 167;
 	else if(bInfo[BusinessID][bType] == BusinessDressShop) skinid = 56;
 	else if(bInfo[BusinessID][bType] == BusinessAmmo) skinid = 179;
@@ -5340,28 +5452,30 @@ stock EndBizzWar(FractionID, WinnerType = 0) //WinnerType = 0 - Проигравший || W
     if(!WinnerType)
     {
         new str[200];
+		GetBusinessName(WarBet[FractionID], str);
 		if(bInfo[WarBet[FractionID]][bMafiaOwner] == FractionID)
 		{
-			format(str, sizeof(str), "Ваша мафия проиграла войну. %s завладела бизнесом № %d %s", FractionName[WarOpponent[FractionID]], bInfo[WarBet[FractionID]][bID], BusinessType[bInfo[WarBet[FractionID]][bType]][bName]);
+			format(str, sizeof(str), "Ваша мафия проиграла войну. %s завладела бизнесом № %d %s", FractionName[WarOpponent[FractionID]], bInfo[WarBet[FractionID]][bID], str);
 			SendRMessageEx(FractionID, str);
 		}
 		else
 		{
-			format(str, sizeof(str), "Ваша мафия проиграла войну. %s удержала бизнес № %d %s", FractionName[WarOpponent[FractionID]], bInfo[WarBet[FractionID]][bID], BusinessType[bInfo[WarBet[FractionID]][bType]][bName]);
+			format(str, sizeof(str), "Ваша мафия проиграла войну. %s удержала бизнес № %d %s", FractionName[WarOpponent[FractionID]], bInfo[WarBet[FractionID]][bID], str);
 			SendRMessageEx(FractionID, str);
 		}
     }
     else if(WinnerType == 1)
     {
 		new str[200];
+		GetBusinessName(WarBet[FractionID], str);
 		if(bInfo[WarBet[FractionID]][bMafiaOwner] == FractionID)
 		{
-			format(str, sizeof(str), "Ваша мафия удержала бизнес № %d %s", FractionName[WarOpponent[FractionID]], bInfo[WarBet[FractionID]][bID], BusinessType[bInfo[WarBet[FractionID]][bType]][bName]);
+			format(str, sizeof(str), "Ваша мафия удержала бизнес № %d %s", FractionName[WarOpponent[FractionID]], bInfo[WarBet[FractionID]][bID], str);
 			SendRMessageEx(FractionID, str);
 		}
 		else
 		{
-			format(str, sizeof(str), "Ваша мафия выиграла войну и захватила бизнес № %d %s", FractionName[WarOpponent[FractionID]], bInfo[WarBet[FractionID]][bID], BusinessType[bInfo[WarBet[FractionID]][bType]][bName]);
+			format(str, sizeof(str), "Ваша мафия выиграла войну и захватила бизнес № %d %s", FractionName[WarOpponent[FractionID]], bInfo[WarBet[FractionID]][bID], str);
 			SendRMessageEx(FractionID, str);
 
 			bInfo[WarBet[FractionID]][bMafiaOwner] = FractionID;
@@ -5372,7 +5486,8 @@ stock EndBizzWar(FractionID, WinnerType = 0) //WinnerType = 0 - Проигравший || W
     else
     {
         new str[200];
-		format(str, sizeof(str), "Война с %s за бизнес № %d %s окончена в ничью.", FractionName[WarOpponent[FractionID]], bInfo[WarBet[FractionID]][bID], BusinessType[bInfo[WarBet[FractionID]][bType]][bName]);
+		GetBusinessName(WarBet[FractionID], str);
+		format(str, sizeof(str), "Война с %s за бизнес № %d %s окончена в ничью.", FractionName[WarOpponent[FractionID]], bInfo[WarBet[FractionID]][bID], str);
 		SendRMessageEx(FractionID, str);
     }
 
@@ -5399,7 +5514,8 @@ stock StartBizzWar(FractionID)
 	WarTimer[FractionID] = 600;
 
 	new str[200];
-	format(str, sizeof(str), "Война за бизнес № %d %s с %s началась.", bInfo[WarBet[FractionID]][bID], BusinessType[bInfo[WarBet[FractionID]][bType]][bName], FractionName[WarOpponent[FractionID]]);
+	GetBusinessName(WarBet[FractionID], str);
+	format(str, sizeof(str), "Война за бизнес № %d %s с %s началась.", bInfo[WarBet[FractionID]][bID], str, FractionName[WarOpponent[FractionID]]);
 	SendRMessageEx(FractionID, str);
 
 	foreach(new i:FractionMembers[FractionID])
@@ -6324,7 +6440,9 @@ stock ShowBusinessList(playerid, Type) //Type = 1 GPS || Type = 2 CreateVehicle 
 		for(new i = (10*List)-9; i <= 10*List; i++)
 		{
 			if(i > count) break;
-			format(str, sizeof(str), "%s"Main_Color"%d"Color_White". %s - %.0f метров\n", str, i, BusinessType[bInfo[i][bType]][bName], GetPlayerDistanceFromPoint(playerid, bInfo[i][bX], bInfo[i][bY], bInfo[i][bZ]));
+			new substr[100];
+			GetBusinessName(i, substr);
+			format(str, sizeof(str), "%s"Main_Color"%d"Color_White". %s - %.0f метров\n", str, i, substr, GetPlayerDistanceFromPoint(playerid, bInfo[i][bX], bInfo[i][bY], bInfo[i][bZ]));
 		}
 	}
 	else if(Type == 4)
@@ -6332,7 +6450,9 @@ stock ShowBusinessList(playerid, Type) //Type = 1 GPS || Type = 2 CreateVehicle 
 		for(new i = (10*List)-9; i <= 10*List; i++)
 		{
 			if(i > count) break;
-			format(str, sizeof(str), "%s"Main_Color"%d"Color_White". %s%s(%s)\n", str, i, (bInfo[i][bBizzWarCD] > gettime()) ? (Color_Grey):(""), BusinessType[bInfo[i][bType]][bName], FractionName[bInfo[i][bMafiaOwner]]);
+			new substr[100];
+			GetBusinessName(i, substr);
+			format(str, sizeof(str), "%s"Main_Color"%d"Color_White". %s%s(%s)\n", str, i, (bInfo[i][bBizzWarCD] > gettime()) ? (Color_Grey):(""), substr, FractionName[bInfo[i][bMafiaOwner]]);
 		}
 
 	}
@@ -6833,6 +6953,13 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 
 		                    if(bInfo[indx][bThiefStatus] == Thief_Status_Capture || (bInfo[indx][bThiefStatus] == Thief_Status_Looting && pInfo[playerid][pMembers] != pInfo[bInfo[indx][bThiefPlayer]][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"На данный момент этот бизнес грабят. Двери закрыты");
 
+							if(bInfo[indx][bEnterPrice])
+							{
+								if(pInfo[playerid][pMoney] < bInfo[indx][bEnterPrice]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно средств для оплаты входа");
+								GivePlayerMoneyEx(playerid, -bInfo[indx][bEnterPrice]);
+								GiveBusinessMoney(bInfo[indx][bID], bInfo[indx][bEnterPrice]);
+							}
+
 		                    SetPVarInt(playerid, "InBusiness", bInfo[indx][bID]);
 							SetPlayerPosition(playerid, BusinessType[bInfo[indx][bType]][bIntX], BusinessType[bInfo[indx][bType]][bIntY], BusinessType[bInfo[indx][bType]][bIntZ], BusinessType[bInfo[indx][bType]][bIntA], Business_World+bInfo[indx][bID], BusinessType[bInfo[indx][bType]][bInt]);
 							return 1;
@@ -7232,6 +7359,24 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 		}
 		else if(GetPVarInt(playerid, "AmmoBox") && (newkeys & KEY_FIRE || newkeys & KEY_JUMP)) RemoveCarriedObj(playerid, true);
 		else if(GetPVarInt(playerid, "MoneyBox") && (newkeys & KEY_FIRE || newkeys & KEY_JUMP)) RemoveCarriedObj(playerid, true);
+		else if(GetPVarInt(playerid, "GulpCount") && GetPVarInt(playerid, "DrunkCD") <= gettime())
+		{
+			if(GetPlayerSpecialAction(playerid) == SPECIAL_ACTION_SMOKE_CIGGY) SetPlayerDrunkLevel(playerid, GetPlayerDrunkLevel(playerid)+GetPVarInt(playerid, "DrunkForGulp"));
+			else
+			{
+				ClearAnimations(playerid);
+				Drink(playerid, 0.0, "", GetPVarInt(playerid, "DrunkForGulp"));
+			}
+
+			new count = GetPVarInt(playerid, "GulpCount");
+			count--;
+			if(!count) SetTimerEx("ClearDrunkItem", 2000, false, "d", playerid);
+			else
+			{
+				SetPVarInt(playerid, "GulpCount", count);
+				SetPVarInt(playerid, "DrunkCD", gettime()+2);
+			}
+		}
 
 
 	}
@@ -8158,13 +8303,14 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 					if(areaid == bInfo[indx][bArea] && !bInfo[indx][bOwnerID] && BusinessType[bInfo[indx][bType]][IsCompany])
 					{
 						new str[300], SubStr[100];
+						GetBusinessName(indx, str);
 						format(str, sizeof(str), Main_Color"%s\n\
 						"Main_Color"Бизнес №"Color_White"%d\n\
 						"Main_Color"Продается\n\
 						"Main_Color"Цена"Color_White": "Color_Green"%d%s\n\
 						"Main_Color"Требуемый уровень"Color_White": %d\n\
 						"Main_Color"Крышует"Color_White": %s",
-						BusinessType[bInfo[indx][bType]][bName],
+						str,
 						bInfo[indx][bID],
 						bInfo[indx][bPrice],
 						(bInfo[indx][bIsDonate]) ? (" донат рублей"):("$"),
@@ -8244,6 +8390,24 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 							ShowDialog(playerid, D_Buy_Cloth, DIALOG_STYLE_LIST, Main_Color"Магазин одежды", Color_White"Купить новую одежду\n\
 							"Color_White"Возврат украденой одежды - "Color_Green"5.000$\n\
 							"Color_White"Продажа одежды - "Color_Green"10.000$ "Color_White"за шт.", Color_White"Далее", Color_White"Закрыть");
+						}
+						else if(bInfo[indx][bType] >= BusinessClub1 && bInfo[indx][bType] <= BusinessClub5)
+						{
+							ShowDialog(playerid, D_Club_Sell_Menu, DIALOG_STYLE_TABLIST_HEADERS, Main_Color"Клуб", Main_Color"Название\t"Main_Color"Цена\n\
+							"Main_Color"Пиво\t"Color_Green"200$\n\
+							"Main_Color"Алкогольный коктейль\t"Color_Green"350$\n\
+							"Main_Color"Водка\t"Color_Green"400$\n\
+							"Main_Color"Коньяк\t"Color_Green"450$\n\
+							"Main_Color"Сигареты\t"Color_Green"50$\n\
+							"Main_Color"Сигары\t"Color_Green"250$\n", Color_White"Купить", Color_White"Закрыть");
+						}
+						else if(bInfo[indx][bType] == BusinessSexShop)
+						{
+							ShowDialog(playerid, D_Sex_Shop_Menu, DIALOG_STYLE_TABLIST_HEADERS, Main_Color"Секс-шоп", Main_Color"Название\t"Main_Color"Цена\n\
+							"Main_Color"Односторонний фаллоимитатор\t"Color_Green"1000$\n\
+							"Main_Color"Двусторонний фаллоимитатор\t"Color_Green"2000$\n\
+							"Main_Color"Вибратор\t"Color_Green"3000$\n\
+							"Main_Color"Вибратор увеличенного диаметра\t"Color_Green"4000$", Color_White"Купить", Color_White"Закрыть");
 						}
 					}
 				}
@@ -8739,6 +8903,22 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 			if(pInfo[playerid][pJob] == Job_None) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы нигде не работаете");
 			ShowDialog(playerid, D_Remove_All_Job, DIALOG_STYLE_MSGBOX, Main_Color"Увольнение с работы", Color_White"Вы желаете уволиться с вашей текущей работы?", Color_White"Да", Color_White"Нет");
 		}
+		else if(areaid == Pickups[GumLSPick][PickAreaID])
+		{
+			ShowDialog(playerid, D_Learn_Boxing, DIALOG_STYLE_MSGBOX, Main_Color"Изучение бокса", Color_White"Вы желаете сменить стиль боя на бокс?", Color_White"Да", Color_White"Нет");
+		}
+		else if(areaid == Pickups[GumSFPick][PickAreaID])
+		{
+			ShowDialog(playerid, D_Learn_Kung_Fu, DIALOG_STYLE_MSGBOX, Main_Color"Изучение кунг-фу", Color_White"Вы желаете сменить стиль боя на кунг-фу?", Color_White"Да", Color_White"Нет");
+		}
+		else if(areaid == Pickups[GumLVPick][PickAreaID])
+		{
+			ShowDialog(playerid, D_Learn_Taekwondo, DIALOG_STYLE_MSGBOX, Main_Color"Изучение таек-ван-до", Color_White"Вы желаете сменить стиль боя на таек-ван-до?", Color_White"Да", Color_White"Нет");
+		}
+		else if(areaid == Pickups[ChurchPick][PickAreaID])
+		{
+			ShowDialog(playerid, D_Church, DIALOG_STYLE_LIST, Main_Color"Церковь", Color_White"Регистрация новго брака\nРазвод", Color_White"Далее", Color_White"Закрыть");
+		}
 		else if(pInfo[playerid][pJob] == Job_TrashCollector && GetPVarInt(playerid, "JobArea") == areaid)
 		{
 			if(GetPVarInt(playerid, "TrashBagCount")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас уже есть мешок в руках");
@@ -9198,7 +9378,8 @@ stock ShowJobDialog(playerid)
 		}
 		else
 		{
-			format(str, sizeof(str), Color_Yellow"Увольнение с работы "Main_Color"%sа", Jobs[JobID][JobNames]);
+			if(JobID == Job_Bus) format(str, sizeof(str), Color_Yellow"Увольнение с работы "Main_Color"%s", Jobs[JobID][JobNames]);
+			else format(str, sizeof(str), Color_Yellow"Увольнение с работы "Main_Color"%sа", Jobs[JobID][JobNames]);
 			ShowDialog(playerid, D_Job_Invite, DIALOG_STYLE_MSGBOX, str, Color_White"Вы желаете уволиться в сданной работы?", Color_White"Да", Color_White"Нет");
 		}
 	}
@@ -9212,7 +9393,8 @@ stock ShowJobDialog(playerid)
 		}
 		else
 		{
-			format(str, sizeof(str), Color_Yellow"Трудоустройство на работу "Main_Color"%sа", Jobs[JobID][JobNames]);
+			if(JobID == Job_Bus) format(str, sizeof(str), Color_Yellow"Трудоустройство на работу "Main_Color"%s", Jobs[JobID][JobNames]);
+			else format(str, sizeof(str), Color_Yellow"Трудоустройство на работу "Main_Color"%sа", Jobs[JobID][JobNames]);
 			ShowDialog(playerid, D_Job_Invite, DIALOG_STYLE_MSGBOX, str, Color_White"Вы желаете устроиться на данную работу?", Color_White"Да", Color_White"Нет");
 		}
 	}
@@ -10837,10 +11019,9 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				{
 					format(str, sizeof(str), Main_Color"%s", Quests[indx][QuestName]);
 					ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, str, Color_White"Итак, давай попробуем заработать наши первые деньги. Тут за холмами находится лесопилка – отправляйся туда.\n\
-					Твоя задача – добыть 10 единиц древисины. За это ты получишь 2 EXP и 10.000$.", Color_White"Понятно", "");
+					Твоя задача – добыть 10 единиц древисины. За это ты получишь 2 EXP и 10.000$.\n\
+					Чтобы понять, куда тебе ехать воспользуйся GPS. (/gps – Доп. заработок - Лесопилка)", Color_White"Понятно", "");
 
-					ActorSay(QuestActor, "Итак, давай попробуем заработать наши первые деньги. Тут за холмами находится лесопилка – отправляйся туда.", 3000, playerid);
-					SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Твоя задача – добыть 10 единиц древисины. За это ты получишь 2 EXP и 10.000$.", 3000, playerid);
 					SaveQuest(playerid);
 				}
 				case MedCardQuest:
@@ -10849,8 +11030,6 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, str, Color_White"Сейчас, нам нужно приобрести медицинскую карту. Её можно купить в Больнице (/gps – Важные места – Больница)\n\
 					Отправляйся туда. Как? - Либо своим ходом, либо такси или дождись автобуса.", Color_White"Понятно", "");
 
-					ActorSay(QuestActor, "Сейчас, нам нужно приобрести медицинскую карту. Её можно купить в Больнице (/gps – Важные места – Больница)", 3000, playerid);
-					SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Отправляйся туда. Как? - Либо своим ходом, либо такси или дождись автобуса.", 3000, playerid);
 					if(pInfo[playerid][pMedCard] == 1) QuestProgress(playerid, _:MedCardQuest, 1);
 					else SaveQuest(playerid);
 				}
@@ -10861,9 +11040,6 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					В нашем штате все лицензии можно приобрести в Мэрии (/gps – Важные места – Мэрия).\n\
 					Как зайдешь в здание, поднимайся на самый последний этаж, а дальше разберешься. Удачи!", Color_White"Понятно", "");
 
-					ActorSay(QuestActor, "Нам нужны права на автомобиль. Не беспокойся, тебе не нужно будет проходить какой-то маршрут.", 3000, playerid);
-					SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "В нашем штате все лицензии можно приобрести в Мэрии (/gps – Важные места – Мэрия).", 3000, playerid);
-					SetTimerEx("ActorSay", 6000, false, "dsd", _:QuestActor, "Как зайдешь в здание, поднимайся на самый последний этаж, а дальше разберешься. Удачи!", 3000, playerid);
 					if(pInfo[playerid][pLicAuto]) QuestProgress(playerid, _:DriveLicQuest, 1);
 					else SaveQuest(playerid);
 				}
@@ -10872,7 +11048,6 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					format(str, sizeof(str), Main_Color"%s", Quests[indx][QuestName]);
 					ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, str, Color_White"Нам нужны водители автобуса для развоза новичков. Так, отправляйся на работу водителя-автобуса. Команды, ты и так знаешь.", Color_White"Понятно", "");
 
-					ActorSay(QuestActor, "Нам нужны водители автобуса для развоза новичков. Так, отправляйся на работу водителя-автобуса. Команды, ты и так знаешь.", 3000, playerid);
 					SaveQuest(playerid);
 				}
 				case BankCardQuest:
@@ -10881,8 +11056,6 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, str, Color_White"Как же так получилось, что у тебя нет банковской карты? А как же ты будешь снимать деньги со своего счёта?\n\
 					Отправляйся в ближайшее банковское отделение и приобрети карту.", Color_White"Понятно", "");
 
-					ActorSay(QuestActor, "Как же так получилось, что у тебя нет банковской карты? А как же ты будешь снимать деньги со своего счёта?", 3000, playerid);
-					SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Отправляйся в ближайшее банковское отделение и приобрети карту.", 3000, playerid);
 					if(pInfo[playerid][pCard]) QuestProgress(playerid, _:BankCardQuest, 1);
 					else SaveQuest(playerid);
 				}
@@ -10933,10 +11106,10 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 		case D_Guide_Msg_4:
 		{
 			FirstQuestCamera(playerid, 5);
-			return ShowDialog(playerid, D_Guide_Msg_5, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Знакомство с сервером", Color_White"На этом, ознакомительная часть окончена. Можешь приступать к следующему заданию.\n\
-			В награду ты получишь 2 EXP. Для повышения уровня тебе нужно набрать необходимое количество EXP.\n\
-			Например, для получения первого уровня тебе нужно набрать 4 EXP и далее прописать команду /buylevel.\n\n\
-			EXP даются за 1 час в игре на каждый payday.", Color_White"Закрыть", "");
+			return ShowDialog(playerid, D_Guide_Msg_5, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Знакомство с сервером", Color_White"На этом, ознакомительная часть окончена.\n\
+			Можешь приступать к следующему заданию. В награду ты получишь 2 EXP. Для повышения уровня тебе нужно набрать необходимое количество EXP.\n\
+			Например, для получения первого уровня тебе нужно набрать 4 EXP и далее прописать команду /buylevel. EXP даются за 1 час в игре на каждый payday.\n\
+			При повышении уровня тебе даются очки улучшения. Ими ты можешь воспользоваться, прописав команду /upgrade.", Color_White"Закрыть", "");
 		}
 		case D_Guide_Msg_5:
 		{
@@ -11045,7 +11218,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					if(!pInfo[playerid][pBusinessID]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас нет бизнеса");
 					ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Бизнес", Main_Color"/sellbusiness "Color_White"- Продать бизнес штату\n\
 					"Main_Color"/sellbusiness [id] [цена] "Color_White"- Продать бизнес игроку\n\
-					"Main_Color"/exchangebusiness [id] "Color_White"- Обменяться бизнесами", Color_White"Закрыть", "");
+					"Main_Color"/exchangebusiness [id] "Color_White"- Обменяться бизнесами\n\
+					"Main_Color"/setenterprice [цена] "Color_White"- Установить стоимость входа", Color_White"Закрыть", "");
 				}
 				case 6: ShowFractionCommand(playerid);
 			}
@@ -11062,7 +11236,15 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				case 4: ShowHouseInfo(playerid);
 				case 5: ShowBusinessInfo(playerid);
 				case 6: ShowPlayerUpgradeMenu(playerid);
-				case 7: ShowPlayerMenu(playerid);
+				case 7:
+				{
+					if(pInfo[playerid][pFightStyle] != FIGHT_STYLE_NORMAL)
+					{
+						ShowDialog(playerid, D_Learn_Standart, DIALOG_STYLE_MSGBOX, Main_Color"Сброс стиля боя", Color_White"Вы желаете сменить стиль боя на стандартный?", Color_White"Да", Color_White"Нет");
+					}
+					else ShowPlayerMenu(playerid);
+				}
+				case 8, 9: ShowPlayerMenu(playerid);
 			}
 			return 1;
 		}
@@ -11556,7 +11738,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				else
 				{
-					format(str, sizeof(str), Color_Yellow"Вы успешно уволились с работы "Main_Color"%sа", Jobs[JobID][JobNames]);
+					if(JobID == Job_Bus) format(str, sizeof(str), Color_Yellow"Вы успешно уволились с работы "Main_Color"%s", Jobs[JobID][JobNames]);
+					else format(str, sizeof(str), Color_Yellow"Вы успешно уволились с работы "Main_Color"%sа", Jobs[JobID][JobNames]);
 					SendClientMessage(playerid, -1, str);
 					ChangePlayerJob(playerid, Job_None);
 				}
@@ -11586,7 +11769,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					if(JobID == Job_Lawyer && pInfo[playerid][pMembers] != Fraction_None && IsGovFraction(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Представителям закона запрещено работать адвокатом.");
 					if(JobID == Job_Lawyer && pInfo[playerid][pLevel] < 6) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Должность адвоката доступна с 6 уровня");
 					
-					format(str, sizeof(str), Color_Yellow"Вы успешно устроились на работу "Main_Color"%sа", Jobs[JobID][JobNames]);
+					if(JobID == Job_Bus) format(str, sizeof(str), Color_Yellow"Вы успешно устроились на работу "Main_Color"%s", Jobs[JobID][JobNames]);
+					else format(str, sizeof(str), Color_Yellow"Вы успешно устроились на работу "Main_Color"%sа", Jobs[JobID][JobNames]);
 					SendClientMessage(playerid, -1, str);
 					ChangePlayerJob(playerid, JobID);
 				}
@@ -11995,6 +12179,11 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 					ShowDialog(playerid, D_EditBusiness_MafiaOwner, DIALOG_STYLE_LIST, Main_Color"Выберите кто будет крышевать этот бизнес", str, Color_White"Далее", Color_White"Закрыть");
 				}
+				case 8:
+				{
+					SetPVarInt(playerid, "Business", BusinessID);
+					ShowDialog(playerid, D_EditBusiness_Name, DIALOG_STYLE_INPUT, Main_Color"Название бизнеса", Color_White"Введите название бизнеса", Color_White"Далее", Color_White"Закрыть");
+				}
 			}
 			return 1;
 		}
@@ -12095,6 +12284,23 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 			UpdateBusiness(BusinessID);
 			SendClientMessage(playerid, -1, Main_Color"Минимальный уровень для бизнеса изменен");
+			return 1;
+		}
+		case D_EditBusiness_Name:
+		{
+			if(!response) return DeletePVar(playerid, "Business");
+			new BusinessID = GetPVarInt(playerid, "Business");
+			DeletePVar(playerid, "Business");
+
+			if(!strlen(inputtext)) ShowDialog(playerid, D_EditBusiness_Name, DIALOG_STYLE_INPUT, Main_Color"Название бизнеса", Color_White"Введите название бизнеса\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Закрыть");
+			if(strlen(inputtext) > 50) ShowDialog(playerid, D_EditBusiness_Name, DIALOG_STYLE_INPUT, Main_Color"Название бизнеса", Color_White"Введите название бизнеса\n"Color_Red"Название не должно быть больше 50 символов", Color_White"Далее", Color_White"Закрыть");
+		
+			strmid(bInfo[BusinessID][bName], inputtext, 0, strlen(inputtext));
+
+			SaveBusinessStr(BusinessID, "Name", bInfo[BusinessID][bName]);
+
+			UpdateBusiness(BusinessID);
+			SendClientMessage(playerid, -1, Main_Color"Название бизнеса изменено");
 			return 1;
 		}
 		case D_EditHouse:
@@ -12403,18 +12609,57 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 			SetPVarInt(playerid, "BusinessPrice", strval(inputtext));
 
-			new query[400];
-			mysql_format(DB, query, sizeof(query), "INSERT INTO `business` (`Price`, `IsDonate`, `X`, `Y`, `Z`, `A`, `Type`, `NeedLevel`) VALUES ('%d', '%d', '%f', '%f', '%f', '%f', '%d', '%d')",
-			strval(inputtext),
+			if(GetPVarInt(playerid, "BusinessType") >= BusinessClub1 && GetPVarInt(playerid, "BusinessType") <= BusinessClub5)
+			{
+				ShowDialog(playerid, D_CreateBusiness_Name, DIALOG_STYLE_INPUT, Main_Color"Название бизнеса", Color_White"Введите название бизнеса", Color_White"Далее", Color_White"Закрыть");
+			}
+			else
+			{
+				new query[400];
+				mysql_format(DB, query, sizeof(query), "INSERT INTO `business` (`Price`, `IsDonate`, `X`, `Y`, `Z`, `A`, `Type`, `NeedLevel`) VALUES ('%d', '%d', '%f', '%f', '%f', '%f', '%d', '%d')",
+				strval(inputtext),
+				GetPVarInt(playerid, "BusinessIsDonate"),
+				GetPVarFloat(playerid, "BusinessX"),
+				GetPVarFloat(playerid, "BusinessY"),
+				GetPVarFloat(playerid, "BusinessZ"),
+				GetPVarFloat(playerid, "BusinessA"),
+				GetPVarInt(playerid, "BusinessType"),
+				GetPVarInt(playerid, "BusinessNeedLevel"));
+
+				mysql_tquery(DB, query, "GetCreateBusinessID", "ds", playerid, "");
+			}
+			return 1;
+		}
+		case D_CreateBusiness_Name:
+		{
+			if(!response)
+			{
+				DeletePVar(playerid, "BusinessPrice");
+				DeletePVar(playerid, "BusinessX");
+				DeletePVar(playerid, "BusinessY");
+				DeletePVar(playerid, "BusinessZ");
+				DeletePVar(playerid, "BusinessA");
+				DeletePVar(playerid, "BusinessType");
+				DeletePVar(playerid, "BusinessNeedLevel");
+				DeletePVar(playerid, "BusinessIsDonate");
+				return 1;
+			}
+
+			if(!strlen(inputtext)) ShowDialog(playerid, D_CreateBusiness_Name, DIALOG_STYLE_INPUT, Main_Color"Название бизнеса", Color_White"Введите название бизнеса\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Закрыть");
+			if(strlen(inputtext) > 50) ShowDialog(playerid, D_CreateBusiness_Name, DIALOG_STYLE_INPUT, Main_Color"Название бизнеса", Color_White"Введите название бизнеса\n"Color_Red"Название не должно быть больше 50 символов", Color_White"Далее", Color_White"Закрыть");
+			new query[500];
+			mysql_format(DB, query, sizeof(query), "INSERT INTO `business` (`Price`, `IsDonate`, `X`, `Y`, `Z`, `A`, `Type`, `NeedLevel`, `Name`) VALUES ('%d', '%d', '%f', '%f', '%f', '%f', '%d', '%d', '%s')",
+			GetPVarInt(playerid, "BusinessPrice"),
 			GetPVarInt(playerid, "BusinessIsDonate"),
 			GetPVarFloat(playerid, "BusinessX"),
 			GetPVarFloat(playerid, "BusinessY"),
 			GetPVarFloat(playerid, "BusinessZ"),
 			GetPVarFloat(playerid, "BusinessA"),
 			GetPVarInt(playerid, "BusinessType"),
-			GetPVarInt(playerid, "BusinessNeedLevel"));
+			GetPVarInt(playerid, "BusinessNeedLevel"),
+			inputtext);
 
-			mysql_tquery(DB, query, "GetCreateBusinessID", "d", playerid);
+			mysql_tquery(DB, query, "GetCreateBusinessID", "ds", playerid, inputtext);
 			return 1;
 		}
 		case D_CreateHouse_Int:
@@ -12534,6 +12779,183 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			GetPVarInt(playerid, "HouseNeedLevel"));
 
 			mysql_tquery(DB, query, "GetCreateHouseID", "d", playerid);
+			return 1;
+		}
+		case D_Learn_Boxing:
+		{
+			if(!response) return 1;
+			if(pInfo[playerid][pFightStyle] == FIGHT_STYLE_BOXING) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы уже владеете этим стилем боя");
+
+			pInfo[playerid][pFightStyle] = FIGHT_STYLE_BOXING;
+			SetPlayerFightingStyle(playerid, pInfo[playerid][pFightStyle]);
+			SavePlayerInt(playerid, "FightStyle", pInfo[playerid][pFightStyle]);
+
+			SendClientMessage(playerid, -1, Color_Yellow"Вы успешно сменили стиль боя на "Main_Color"бокс");
+			return 1;
+		}
+		case D_Learn_Kung_Fu:
+		{
+			if(!response) return 1;
+			if(pInfo[playerid][pFightStyle] == FIGHT_STYLE_KUNGFU) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы уже владеете этим стилем боя");
+
+			pInfo[playerid][pFightStyle] = FIGHT_STYLE_KUNGFU;
+			SetPlayerFightingStyle(playerid, pInfo[playerid][pFightStyle]);
+			SavePlayerInt(playerid, "FightStyle", pInfo[playerid][pFightStyle]);
+
+			SendClientMessage(playerid, -1, Color_Yellow"Вы успешно сменили стиль боя на "Main_Color"кунг-фу");
+			return 1;
+		}
+		case D_Learn_Taekwondo:
+		{
+			if(!response) return 1;
+			if(pInfo[playerid][pFightStyle] == FIGHT_STYLE_KNEEHEAD) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы уже владеете этим стилем боя");
+
+			pInfo[playerid][pFightStyle] = FIGHT_STYLE_KNEEHEAD;
+			SetPlayerFightingStyle(playerid, pInfo[playerid][pFightStyle]);
+			SavePlayerInt(playerid, "FightStyle", pInfo[playerid][pFightStyle]);
+
+			SendClientMessage(playerid, -1, Color_Yellow"Вы успешно сменили стиль боя на "Main_Color"таек-ван-до");
+			return 1;
+		}
+		case D_Learn_Standart:
+		{
+			if(!response) return 1;
+			if(pInfo[playerid][pFightStyle] == FIGHT_STYLE_NORMAL) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы уже владеете этим стилем боя");
+
+			pInfo[playerid][pFightStyle] = FIGHT_STYLE_NORMAL;
+			SetPlayerFightingStyle(playerid, pInfo[playerid][pFightStyle]);
+			SavePlayerInt(playerid, "FightStyle", pInfo[playerid][pFightStyle]);
+
+			SendClientMessage(playerid, -1, Color_Yellow"Вы успешно сменили стиль боя на "Main_Color"стандартный");
+			return 1;
+		}
+		case D_Church:
+		{
+			if(!response) return 1;
+			if(!listitem)
+			{
+				if(pInfo[playerid][pMarriedID]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы уже состоите в браке");
+				ShowDialog(playerid, D_Church_Wedding, DIALOG_STYLE_INPUT, Main_Color"Церковь || "Color_White"Регистрация брака", Color_White"Укажите ID игрока которому вы хотите предложить пожениться", Color_White"Далее", Color_White"Закрыть");
+			}
+			else
+			{
+				if(!pInfo[playerid][pMarriedID]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы еще не состоите в браке");
+				new str[200];
+				format(str, sizeof(str), Color_White"Вы уверены в том что хотите развестись с "Main_Color"%s", pInfo[playerid][pMarriedName]);
+				ShowDialog(playerid, D_Church_Divorce, DIALOG_STYLE_MSGBOX, Main_Color"Церковь || "Color_White"Расторжение брака", str, Color_White"Да", Color_White"Нет");
+			}
+		}
+		case D_Church_Divorce:
+		{
+			if(!response) return 1;
+
+			new str[200];
+			mysql_format(DB, str, sizeof(str), "DELETE FROM `weddings` WHERE `ID`= '%d' OR `mID` = '%d'", pInfo[playerid][pID], pInfo[playerid][pID]);
+			mysql_tquery(DB, str);
+
+			foreach(new i:Player)
+			{
+				if(pInfo[i][pMarriedID] == pInfo[playerid][pID])
+				{
+					format(str, sizeof(str), Main_Color"%s "Color_White"%s с вами", pInfo[playerid][pName], (pInfo[playerid][pGender])?("развелась"):("развелся"));
+					SendClientMessage(i, -1, str);
+
+					pInfo[i][pMarriedID] = 0;
+					pInfo[i][pMarriedName][0] = EOS;
+					break;
+				}
+			}
+
+			format(str, sizeof(str), Color_White"Вы развелись с "Main_Color"%s", pInfo[playerid][pMarriedName]);
+			SendClientMessage(playerid, -1, str);
+
+			pInfo[playerid][pMarriedID] = 0;
+			pInfo[playerid][pMarriedName][0] = EOS;
+			return 1;
+		}
+		case D_Church_Wedding:
+		{
+			if(!response) return 1;
+
+			if(GetPVarInt(playerid, "InviteWedding")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы уже предлагали кому-то вступить в брак. Дождитесь решения игрока");
+			if(GetPVarInt(playerid, "InvitedWedding")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вам уже предложили вступить в брак. Примите решение");
+
+			if(!strlen(inputtext)) return ShowDialog(playerid, D_Church_Wedding, DIALOG_STYLE_INPUT, Main_Color"Церковь || "Color_White"Регистрация брака", Color_White"Укажите ID игрока которому вы хотите предложить пожениться\n\n\
+			"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Закрыть");
+
+			new id = strval(inputtext);
+			
+			if(id < 0 || id >= MAX_PLAYERS) return ShowDialog(playerid, D_Church_Wedding, DIALOG_STYLE_INPUT, Main_Color"Церковь || "Color_White"Регистрация брака", Color_White"Укажите ID игрока которому вы хотите предложить пожениться\n\n\
+			"Color_Red"Игрока с таким ID не существует", Color_White"Далее", Color_White"Закрыть");
+			
+			if(!IsPlayerConnected(id)) return ShowDialog(playerid, D_Church_Wedding, DIALOG_STYLE_INPUT, Main_Color"Церковь || "Color_White"Регистрация брака", Color_White"Укажите ID игрока которому вы хотите предложить пожениться\n\n\
+			"Color_Red"Игрок с данным ID не подключен", Color_White"Далее", Color_White"Закрыть");
+
+			if(!pInfo[id][pAuth]) return ShowDialog(playerid, D_Church_Wedding, DIALOG_STYLE_INPUT, Main_Color"Церковь || "Color_White"Регистрация брака", Color_White"Укажите ID игрока которому вы хотите предложить пожениться\n\n\
+			"Color_Red"Игрок с данным ID не авторизировался", Color_White"Далее", Color_White"Закрыть");
+			
+			if(id == playerid) return ShowDialog(playerid, D_Church_Wedding, DIALOG_STYLE_INPUT, Main_Color"Церковь || "Color_White"Регистрация брака", Color_White"Укажите ID игрока которому вы хотите предложить пожениться\n\n\
+			"Color_Red"Вы ввели свой ID", Color_White"Далее", Color_White"Закрыть");
+
+			if(pInfo[id][pMarriedID]) return ShowDialog(playerid, D_Church_Wedding, DIALOG_STYLE_INPUT, Main_Color"Церковь || "Color_White"Регистрация брака", Color_White"Укажите ID игрока которому вы хотите предложить пожениться\n\n\
+			"Color_Red"Этот игрок уже состоит в браке", Color_White"Далее", Color_White"Закрыть");
+
+			new Float:X, Float:Y, Float:Z;
+			GetPlayerPos(id, X, Y, Z);
+			if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которому хотите предложить брак");
+
+			SetPVarInt(playerid, "InviteWedding", id+1);
+			SetPVarInt(id, "InvitedWedding", playerid+1);
+
+			new str[200];
+			format(str, sizeof(str), Color_White"Вы предложили "Main_Color"%s "Color_White"вступить в брак", pInfo[id][pName]);
+			SendClientMessage(playerid, -1, str);
+
+			format(str, sizeof(str), Main_Color"%s "Color_White"предложил(а) вам зарегестрировать брак. Вы согласны?", pInfo[playerid][pName]);
+
+			ShowDialog(id, D_Church_Wedding_Accept, DIALOG_STYLE_MSGBOX, Main_Color"Церковь || "Color_White"Регистрация брака", str, Color_White"Да", Color_White"Нет");
+			return 1;
+		}
+		case D_Church_Wedding_Accept:
+		{
+			if(!GetPVarInt(playerid, "InvitedWedding")) return 1;
+			new id = GetPVarInt(playerid, "InvitedWedding")-1;
+			DeletePVar(id, "InviteWedding");
+			DeletePVar(playerid, "InvitedWedding");
+			
+			new str[200];
+			if(!response)
+			{
+				format(str, sizeof(str), Main_Color"%s "Color_White"отклонил(а) предложение о вступлении в брак", pInfo[playerid][pName]);
+				SendClientMessage(id, -1, str);
+
+				format(str, sizeof(str), Color_White"Вы отказались от заключения брака с "Main_Color"%s", pInfo[id][pName]);
+				SendClientMessage(playerid, -1, str);
+				return 1;
+			}
+
+
+			if(pInfo[playerid][pGender] != pInfo[id][pGender]) format(str, sizeof(str), Main_Color"Новая пара вступила в брак на нашем проекте – %s и %s.", pInfo[playerid][pName], pInfo[id][pName]);
+			else
+			{
+				if(pInfo[playerid][pGender]) format(str, sizeof(str), Main_Color"Новая лесби-пара вступила в брак на нашем проекте – %s и %s.", pInfo[playerid][pName], pInfo[id][pName]);
+				else format(str, sizeof(str), Main_Color"Новая гей-пара вступила в брак на нашем проекте – %s и %s.", pInfo[playerid][pName], pInfo[id][pName]);
+			}
+
+			SendAllMessage(str);
+			SendAllMessage(Main_Color"Поздравляем! Пусть Ваш брак будет счастливым!");
+
+			str[0] = EOS;
+			mysql_format(DB, str, sizeof(str), "INSERT INTO `weddings`(`ID`, `mID`) VALUES ('%d', '%d')", pInfo[playerid][pID], pInfo[id][pID]);
+			mysql_tquery(DB, str);
+			
+			pInfo[playerid][pMarriedID] = pInfo[id][pID];
+			pInfo[playerid][pMarriedName][0] = EOS;
+			strcat(pInfo[playerid][pMarriedName], pInfo[id][pName]);
+
+			pInfo[id][pMarriedID] = pInfo[playerid][pID];
+			pInfo[id][pMarriedName][0] = EOS;
+			strcat(pInfo[id][pMarriedName], pInfo[playerid][pName]);
 			return 1;
 		}
 		case D_Remove_All_Job:
@@ -13487,7 +13909,75 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					format(str, sizeof(str), Main_Color"Банк || На счету: "Color_Green"%d$", pInfo[playerid][pBankMoney]);
 					ShowDialog(playerid, D_Bank_Tax, DIALOG_STYLE_LIST, str, Color_White"Дом\n"Color_White"Бизнес", Color_White"Далее", Color_White"Закрыть");
 				}
+				case 4:
+				{
+					if(!pInfo[playerid][pBusinessID]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас нет бизнеса");
+
+					new str[100];
+					format(str, sizeof(str), Main_Color"Банк || На счету: "Color_Green"%d$", pInfo[playerid][pBankMoney]);
+
+					new SubStr[200];
+					format(SubStr, sizeof(SubStr), Color_White"На счету бизнеса "Color_Green"%d$\n"Color_White"Укажите сумму которую хотите снять", bInfo[pInfo[playerid][pBusinessID]][bMoney]);
+
+					ShowDialog(playerid, D_Bank_Business, DIALOG_STYLE_INPUT, str, SubStr, Color_White"Далее", Color_White"Закрыть");
+				}
 			}
+			return 1;
+		}
+		case D_Bank_Business:
+		{
+			if(!response) return ShowPlayerBankMenu(playerid);
+
+			if(!pInfo[playerid][pBusinessID]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас нет бизнеса");
+
+			if(!strlen(inputtext))
+			{
+				new str[100];
+				format(str, sizeof(str), Main_Color"Банк || На счету: "Color_Green"%d$", pInfo[playerid][pBankMoney]);
+
+				new SubStr[200];
+				format(SubStr, sizeof(SubStr), Color_White"На счету бизнеса "Color_Green"%d$\n"Color_White"Укажите сумму которую хотите снять\n"Color_Red"Вы ничего не ввели", bInfo[pInfo[playerid][pBusinessID]][bMoney]);
+
+				ShowDialog(playerid, D_Bank_Business, DIALOG_STYLE_INPUT, str, SubStr, Color_White"Далее", Color_White"Закрыть");
+				return 1;
+			}
+			if(strval(inputtext) <= 0)
+			{
+				new str[100];
+				format(str, sizeof(str), Main_Color"Банк || На счету: "Color_Green"%d$", pInfo[playerid][pBankMoney]);
+
+				new SubStr[200];
+				format(SubStr, sizeof(SubStr), Color_White"На счету бизнеса "Color_Green"%d$\n"Color_White"Укажите сумму которую хотите снять\n"Color_Red"Неверная сумма", bInfo[pInfo[playerid][pBusinessID]][bMoney]);
+
+				ShowDialog(playerid, D_Bank_Business, DIALOG_STYLE_INPUT, str, SubStr, Color_White"Далее", Color_White"Закрыть");
+				return 1;
+			}
+			if(strval(inputtext) > bInfo[pInfo[playerid][pBusinessID]][bMoney])
+			{
+				new str[100];
+				format(str, sizeof(str), Main_Color"Банк || На счету: "Color_Green"%d$", pInfo[playerid][pBankMoney]);
+
+				new SubStr[200];
+				format(SubStr, sizeof(SubStr), Color_White"На счету бизнеса "Color_Green"%d$\n"Color_White"Укажите сумму которую хотите снять\n"Color_Red"Такой суммы нет на счету бизнеса", bInfo[pInfo[playerid][pBusinessID]][bMoney]);
+
+				ShowDialog(playerid, D_Bank_Business, DIALOG_STYLE_INPUT, str, SubStr, Color_White"Далее", Color_White"Закрыть");
+				return 1;
+			}
+
+			GivePlayerMoneyEx(playerid, strval(inputtext));
+			bInfo[pInfo[playerid][pBusinessID]][bMoney] -= strval(inputtext);
+			SaveBusinessInt(pInfo[playerid][pBusinessID], "Money", bInfo[pInfo[playerid][pBusinessID]][bMoney]);
+
+			new str[300];
+			format(str, sizeof(str), Color_White"Вы сняли со счета бизнеса "Color_Green"%d$", strval(inputtext));
+			SendClientMessage(playerid, -1, str);
+
+			str[0] = EOS;
+			GetPlayerIp(playerid, str, 16);
+			format(str, sizeof(str), "(IP: %s | RegIP: %s) снял с бизнеса №%d %d$", str, pInfo[playerid][pRegIp], bInfo[pInfo[playerid][pBusinessID]][bID], strval(inputtext));
+			AddLog(LogTypeMoney, pInfo[playerid][pID], str);
+
+			ShowPlayerBankMenu(playerid);
 			return 1;
 		}
 		case D_Bank_Input:
@@ -13868,6 +14358,170 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				SendClientMessage(playerid, -1, Color_White"Вы восстановили медицинскую карту.");
 				QuestProgress(playerid, _:MedCardQuest, 1);
 			}
+		}
+		case D_Sex_Shop_Menu:
+		{
+			if(!response) return 1;
+			switch(listitem)
+			{
+				case 0:
+				{
+					if(pInfo[playerid][pMoney] < 1000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+					if(!AddPlayerInventory(playerid, ItemDildo1)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+
+					GivePlayerMoneyEx(playerid, -1000);
+					GiveCompanyMoney(playerid, BusinessSexShopCompany, 1000);
+
+					new str[100];
+					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemDildo1][ItemName]);
+					SendClientMessage(playerid, -1, str);
+
+					new BusinessID = GetPVarInt(playerid, "InBusiness");
+					ActivateBusinessActors(playerid, BusinessID);
+				}
+				case 1:
+				{
+					if(pInfo[playerid][pMoney] < 2000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+					if(!AddPlayerInventory(playerid, ItemDildo2)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+
+					GivePlayerMoneyEx(playerid, -2000);
+					GiveCompanyMoney(playerid, BusinessSexShopCompany, 2000);
+
+					new str[100];
+					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemDildo2][ItemName]);
+					SendClientMessage(playerid, -1, str);
+
+					new BusinessID = GetPVarInt(playerid, "InBusiness");
+					ActivateBusinessActors(playerid, BusinessID);
+				}
+				case 2:
+				{
+					if(pInfo[playerid][pMoney] < 3000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+					if(!AddPlayerInventory(playerid, ItemVibrator1)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+
+					GivePlayerMoneyEx(playerid, -3000);
+					GiveCompanyMoney(playerid, BusinessSexShopCompany, 3000);
+
+					new str[100];
+					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemVibrator1][ItemName]);
+					SendClientMessage(playerid, -1, str);
+
+					new BusinessID = GetPVarInt(playerid, "InBusiness");
+					ActivateBusinessActors(playerid, BusinessID);
+				}
+				case 3:
+				{
+					if(pInfo[playerid][pMoney] < 4000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+					if(!AddPlayerInventory(playerid, ItemVibrator2)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+
+					GivePlayerMoneyEx(playerid, -4000);
+					GiveCompanyMoney(playerid, BusinessSexShopCompany, 4000);
+
+					new str[100];
+					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemVibrator2][ItemName]);
+					SendClientMessage(playerid, -1, str);
+
+					new BusinessID = GetPVarInt(playerid, "InBusiness");
+					ActivateBusinessActors(playerid, BusinessID);
+				}
+			}
+		}
+		case D_Club_Sell_Menu:
+		{
+			if(!response) return 1;
+			if(GetPVarInt(playerid, "GulpCount")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваши руки заняты");
+			switch(listitem)
+			{
+				case 0:
+				{
+					if(pInfo[playerid][pMoney] < 200) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств");
+					
+					GivePlayerMoneyEx(playerid, -200);
+
+					new BusinessID = GetPVarInt(playerid, "InBusiness");
+					ActivateBusinessActors(playerid, BusinessID);
+
+					GiveBusinessMoney(BusinessID, 200);
+					
+					SetPlayerAttachedObject(playerid, AttachSlotOther, 1487, 13, 0.313000, -0.037000, -0.037000, 76.800086, 0.000000, 0.000000, 0.678000, 0.637000, 0.627000, 0, 0);
+					SetPVarInt(playerid, "DrunkForGulp", 900);
+					SetPVarInt(playerid, "GulpCount", 3);
+				}
+				case 1:
+				{
+					if(pInfo[playerid][pMoney] < 350) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств");
+
+					GivePlayerMoneyEx(playerid, -350);
+
+					new BusinessID = GetPVarInt(playerid, "InBusiness");
+					ActivateBusinessActors(playerid, BusinessID);
+
+					GiveBusinessMoney(BusinessID, 350);
+
+					SetPlayerAttachedObject(playerid, AttachSlotOther, 19822, 13, 0.3089, 0.0749, -0.0579, 78.0000, -1.6999, 4.2000, 0.5709, 0.5059, 0.6089, 0, 0);
+					SetPVarInt(playerid, "DrunkForGulp", 500);
+					SetPVarInt(playerid, "GulpCount", 5);
+				}
+				case 2:
+				{
+					if(pInfo[playerid][pMoney] < 400) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств");
+
+					GivePlayerMoneyEx(playerid, -400);
+
+					new BusinessID = GetPVarInt(playerid, "InBusiness");
+					ActivateBusinessActors(playerid, BusinessID);
+
+					GiveBusinessMoney(BusinessID, 400);
+					
+					SetPlayerAttachedObject(playerid, AttachSlotOther, 19821, 13, 0.3120, 0.1049, -0.0469, 85.2000, 0.0000, 0.0000, 0.6269, 0.4899, 0.5089, 0, 0);
+					SetPVarInt(playerid, "DrunkForGulp", 1000);
+					SetPVarInt(playerid, "GulpCount", 3);
+				}
+				case 3:
+				{
+					if(pInfo[playerid][pMoney] < 450) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств");
+
+					GivePlayerMoneyEx(playerid, -450);
+
+					new BusinessID = GetPVarInt(playerid, "InBusiness");
+					ActivateBusinessActors(playerid, BusinessID);
+
+					GiveBusinessMoney(BusinessID, 450);
+					
+					SetPlayerAttachedObject(playerid, AttachSlotOther, 19823, 13, 0.3049, 0.0589, -0.0479, 80.2000, 0.0000, 0.0000, 0.6859, 0.6919, 0.5220, 0, 0);
+					SetPVarInt(playerid, "DrunkForGulp", 1200);
+					SetPVarInt(playerid, "GulpCount", 3);
+				}
+				case 4:
+				{
+					if(pInfo[playerid][pMoney] < 50) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств");
+
+					GivePlayerMoneyEx(playerid, -50);
+
+					new BusinessID = GetPVarInt(playerid, "InBusiness");
+					ActivateBusinessActors(playerid, BusinessID);
+
+					GiveBusinessMoney(BusinessID, 50);
+					SetPlayerSpecialAction(playerid, SPECIAL_ACTION_SMOKE_CIGGY);
+					SetPVarInt(playerid, "DrunkForGulp", 500);
+					SetPVarInt(playerid, "GulpCount", 5);
+				}
+				case 5:
+				{
+					if(pInfo[playerid][pMoney] < 250) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств");
+
+					GivePlayerMoneyEx(playerid, -250);
+
+					new BusinessID = GetPVarInt(playerid, "InBusiness");
+					ActivateBusinessActors(playerid, BusinessID);
+
+					GiveBusinessMoney(BusinessID, 250);
+					SetPlayerSpecialAction(playerid, SPECIAL_ACTION_SMOKE_CIGGY);
+					SetPVarInt(playerid, "DrunkForGulp", 1000);
+					SetPVarInt(playerid, "GulpCount", 10);
+				}
+			}
+
 		}
 		case D_Buy_Cloth:
 		{
@@ -16009,7 +16663,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				if(bInfo[BusinessID][bBizzWarCD] > gettime())
 				{
 					new str[200];
-					format(str, sizeof(str), Main_Color"Бизнес № %d %s "Color_White"захватывали недавно. Начать войну за этот бизнес можно %s", bInfo[BusinessID][bID], BusinessType[bInfo[BusinessID][bType]][bName], date(bInfo[BusinessID][bBizzWarCD], 3, "%dd.%mm.%yyyy %hh:%ii"));
+					GetBusinessName(BusinessID, str);
+					format(str, sizeof(str), Main_Color"Бизнес № %d %s "Color_White"захватывали недавно. Начать войну за этот бизнес можно %s", bInfo[BusinessID][bID], str, date(bInfo[BusinessID][bBizzWarCD], 3, "%dd.%mm.%yyyy %hh:%ii"));
 					return SendClientMessage(playerid, -1, str);
 				}
 
@@ -16029,7 +16684,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					}
 
 					new str[200];
-					format(str, sizeof(str), "Ваша мафия завладела бизнесом № %d %s", bInfo[BusinessID][bID], BusinessType[bInfo[BusinessID][bType]][bName]);
+					GetBusinessName(BusinessID, str);
+					format(str, sizeof(str), "Ваша мафия завладела бизнесом № %d %s", bInfo[BusinessID][bID], str);
 					SendRMessage(playerid, str);
 
 					bInfo[BusinessID][bMafiaOwner] = pInfo[playerid][pMembers];
@@ -16879,13 +17535,15 @@ CMD:robbery(playerid)
 	bInfo[BusinessID][bThiefZoneArea] = CreateDynamicSphere(bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 20.0, 0, 0);
 
     new str[150];
-    format(str, sizeof(str), "В бизнесе %s №%d сработала тревожная кнопка. Для того чтобы отметить место на радаре введите /alarm", BusinessType[bInfo[BusinessID][bType]][bName], bInfo[BusinessID][bID]);
-    SendRMessageEx(Fraction_FBI,str);
+	GetBusinessName(BusinessID, str);
+    format(str, sizeof(str), "В бизнесе %s №%d сработала тревожная кнопка. Для того чтобы отметить место на радаре введите /alarm", str, bInfo[BusinessID][bID]);
+    SendRMessageEx(Fraction_FBI, str);
     SendRMessageEx(Fraction_Army, str);
     SendRMessageEx(Fraction_Police, str);
 
 	str[0] = EOS;
-    format(str, sizeof(str), "Ваша банда начала ограбление бизнеса %s №%d вам необходимо удержать его в течении 2х минут", BusinessType[bInfo[BusinessID][bType]][bName], bInfo[BusinessID][bID]);
+	GetBusinessName(BusinessID, str);
+    format(str, sizeof(str), "Ваша банда начала ограбление бизнеса %s №%d вам необходимо удержать его в течении 2х минут", str, bInfo[BusinessID][bID]);
 	SendRMessage(playerid, str);
 	bInfo[BusinessID][bThiefStatus] = Thief_Status_Capture;
     bInfo[BusinessID][bThiefTimer] = 120;
@@ -16899,6 +17557,49 @@ CMD:robbery(playerid)
 	str[0] = EOS;
 	mysql_format(DB, str, sizeof(str), "UPDATE `fraction_info` SET `Thief_CD` = '%d' WHERE `ID` = '%d'", FractionThiefCD[pInfo[playerid][pMembers]], pInfo[playerid][pMembers]);
 	mysql_tquery(DB, str);
+	return 1;
+}
+
+CMD:rob(playerid)
+{
+	new BusinessID = GetPVarInt(playerid, "InBusiness");
+	if(!BusinessID || bInfo[BusinessID][bType] != BusinessBankFillial) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны находится в банке");
+	if(IsGovFraction(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Представителям закона запрещено грабить.");
+
+	if(bInfo[BusinessID][bRob] > gettime())
+    {
+        new str[150];
+        format(str, sizeof(str), Color_Grey"Этот банк уже грабили недавно. Снова можно ограбить в "Color_Red"%s", date(bInfo[BusinessID][bRob], 3, "%dd.%mm.%yyyy %hh:%ii"));
+        return SendClientMessage(playerid, -1, str);
+    }
+
+	bInfo[BusinessID][bRob] = gettime()+3600;
+	SaveBusinessInt(BusinessID, "Rob", bInfo[BusinessID][bRob]);
+
+	new money = 10000+random(90001);
+	pInfo[playerid][pRobCount] += money;
+	SavePlayerInt(playerid, "RobCount", pInfo[playerid][pRobCount]);
+
+	new str[200];
+	SendClientMessage(playerid, -1, Color_Gold"***");
+	format(str, sizeof(str), Color_Gold"Внимание! Вы совершили ограбление банка. Сумма кражи – "Color_Green"%d$", money);
+	SendClientMessage(playerid, -1, str);
+	SendClientMessage(playerid, -1, Color_Gold"Деньги будут Вам даны после того, как пройдёт уровень розыска.");
+	format(str, sizeof(str), Color_Gold"Общая сумма кражи "Color_Green"%d$", pInfo[playerid][pRobCount]);
+	SendClientMessage(playerid, -1, str);
+	SendClientMessage(playerid, -1, Color_Gold"***");
+
+	str[0] = EOS;
+	GetBusinessName(BusinessID, str);
+	format(str, sizeof(str), "%s[%d] ограбил бизнес %s №%d на сумму %d$", pInfo[playerid][pName], playerid, str, bInfo[BusinessID][bID], money);
+	SendRMessageEx(Fraction_FBI, str);
+    SendRMessageEx(Fraction_Army, str);
+    SendRMessageEx(Fraction_Police, str);
+    SendRMessageEx(Fraction_FBI, "Для того чтобы отметить место на радаре введите /alarm");
+    SendRMessageEx(Fraction_Army, "Для того чтобы отметить место на радаре введите /alarm");
+    SendRMessageEx(Fraction_Police, "Для того чтобы отметить место на радаре введите /alarm");
+
+	WantedPlayer(playerid, 2);
 	return 1;
 }
 
@@ -17583,8 +18284,10 @@ CMD:alarm(playerid, params[])
 
 	foreach(new i:Business)
 	{
-		if(!bInfo[i][bID] || bInfo[i][bThiefStatus] == Thief_Status_None) continue;
-		format(str, sizeof(str), "%s"Color_Red"* "Color_White"%s №%d\n", str, BusinessType[bInfo[i][bType]][bName], bInfo[i][bID]);
+		if(!bInfo[i][bID] || (bInfo[i][bThiefStatus] == Thief_Status_None && bInfo[i][bRob] < gettime())) continue;
+		new substr[100];
+		GetBusinessName(i, substr);
+		format(str, sizeof(str), "%s"Color_Red"* "Color_White"%s №%d\n", str, substr, bInfo[i][bID]);
 	}
 	if(!strlen(str)) return ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color"Эстренные вызовы", Main_Color"Экстренных вызовов не поступало", Color_White"Закрыть", "");
 
@@ -18191,12 +18894,32 @@ CMD:suspect(playerid, params[])
 	else format(str, sizeof(str), Color_Yellow"%s[%d] объявил(а) тебя в розыск. Приоритет: %s. Причина: %s", pInfo[playerid][pName], playerid, PriorityStr, message);
 	SendClientMessage(id, BitColor_Main, str);
 
-	format(str, sizeof(str), Color_Red"***Внимание! Твой уровень розыска ( %s и шести )***", PriorityStr);
-	SendClientMessage(id, BitColor_Main, str);
+	WantedPlayer(id, wanted);
+	return 1;
+}
 
-	pInfo[id][pWanted] = wanted;
-	SetPlayerWantedLevel(id, pInfo[id][pWanted]);
-	SavePlayerInt(id, "Wanted", pInfo[id][pWanted]);
+stock WantedPlayer(playerid, WantedLvl)
+{
+	pInfo[playerid][pWanted] += WantedLvl;
+	if(pInfo[playerid][pWanted] > 6) pInfo[playerid][pWanted] = 6;
+
+	new str[100];
+	switch(WantedLvl)
+	{
+		case 1: strcat(str, "одна звезда");
+		case 2: strcat(str, "две звезды");
+		case 3: strcat(str, "три звезды");
+		case 4: strcat(str, "четыре звезды");
+		case 5: strcat(str, "пять звезд");
+		case 6: strcat(str, "шесть звезд");
+	}
+
+	format(str, sizeof(str), Color_Red"***Внимание! Твой уровень розыска ( %s и шести )***", str);
+	SendClientMessage(playerid, BitColor_Main, str);
+
+	pInfo[playerid][pWanted] = WantedLvl;
+	SetPlayerWantedLevel(playerid, pInfo[playerid][pWanted]);
+	SavePlayerInt(playerid, "Wanted", pInfo[playerid][pWanted]);
 	return 1;
 }
 
@@ -18926,6 +19649,25 @@ CMD:carupgrade(playerid)
 	return 1;
 }
 
+CMD:setenterprice(playerid, params[])
+{
+	if(!pInfo[playerid][pBusinessID]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас нет бизнеса");
+	new money;
+	if(sscanf(params, "d", money)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/setenterprice [Цена]");
+	if(bInfo[pInfo[playerid][pBusinessID]][bType] < BusinessClub1 || bInfo[pInfo[playerid][pBusinessID]][bType] > BusinessClub5) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недоступно для данного типа бизнеса");
+	if(money < 1000 || money > 5000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Стоимость входа должна составлять от 1.000$ до 5.000$");
+
+	bInfo[pInfo[playerid][pBusinessID]][bEnterPrice] = money;
+	SaveBusinessInt(pInfo[playerid][pBusinessID], "EnterPrice", bInfo[pInfo[playerid][pBusinessID]][bEnterPrice]);
+
+	UpdateBusiness(pInfo[playerid][pBusinessID]);
+
+	new str[100];
+	format(str, sizeof(str), Color_White"Вы установили стоимость входа "Color_Green"%d$", money);
+	SendClientMessage(playerid, -1, str);
+	return 1;
+}
+
 CMD:sellbusiness(playerid, params[])
 {
 	if(!pInfo[playerid][pBusinessID]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас нет бизнеса");
@@ -18934,11 +19676,12 @@ CMD:sellbusiness(playerid, params[])
 	{
 		new str[200];
 		new BusinessID = pInfo[playerid][pBusinessID];
+		GetBusinessName(BusinessID, str);
 		format(str, sizeof(str), Color_White"Вы уверены что хотите продать "Main_Color"Бизнес №"Color_White": %d\n\
 		"Main_Color"%s\n\
 		"Color_White"Цена продажи: "Color_Green"%d%s",
 		bInfo[BusinessID][bID],
-		BusinessType[bInfo[BusinessID][bType]][bName],
+		str,
 		bInfo[BusinessID][bPrice],
 		(bInfo[BusinessID][bIsDonate]) ? (" донат рублей"):("$"));
 		ShowDialog(playerid, D_Business_SellGov, DIALOG_STYLE_MSGBOX, Main_Color"Продажа бизнеса", str, Color_White"Да", Color_White"Нет");
@@ -21492,7 +22235,10 @@ CMD:report(playerid)
 }
 CMD:donate(playerid)
 {
-	ShowDialog(playerid, D_Donate, DIALOG_STYLE_LIST, Main_Color Project_Name " || "Color_White"Донат магазин", Main_Color"- "Color_White"Смена ника - 100р\n\
+	new str[100];
+	format(str, sizeof(str), Main_Color Project_Name " || "Color_White"Баланс: "Main_Color"%d", pInfo[playerid][pDonateMoney]);
+
+	ShowDialog(playerid, D_Donate, DIALOG_STYLE_LIST, str, Main_Color"- "Color_White"Смена ника - 100р\n\
 	"Main_Color"- "Color_White"Смена пола - 100р\n\
 	"Main_Color"- "Color_White"Повысить уровень\n\
 	"Main_Color"- "Color_White"Снять предупреждение\n\
@@ -23190,14 +23936,30 @@ CMD:editbusiness(playerid, params[])
 
 	new str[100];
 	format(str, sizeof(str), Color_White"Редактирование"Main_Color" бизнеса №"Color_White"%d", bInfo[BusinessID][bID]);
-	ShowDialog(playerid, D_EditBusiness, DIALOG_STYLE_LIST, str, Main_Color"- "Color_White"Местоположение\n\
-	"Main_Color"- "Color_White"Тип\n\
-	"Main_Color"- "Color_White"Валюта\n\
-	"Main_Color"- "Color_White"Цена\n\
-	"Main_Color"- "Color_White"Минимальный уровень для покупки\n\
-	"Main_Color"- "Color_White"Место обслуживания на машине(Заправки/KFC)\n\
-	"Main_Color"- "Color_White"Удалить место обслуживания на машине\n\
-	"Main_Color"- "Color_White"Изменить крышу", Color_White"Далее", Color_White"Закрыть");
+
+	if(bInfo[BusinessID][bType] >= BusinessClub1 && bInfo[BusinessID][bType] <= BusinessClub5)
+	{
+		ShowDialog(playerid, D_EditBusiness, DIALOG_STYLE_LIST, str, Main_Color"- "Color_White"Местоположение\n\
+		"Main_Color"- "Color_White"Тип\n\
+		"Main_Color"- "Color_White"Валюта\n\
+		"Main_Color"- "Color_White"Цена\n\
+		"Main_Color"- "Color_White"Минимальный уровень для покупки\n\
+		"Main_Color"- "Color_White"Место обслуживания на машине(Заправки/KFC)\n\
+		"Main_Color"- "Color_White"Удалить место обслуживания на машине\n\
+		"Main_Color"- "Color_White"Изменить крышу\n\
+		"Main_Color"- "Color_White"Изменить название", Color_White"Далее", Color_White"Закрыть");
+	}
+	else
+	{
+		ShowDialog(playerid, D_EditBusiness, DIALOG_STYLE_LIST, str, Main_Color"- "Color_White"Местоположение\n\
+		"Main_Color"- "Color_White"Тип\n\
+		"Main_Color"- "Color_White"Валюта\n\
+		"Main_Color"- "Color_White"Цена\n\
+		"Main_Color"- "Color_White"Минимальный уровень для покупки\n\
+		"Main_Color"- "Color_White"Место обслуживания на машине(Заправки/KFC)\n\
+		"Main_Color"- "Color_White"Удалить место обслуживания на машине\n\
+		"Main_Color"- "Color_White"Изменить крышу", Color_White"Далее", Color_White"Закрыть");
+	}
 	return 1;
 }
 
@@ -23800,10 +24562,22 @@ stock ShowPlayerBankMenu(playerid)
 	if(!pInfo[playerid][pCard]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас нет банковской карты");
 	new str[100];
 	format(str, sizeof(str), Main_Color"Банк || На счету: "Color_Green"%d$", pInfo[playerid][pBankMoney]);
-	ShowDialog(playerid, D_Bank_Menu, DIALOG_STYLE_LIST, str, Main_Color"1"Color_White". Положить деньги на счёт\n\
-	"Main_Color"2"Color_White". Снять деньги со счёта\n\
-	"Main_Color"3"Color_White". Перевод средств\n\
-	"Main_Color"4"Color_White". Оплата налогов", Color_White"Далее", Color_White"Закрыть");
+
+	if(pInfo[playerid][pBusinessID])
+	{
+		ShowDialog(playerid, D_Bank_Menu, DIALOG_STYLE_LIST, str, Main_Color"1"Color_White". Положить деньги на счёт\n\
+		"Main_Color"2"Color_White". Снять деньги со счёта\n\
+		"Main_Color"3"Color_White". Перевод средств\n\
+		"Main_Color"4"Color_White". Оплата налогов\n\
+		"Main_Color"5"Color_White". Снять деньги со счета бизнеса", Color_White"Далее", Color_White"Закрыть");
+	}
+	else
+	{
+		ShowDialog(playerid, D_Bank_Menu, DIALOG_STYLE_LIST, str, Main_Color"1"Color_White". Положить деньги на счёт\n\
+		"Main_Color"2"Color_White". Снять деньги со счёта\n\
+		"Main_Color"3"Color_White". Перевод средств\n\
+		"Main_Color"4"Color_White". Оплата налогов", Color_White"Далее", Color_White"Закрыть");
+	}
 	return 1;
 }
 
@@ -23928,6 +24702,18 @@ stock ShowPlayerMainMenu(playerid)
 stock ShowPlayerMenu(playerid)
 {
 	new str[500];
+	switch(pInfo[playerid][pFightStyle])
+	{
+		case FIGHT_STYLE_NORMAL: strmid(str, "Стандартный", 0, strlen("Стандартный"));
+		case FIGHT_STYLE_BOXING: strmid(str, "Бокс", 0, strlen("Бокс"));
+		case FIGHT_STYLE_KUNGFU: strmid(str, "Кунг-фу", 0, strlen("Кунг-фу"));
+		case FIGHT_STYLE_KNEEHEAD: strmid(str, "Таек-ван-до", 0, strlen("Таек-ван-до"));
+	}
+
+	new MarriedName[MAX_PLAYER_NAME+1];
+	if(pInfo[playerid][pMarriedID]) strcat(MarriedName, pInfo[playerid][pMarriedName]);
+	else strcat(MarriedName, "Не женат(а)");
+
 	format(str, sizeof(str), Main_Color"1. "Color_White"Статистика\n\
 	"Main_Color"2. "Color_White"Инвентарь\n\
 	"Main_Color"3. "Color_White"Навыки\n\
@@ -23935,7 +24721,9 @@ stock ShowPlayerMenu(playerid)
 	"Main_Color"5. "Color_White"Информация о доме\n\
 	"Main_Color"6. "Color_White"Информация о бизнесе\n\
 	"Main_Color"7. "Color_White"Улучшения\n\
-	"Main_Color"8. "Color_White"Уровень розыска ["Main_Color"%d/6"Color_White"]", pInfo[playerid][pWanted]);
+	"Main_Color"8. "Color_White"Стиль боя: "Main_Color"%s\n\
+	"Main_Color"9. "Color_White"Брак: "Main_Color"%s\n\
+	"Main_Color"10. "Color_White"Уровень розыска ["Main_Color"%d/6"Color_White"]", str, MarriedName, pInfo[playerid][pWanted]);
 
 	ShowDialog(playerid, D_Main_Menu_Player, DIALOG_STYLE_LIST, Main_Color Project_Name " || "Color_White"Персонаж", str, Color_White"Далее", Color_White"Назад");
 	return 1;
@@ -24280,14 +25068,17 @@ stock ShowBusinessInfo(playerid)
 	if(!pInfo[playerid][pBusinessID]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас нет бизнеса");
 	new BusinessID = pInfo[playerid][pBusinessID];
 	new str[500];
+	GetBusinessName(BusinessID, str);
 	format(str, sizeof(str), Main_Color"%s\n\
 	"Main_Color"Бизнес №"Color_White"%d\n\
+	"Main_Color"Деньги на счету"Color_White": "Color_Green"%d$\n\
 	"Main_Color"Гос.цена"Color_White": "Color_Green"%d%s\n\
 	"Main_Color"Требуемый уровень"Color_White": %d\n\
 	"Main_Color"Оплачен до"Color_White": %s\n\
 	"Main_Color"Крышует"Color_White": %s",
-	BusinessType[bInfo[BusinessID][bType]][bName],
+	str,
 	bInfo[BusinessID][bID],
+	bInfo[BusinessID][bMoney],
 	bInfo[BusinessID][bPrice],
 	(bInfo[BusinessID][bIsDonate]) ? (" донат рублей"):("$"),
 	bInfo[BusinessID][bNeedLevel],
@@ -24346,6 +25137,7 @@ stock ShowPlayerStat(playerid, ShowID = -1)
 	format(str, sizeof(str), "%s"Main_Color"Донат"Color_White": %dр\n", str, pInfo[playerid][pDonateMoney]);
 	format(str, sizeof(str), "%s"Main_Color"Предупреждения"Color_White": %d/3\n", str, pInfo[playerid][pWarn]);
 	format(str, sizeof(str), "%s"Main_Color"Пол"Color_White": %s\n", str, (pInfo[playerid][pGender]) ? ("Женщина"):("Мужчина"));
+	if(pInfo[playerid][pMarriedID]) format(str, sizeof(str), "%s"Main_Color"%s"Color_White": %s\n", str, (pInfo[playerid][pGender]) ? ("Жената на"):("Женат на"), pInfo[playerid][pMarriedName]);
 	format(str, sizeof(str), "%s"Main_Color"Дата регистрации"Color_White": %s\n", str, date(pInfo[playerid][pRegDate], 3, "%dd.%mm.%yyyy %hh:%ii"));
 	if(pInfo[playerid][pHouseID]) format(str, sizeof(str), "%s"Main_Color"Дом №"Color_White": %d\n", str, pInfo[playerid][pHouseID]);
 	else format(str, sizeof(str), "%s"Main_Color"Дом"Color_White": Нет\n", str);
@@ -24507,8 +25299,8 @@ stock IsABoat(model)
 	return false;
 }
 
-forward GetCreateBusinessID(playerid);
-public GetCreateBusinessID(playerid)
+forward GetCreateBusinessID(playerid, const Name[]);
+public GetCreateBusinessID(playerid, const Name[])
 {
 	new BusinessID = cache_insert_id();
 
@@ -24524,6 +25316,7 @@ public GetCreateBusinessID(playerid)
 	bInfo[BusinessID][bA] = GetPVarFloat(playerid, "BusinessA");
 	bInfo[BusinessID][bType] = GetPVarInt(playerid, "BusinessType");
 	bInfo[BusinessID][bNeedLevel] = GetPVarInt(playerid, "BusinessNeedLevel");
+	if(strlen(Name)) strmid(bInfo[BusinessID][bName], Name, 0, strlen(Name));
 	DeletePVar(playerid, "BusinessPrice");
 	DeletePVar(playerid, "BusinessX");
 	DeletePVar(playerid, "BusinessY");
@@ -24532,6 +25325,12 @@ public GetCreateBusinessID(playerid)
 	DeletePVar(playerid, "BusinessType");
 	DeletePVar(playerid, "BusinessNeedLevel");
 	DeletePVar(playerid, "BusinessIsDonate");
+
+	if(bInfo[BusinessID][bType] >= BusinessClub1 && bInfo[BusinessID][bType] <= BusinessClub5)
+	{
+		bInfo[BusinessID][bEnterPrice] = 1000;
+		SaveBusinessInt(BusinessID, "EnterPrice", bInfo[BusinessID][bEnterPrice]);
+	}
 
 	UpdateBusiness(BusinessID);
     Iter_Add(Business, BusinessID);
@@ -24762,37 +25561,23 @@ stock EndQuest(playerid, QuestID)
 				Разница в том, что требующих трудоустройства работах у тебя повышается скилл и соответственно оплата за труд.\n\
 				Узнать статистику по работе ты сможешь, прописав универсальную команду /main.\n\
 				Узнать, какие есть другие работы и где они находятся - /gps.", Color_White"Понятно", "");
-
-				ActorSay(QuestActor, "Ты справился! Молодец! Кстати, работы делятся на требующие трудоустройства и не требующие.", 3000, playerid);
-				SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Работа на лесопилке относится к последней категории.", 3000, playerid);
-				SetTimerEx("ActorSay", 6000, false, "dsd", _:QuestActor, "Разница в том, что требующих трудоустройства работах у тебя повышается скилл и соответственно оплата за труд.", 3000, playerid);
-				SetTimerEx("ActorSay", 9000, false, "dsd", _:QuestActor, "Узнать статистику по работе ты сможешь, прописав универсальную команду /main.", 3000, playerid);
-				SetTimerEx("ActorSay", 12000, false, "dsd", _:QuestActor, "Узнать, какие есть другие работы и где они находятся - /gps.", 3000, playerid);
 			}
 			case MedCardQuest:
 			{
 				format(str, sizeof(str), Main_Color"%s", Quests[QuestID][QuestName]);
 				ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, str, Color_White"Миссия выполнена. Кстати, мед.карта нужна для приобретения всех лицензий. В больнице ты также можешь сдать сперму за деньги.\n\
 				Иногда мед.работники могут брать кровь у других игроков – за это ты также можешь получить награду.", Color_White"Понятно", "");
-
-				ActorSay(QuestActor, "Миссия выполнена. Кстати, мед.карта нужна для приобретения всех лицензий. В больнице ты также можешь сдать сперму за деньги.", 3000, playerid);
-				SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Иногда мед.работники могут брать кровь у других игроков – за это ты также можешь получить награду.", 3000, playerid);
 			}
 			case DriveLicQuest:
 			{
 				format(str, sizeof(str), Main_Color"%s", Quests[QuestID][QuestName]);
 				ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, str, Color_White"Миссия выполнена. Кстати, в Мэрии ты также сможешь приобрести и другие виды лицензий.\n\
 				Также, там ты сможешь найти рейтинги самых богатых игроков, лидеров и модераторов.", Color_White"Понятно", "");
-
-				ActorSay(QuestActor, "Миссия выполнена. Кстати, в Мэрии ты также сможешь приобрести и другие виды лицензий.", 3000, playerid);
-				SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Также, там ты сможешь найти рейтинги самых богатых игроков, лидеров и модераторов.", 3000, playerid);
 			}
 			case BusQuest:
 			{
 				format(str, sizeof(str), Main_Color"%s", Quests[QuestID][QuestName]);
 				ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, str, Color_White"Молодец! Остальные работы ты сможешь найти в (/gps – Трудоустройства), а доп. заработок в (/gps –доп.заработок)", Color_White"Понятно", "");
-
-				ActorSay(QuestActor, "Молодец! Остальные работы ты сможешь найти в (/gps – Трудоустройства), а доп. заработок в (/gps –доп.заработок)", 3000, playerid);
 			}
 			case BankCardQuest:
 			{
@@ -24800,19 +25585,12 @@ stock EndQuest(playerid, QuestID)
 				ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, str, Color_White"Отлично! Помимо возможности снимать и класть свои деньги на счёт.\n\
 				Ты так же сможешь через банк оплачивать счёта за свои дом или бизнес.\n\
 				Ну и кончено же, переводить крупные суммы другим игрокам.", Color_White"Понятно", "");
-
-				ActorSay(QuestActor, "Отлично! Помимо возможности снимать и класть свои деньги на счёт.", 3000, playerid);
-				SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Ты так же сможешь через банк оплачивать счёта за свои дом или бизнес.", 3000, playerid);
-				SetTimerEx("ActorSay", 6000, false, "dsd", _:QuestActor, "Ну и кончено же, переводить крупные суммы другим игрокам.", 3000, playerid);
 			}
 			case GoodbyeQuest:
 			{
 				format(str, sizeof(str), Main_Color"%s", Quests[QuestID][QuestName]);
 				ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, str, Color_White"Ну вот и все. Дальше – сам.\n\
 				Мы дали тебе некоторую базу для игры на нашем сервере, остальное придёт с опытом игры. Удачи!", Color_White"Понятно", "");
-
-				ActorSay(QuestActor, "Ну вот и все. Дальше – сам.", 3000, playerid);
-				SetTimerEx("ActorSay", 3000, false, "dsd", _:QuestActor, "Мы дали тебе некоторую базу для игры на нашем сервере, остальное придёт с опытом игры. Удачи!", 3000, playerid);
 			}
 		}
 	}
@@ -25071,6 +25849,15 @@ stock ProxDetector(playerid, Float:max_range, color, const string[], bool:Adding
     return 1;
 }
 
+forward ClearDrunkItem(playerid);
+public ClearDrunkItem(playerid)
+{
+	if(GetPlayerSpecialAction(playerid) == SPECIAL_ACTION_SMOKE_CIGGY) SetPlayerSpecialAction(playerid, SPECIAL_ACTION_NONE);
+	else RemovePlayerAttachedObject(playerid, AttachSlotOther);
+	DeletePVar(playerid, "GulpCount");
+	DeletePVar(playerid, "DrunkForGulp");
+}
+
 forward ClearAnim(playerid);
 public ClearAnim(playerid)
 {
@@ -25082,26 +25869,35 @@ forward AnimSpurnkTake(playerid);
 public AnimSpurnkTake(playerid)
 {
 	ApplyAnimation(playerid, "VENDING", "VEND_USE_PT2", 1.5, false, false, false, false, 0, true);
-	SetTimerEx("Drink", 500, false, "dfs", playerid, 5.0, "Sprunk");
+	SetTimerEx("Drink", 500, false, "dfsd", playerid, 5.0, "Sprunk", 0);
 	return 1;
 }
 
-forward Drink(playerid, Float:Heal, const ItemsName[]);
-public Drink(playerid, Float:Heal, const ItemsName[])
+forward Drink(playerid, Float:Heal, const ItemsName[], DrunkGive);
+public Drink(playerid, Float:Heal, const ItemsName[], DrunkGive)
 {
 	DeletePVar(playerid, "BlockSprunk");
 
 	ApplyAnimation(playerid, "VENDING", "VEND_DRINK2_P", 4.1, false, false, false, false, 0, true);
 	SetTimerEx("ClearAnim", 1400, false, "d", playerid);
 
-	AntiCheatGetHealth(playerid, pInfo[playerid][pHealth]);
-	pInfo[playerid][pHealth] += Heal;
-	if(pInfo[playerid][pHealth] > 100.0) pInfo[playerid][pHealth] = 100.0;
-	SetPlayerHealth(playerid, pInfo[playerid][pHealth]);
-	SavePlayerFloat(playerid, "Health", pInfo[playerid][pHealth]);
-	new str[100];
-	format(str, sizeof(str), "выпил(а) %s", ItemsName);
-	ProxDetector(playerid, MESSAGE_DIST, BitColor_Me, str);
+	if(Heal != 0.0)
+	{
+		AntiCheatGetHealth(playerid, pInfo[playerid][pHealth]);
+		pInfo[playerid][pHealth] += Heal;
+		if(pInfo[playerid][pHealth] > 100.0) pInfo[playerid][pHealth] = 100.0;
+		SetPlayerHealth(playerid, pInfo[playerid][pHealth]);
+		SavePlayerFloat(playerid, "Health", pInfo[playerid][pHealth]);
+	}
+
+	if(DrunkGive != 0) SetPlayerDrunkLevel(playerid, GetPlayerDrunkLevel(playerid)+DrunkGive);
+
+	if(strlen(ItemsName))
+	{
+		new str[100];
+		format(str, sizeof(str), "выпил(а) %s", ItemsName);
+		ProxDetector(playerid, MESSAGE_DIST, BitColor_Me, str);
+	}
 	return 1;
 }
 
@@ -25116,9 +25912,13 @@ public Eat(playerid, Float:Heal, const ItemsName[])
 	if(pInfo[playerid][pHealth] > 100.0) pInfo[playerid][pHealth] = 100.0;
 	SetPlayerHealth(playerid, pInfo[playerid][pHealth]);
 	SavePlayerFloat(playerid, "Health", pInfo[playerid][pHealth]);
-	new str[100];
-	format(str, sizeof(str), "съел(а) %s", ItemsName);
-	ProxDetector(playerid, MESSAGE_DIST, BitColor_Me, str);
+
+	if(strlen(ItemsName))
+	{
+		new str[100];
+		format(str, sizeof(str), "съел(а) %s", ItemsName);
+		ProxDetector(playerid, MESSAGE_DIST, BitColor_Me, str);
+	}
 	return 1;
 }
 
@@ -25358,6 +26158,8 @@ public LoadAccount(playerid)
 	cache_get_value_name_int(0, "PlayedTime", pInfo[playerid][pPlayedTime]);
 	cache_get_value_name_int(0, "DayPlayedTime", pInfo[playerid][pDayPlayedTime]);
 	cache_get_value_name_int(0, "SpawnChange", pInfo[playerid][pSpawnChange]);
+	cache_get_value_name_int(0, "RobCount", pInfo[playerid][pRobCount]);
+	cache_get_value_name_int(0, "FightStyle", pInfo[playerid][pFightStyle]);
 
 	cache_get_value_name_int(0, "TentCD", TempVar);
 	if(TempVar) SetPVarInt(playerid, "TentCD", TempVar);
@@ -25392,7 +26194,7 @@ public LoadAccount(playerid)
 	cache_get_value_name(0, "Mail", pInfo[playerid][pMail], 321);
 	cache_get_value_name(0, "RegIP", pInfo[playerid][pRegIp], 17);
 	cache_get_value_name(0, "AdminPass", pInfo[playerid][pAdminPass], 33);
-	new str[100];
+	new str[300];
 	cache_get_value_name(0, "SkillExp", str);
 	if(strlen(str)) sscanf(str, "p<,>a<i>[*]", Max_Job, pInfo[playerid][pSkillExp]);
 
@@ -25491,6 +26293,12 @@ public LoadAccount(playerid)
 	mysql_format(DB, str, sizeof(str), "SELECT * FROM `quests` WHERE `pID` = '%d'", pInfo[playerid][pID]);
 	mysql_tquery(DB, str, "LoadQuests", "d", playerid);
 
+	str[0] = EOS;
+	mysql_format(DB, str, sizeof(str), "SELECT `weddings`.`ID`, `weddings`.`mID`, `account`.`Name` FROM `weddings` \
+	INNER JOIN `account` ON (`account`.`ID` = `weddings`.`ID` OR `account`.`ID` = `weddings`.`mID`) \
+	WHERE `weddings`.`ID` = '%d' OR `weddings`.`mID` = '%d'", pInfo[playerid][pID], pInfo[playerid][pID]);
+	mysql_tquery(DB, str, "LoadWeddings", "d", playerid);
+
 	pInfo[playerid][pAuth] = true;
 
 	if(pInfo[playerid][pMembers] != Fraction_None && pInfo[playerid][pRank] >= FractionMaxRank) FillLeaderBoard();
@@ -25581,6 +26389,30 @@ public CheckAccountHouse(playerid)
 	return 1;
 }
 
+forward LoadWeddings(playerid);
+public LoadWeddings(playerid)
+{
+	new row = cache_num_rows();
+	if(row)
+	{
+		for(new i = 0; i < row; i++)
+		{
+			new Name[MAX_PLAYER_NAME+1];
+			cache_get_value_name(i, "Name", Name);
+			if(!strcmp(Name, pInfo[playerid][pName])) continue;
+			strmid(pInfo[playerid][pMarriedName], Name, 0, strlen(Name));
+
+			cache_get_value_name_int(i, "ID", pInfo[playerid][pMarriedID]);
+			if(pInfo[playerid][pMarriedID] == pInfo[playerid][pID]) cache_get_value_name_int(i, "mID", pInfo[playerid][pMarriedID]);
+		}
+	}
+	else
+	{
+		pInfo[playerid][pMarriedID] = 0;
+		pInfo[playerid][pMarriedName][0] = EOS;
+	}
+}
+
 forward LoadQuests(playerid);
 public LoadQuests(playerid)
 {
@@ -25620,8 +26452,13 @@ stock TpPlayerToPlayer(playerid, toid)
     SetPlayerPosition(toid, X, Y, Z, A, GetPlayerVirtualWorld(playerid), GetPlayerInterior(playerid));
 
     if(GetPVarInt(playerid, "InBusiness")) SetPVarInt(toid, "InBusiness", GetPVarInt(playerid, "InBusiness"));
+	else DeletePVar(toid, "InBusiness");
+
     if(GetPVarInt(playerid, "InHouse")) SetPVarInt(toid, "InHouse", GetPVarInt(playerid, "InHouse"));
+	else DeletePVar(toid, "InHouse");
+
     if(GetPVarInt(playerid, "InPickup")) SetPVarInt(toid, "InPickup", GetPVarInt(playerid, "InPickup"));
+	else DeletePVar(toid, "InPickup");
 	return 1;
 }
 
@@ -25823,6 +26660,52 @@ stock PayDay()
 		mysql_tquery(DB, query);
 	}
 
+	MaterialShipmentCD--;
+	if(MaterialShipmentCD <= 0)
+	{
+		MaterialShipmentCD = 6;
+		new query[100];
+		mysql_format(DB, query, sizeof(query), "UPDATE `server_info` SET `MaterialShipmentCD` = '%d'", MaterialShipmentCD);
+		mysql_tquery(DB, query);
+
+		for(new i = 0; i < sizeof(ShipmentMaterials); i++)
+		{
+			if(ShipmentMaterials[i][ShipmentPickup] && IsValidDynamicPickup(ShipmentMaterials[i][ShipmentPickup])) DestroyDynamicPickup(ShipmentMaterials[i][ShipmentPickup]);
+			if(ShipmentMaterials[i][ShipmentText] && IsValidDynamic3DTextLabel(ShipmentMaterials[i][ShipmentText])) DestroyDynamic3DTextLabel(ShipmentMaterials[i][ShipmentText]);
+			if(ShipmentMaterials[i][ShipmentArea] && IsValidDynamicArea(ShipmentMaterials[i][ShipmentArea])) DestroyDynamicArea(ShipmentMaterials[i][ShipmentArea]);
+
+			ShipmentMaterials[i][ShipmentPickup] = CreateDynamicPickup(19832, 1, ShipmentMaterials[i][ShipmentX], ShipmentMaterials[i][ShipmentY], ShipmentMaterials[i][ShipmentZ], 0, 0);
+			ShipmentMaterials[i][ShipmentText] = CreateDynamic3DTextLabel(Main_Color"Осталось ящиков 20/20", -1, ShipmentMaterials[i][ShipmentX], ShipmentMaterials[i][ShipmentY], ShipmentMaterials[i][ShipmentZ]+0.5, 15.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+			ShipmentMaterials[i][ShipmentArea] = CreateDynamicSphere(ShipmentMaterials[i][ShipmentX], ShipmentMaterials[i][ShipmentY], ShipmentMaterials[i][ShipmentZ], 1.0, 0, 0);
+			Streamer_SetIntData(STREAMER_TYPE_AREA, ShipmentMaterials[i][ShipmentArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Shipment);
+			Streamer_SetIntData(STREAMER_TYPE_AREA, ShipmentMaterials[i][ShipmentArea],  E_STREAMER_INDX, i);
+			ShipmentMaterials[i][ShipmentMaterialsCount] = 20;
+		}
+		SendAllMessage(Color_Gold"***");
+		SendAllMessage(Color_Gold"Внимание! Груз прибыл на пункт прибытия материалов! Есть час на их разгрузку.");
+		SendAllMessage(Color_Gold"***");
+	}
+	else
+	{
+		new query[100];
+		mysql_format(DB, query, sizeof(query), "UPDATE `server_info` SET `MaterialShipmentCD` = '%d'", MaterialShipmentCD);
+		mysql_tquery(DB, query);
+
+		for(new i = 0; i < sizeof(ShipmentMaterials); i++)
+		{
+			if(ShipmentMaterials[i][ShipmentMaterialsCount])
+			{
+				ShipmentMaterials[i][ShipmentMaterialsCount] = 0;
+				if(ShipmentMaterials[i][ShipmentPickup] && IsValidDynamicPickup(ShipmentMaterials[i][ShipmentPickup])) DestroyDynamicPickup(ShipmentMaterials[i][ShipmentPickup]);
+				ShipmentMaterials[i][ShipmentPickup] = 0;
+				if(ShipmentMaterials[i][ShipmentText] && IsValidDynamic3DTextLabel(ShipmentMaterials[i][ShipmentText])) DestroyDynamic3DTextLabel(ShipmentMaterials[i][ShipmentText]);
+				ShipmentMaterials[i][ShipmentText] = Text3D:0;
+				if(ShipmentMaterials[i][ShipmentArea] && IsValidDynamicArea(ShipmentMaterials[i][ShipmentArea])) DestroyDynamicArea(ShipmentMaterials[i][ShipmentArea]);
+				ShipmentMaterials[i][ShipmentArea] = 0;
+			}
+		}
+	}
+
 	{
 		new MafiaBizzCount[MAX_FRACTION] = {0, ...};
 		foreach(new i: Business)
@@ -25872,6 +26755,17 @@ stock PayDay()
 			pInfo[i][pWanted]--;
 			SetPlayerWantedLevel(i, pInfo[i][pWanted]);
 			SavePlayerInt(i, "Wanted", pInfo[i][pWanted]);
+		}
+
+		if(!pInfo[i][pWanted] && pInfo[i][pRobCount])
+		{
+			string[0] = EOS;
+			format(string, sizeof(string), Color_Gold"Вы скрылись от полиции после ограбления и получили награбленные деньги: "Color_Green"%d$", pInfo[i][pRobCount]);
+			SendClientMessage(i, -1, string);
+			GivePlayerMoneyEx(i, pInfo[i][pRobCount]);
+
+			pInfo[i][pRobCount] = 0;
+			SavePlayerInt(i, "RobCount", pInfo[i][pRobCount]);
 		}
 
 		if(pInfo[i][pCard])
@@ -26336,29 +27230,6 @@ public SecondTimer()
 		}
 	}
 
-	if(MaterialShipmentCD < gettime())
-	{
-		MaterialShipmentCD = gettime()+(3600*(6+random(7)));
-		new query[100];
-		mysql_format(DB, query, sizeof(query), "UPDATE `server_info` SET `MaterialShipmentCD` = '%d'", MaterialShipmentCD);
-		mysql_tquery(DB, query);
-
-		for(new i = 0; i < sizeof(ShipmentMaterials); i++)
-		{
-			if(ShipmentMaterials[i][ShipmentPickup] && IsValidDynamicPickup(ShipmentMaterials[i][ShipmentPickup])) DestroyDynamicPickup(ShipmentMaterials[i][ShipmentPickup]);
-			if(ShipmentMaterials[i][ShipmentText] && IsValidDynamic3DTextLabel(ShipmentMaterials[i][ShipmentText])) DestroyDynamic3DTextLabel(ShipmentMaterials[i][ShipmentText]);
-			if(ShipmentMaterials[i][ShipmentArea] && IsValidDynamicArea(ShipmentMaterials[i][ShipmentArea])) DestroyDynamicArea(ShipmentMaterials[i][ShipmentArea]);
-
-			ShipmentMaterials[i][ShipmentPickup] = CreateDynamicPickup(19832, 1, ShipmentMaterials[i][ShipmentX], ShipmentMaterials[i][ShipmentY], ShipmentMaterials[i][ShipmentZ], 0, 0);
-			ShipmentMaterials[i][ShipmentText] = CreateDynamic3DTextLabel(Main_Color"Осталось ящиков 20/20", -1, ShipmentMaterials[i][ShipmentX], ShipmentMaterials[i][ShipmentY], ShipmentMaterials[i][ShipmentZ]+0.5, 15.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
-			ShipmentMaterials[i][ShipmentArea] = CreateDynamicSphere(ShipmentMaterials[i][ShipmentX], ShipmentMaterials[i][ShipmentY], ShipmentMaterials[i][ShipmentZ], 1.0, 0, 0);
-			Streamer_SetIntData(STREAMER_TYPE_AREA, ShipmentMaterials[i][ShipmentArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Shipment);
-			Streamer_SetIntData(STREAMER_TYPE_AREA, ShipmentMaterials[i][ShipmentArea],  E_STREAMER_INDX, i);
-			ShipmentMaterials[i][ShipmentMaterialsCount] = 20;
-		}
-		SendRMessageEx(Fraction_Army, "Внимание! Груз с материалами прибыл на точку разгрузки!");
-	}
-
 	for(new i = 0; i < MAX_CASINOTABLE; i++)
 	{
 		if(CasinoTable[i][CasTabID])
@@ -26600,11 +27471,9 @@ public SecondTimer()
 			}
 			else pInfo[i][pAFKText] = CreateDynamic3DTextLabel(str, -1, 0.0, 0.0, 0.3, 10.0, i, INVALID_VEHICLE_ID, 0, GetPlayerVirtualWorld(i), GetPlayerInterior(i));
 		}
-		else
-		{
-			pInfo[i][pPlayedTime]++;
-			pInfo[i][pDayPlayedTime]++;
-		}
+		
+		pInfo[i][pPlayedTime]++;
+		pInfo[i][pDayPlayedTime]++;
 
 		if(GetPVarInt(i, "PostDrugEffect") && GetPVarInt(i, "PostDrugEffect") < gettime())
 		{
@@ -32361,6 +33230,130 @@ stock CreatePickups()
 	Pickups[DrugDeallerHelp][IsPickTP] = false;
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[DrugDeallerHelp][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[DrugDeallerHelp][PickAreaID],  E_STREAMER_INDX, DrugDeallerHelp);
+
+	Pickups[GumLSExit][PickJob] = Job_None;
+	Pickups[GumLSExit][PickFraction] = Fraction_None;
+	Pickups[GumLSExit][PickID] = CreateDynamicPickup(19132, 1, 772.3182,-5.5138,1000.7285, 100, 5);
+	Pickups[GumLSExit][PickAreaID] = CreateDynamicSphere(772.3182,-5.5138,1000.7285, 2.0, 100, 5);
+	Pickups[GumLSExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 772.3182,-5.5138,1000.7285+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 100, 5);
+	Pickups[GumLSExit][PickAngle] = 3.6418;
+	Pickups[GumLSExit][IsPickTP] = true;
+	Pickups[GumLSExit][PickTpPickID] = GumLSEnter;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GumLSExit][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GumLSExit][PickAreaID],  E_STREAMER_INDX, GumLSExit);
+
+	Pickups[GumLSEnter][PickJob] = Job_None;
+	Pickups[GumLSEnter][PickFraction] = Fraction_None;
+	Pickups[GumLSEnter][PickID] = CreateDynamicPickup(19132, 1,2229.8560,-1721.2123,13.5608, 0, 0);
+	Pickups[GumLSEnter][PickAreaID] = CreateDynamicSphere(2229.8560,-1721.2123,13.5608, 2.0, 0, 0);
+	Pickups[GumLSEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 2229.8560,-1721.2123,13.5608+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[GumLSEnter][PickAngle] = 135.5798;
+	Pickups[GumLSEnter][IsPickTP] = true;
+	Pickups[GumLSEnter][PickTpPickID] = GumLSExit;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GumLSEnter][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GumLSEnter][PickAreaID],  E_STREAMER_INDX, GumLSEnter);
+
+	Pickups[GumLSPick][PickJob] = Job_None;
+	Pickups[GumLSPick][PickFraction] = Fraction_None;
+	Pickups[GumLSPick][PickID] = CreateDynamicPickup(1239, 1, 761.3005,10.9468,1001.1639, 100, 5);
+	Pickups[GumLSPick][PickAreaID] = CreateDynamicSphere(761.3005,10.9468,1001.1639, 2.0, 100, 5);
+	Pickups[GumLSPick][PickTextID] = CreateDynamic3DTextLabel(Color_White"Изучение стиля боя "Main_Color"\""Color_White"Бокс"Main_Color"\"", -1, 761.3005,10.9468,1001.1639+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 100, 5);
+	Pickups[GumLSPick][IsPickTP] = false;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GumLSPick][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GumLSPick][PickAreaID],  E_STREAMER_INDX, GumLSPick);
+
+	Pickups[GumSFExit][PickJob] = Job_None;
+	Pickups[GumSFExit][PickFraction] = Fraction_None;
+	Pickups[GumSFExit][PickID] = CreateDynamicPickup(19132, 1, 774.1173,-50.4760,1000.5859, 100, 6);
+	Pickups[GumSFExit][PickAreaID] = CreateDynamicSphere(774.1173,-50.4760,1000.5859, 2.0, 100, 6);
+	Pickups[GumSFExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 774.1173,-50.4760,1000.5859+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 100, 6);
+	Pickups[GumSFExit][PickAngle] = 5.1503;
+	Pickups[GumSFExit][IsPickTP] = true;
+	Pickups[GumSFExit][PickTpPickID] = GumSFEnter;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GumSFExit][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GumSFExit][PickAreaID],  E_STREAMER_INDX, GumSFExit);
+
+	Pickups[GumSFEnter][PickJob] = Job_None;
+	Pickups[GumSFEnter][PickFraction] = Fraction_None;
+	Pickups[GumSFEnter][PickID] = CreateDynamicPickup(19132, 1, -2270.6458,-155.8880,35.3203, 0, 0);
+	Pickups[GumSFEnter][PickAreaID] = CreateDynamicSphere(-2270.6458,-155.8880,35.3203, 2.0, 0, 0);
+	Pickups[GumSFEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -2270.6458,-155.8880,35.3203+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[GumSFEnter][PickAngle] = 266.1593;
+	Pickups[GumSFEnter][IsPickTP] = true;
+	Pickups[GumSFEnter][PickTpPickID] = GumSFExit;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GumSFEnter][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GumSFEnter][PickAreaID],  E_STREAMER_INDX, GumSFEnter);
+
+	Pickups[GumSFPick][PickJob] = Job_None;
+	Pickups[GumSFPick][PickFraction] = Fraction_None;
+	Pickups[GumSFPick][PickID] = CreateDynamicPickup(1239, 1, 768.2805,-37.1735,1000.6865, 100, 6);
+	Pickups[GumSFPick][PickAreaID] = CreateDynamicSphere(768.2805,-37.1735,1000.6865, 2.0, 100, 6);
+	Pickups[GumSFPick][PickTextID] = CreateDynamic3DTextLabel(Color_White"Изучение стиля боя "Main_Color"\""Color_White"Кунг-фу"Main_Color"\"", -1, 768.2805,-37.1735,1000.6865+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 100, 6);
+	Pickups[GumSFPick][IsPickTP] = false;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GumSFPick][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GumSFPick][PickAreaID],  E_STREAMER_INDX, GumSFPick);
+
+	Pickups[GumLVExit][PickJob] = Job_None;
+	Pickups[GumLVExit][PickFraction] = Fraction_None;
+	Pickups[GumLVExit][PickID] = CreateDynamicPickup(19132, 1, 773.9929,-78.8452,1000.6628, 100, 7);
+	Pickups[GumLVExit][PickAreaID] = CreateDynamicSphere(773.9929,-78.8452,1000.6628, 2.0, 100, 7);
+	Pickups[GumLVExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 773.9929,-78.8452,1000.6628+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 100, 7);
+	Pickups[GumLVExit][PickAngle] = 356.4520;
+	Pickups[GumLVExit][IsPickTP] = true;
+	Pickups[GumLVExit][PickTpPickID] = GumLVEnter;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GumLVExit][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GumLVExit][PickAreaID],  E_STREAMER_INDX, GumLVExit);
+
+	Pickups[GumLVEnter][PickJob] = Job_None;
+	Pickups[GumLVEnter][PickFraction] = Fraction_None;
+	Pickups[GumLVEnter][PickID] = CreateDynamicPickup(19132, 1, 1968.8458,2295.8726,16.4559, 0, 0);
+	Pickups[GumLVEnter][PickAreaID] = CreateDynamicSphere(1968.8458,2295.8726,16.4559, 2.0, 0, 0);
+	Pickups[GumLVEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 1968.8458,2295.8726,16.4559+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[GumLVEnter][PickAngle] = 180.0668;
+	Pickups[GumLVEnter][IsPickTP] = true;
+	Pickups[GumLVEnter][PickTpPickID] = GumLVExit;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GumLVEnter][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GumLVEnter][PickAreaID],  E_STREAMER_INDX, GumLVEnter);
+
+	Pickups[GumLVPick][PickJob] = Job_None;
+	Pickups[GumLVPick][PickFraction] = Fraction_None;
+	Pickups[GumLVPick][PickID] = CreateDynamicPickup(1239, 1, 772.2558,-64.7850,1000.7184, 100, 7);
+	Pickups[GumLVPick][PickAreaID] = CreateDynamicSphere(772.2558,-64.7850,1000.7184, 2.0, 100, 7);
+	Pickups[GumLVPick][PickTextID] = CreateDynamic3DTextLabel(Color_White"Изучение стиля боя "Main_Color"\""Color_White"Таек-ван-до"Main_Color"\"", -1, 772.2558,-64.7850,1000.7184+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 100, 7);
+	Pickups[GumLVPick][IsPickTP] = false;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GumLVPick][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GumLVPick][PickAreaID],  E_STREAMER_INDX, GumLVPick);
+
+	Pickups[ChurchExit][PickJob] = Job_None;
+	Pickups[ChurchExit][PickFraction] = Fraction_None;
+	Pickups[ChurchExit][PickID] = CreateDynamicPickup(19132, 1, 2228.9707,-1324.8760,251.0859, 6, 3);
+	Pickups[ChurchExit][PickAreaID] = CreateDynamicSphere(2228.9707,-1324.8760,251.0859, 2.0, 6, 3);
+	Pickups[ChurchExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 2228.9707,-1324.8760,251.0859+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 6, 3);
+	Pickups[ChurchExit][PickAngle] = 176.0735;
+	Pickups[ChurchExit][IsPickTP] = true;
+	Pickups[ChurchExit][PickTpPickID] = ChurchEnter;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[ChurchExit][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[ChurchExit][PickAreaID],  E_STREAMER_INDX, ChurchExit);
+
+	Pickups[ChurchEnter][PickJob] = Job_None;
+	Pickups[ChurchEnter][PickFraction] = Fraction_None;
+	Pickups[ChurchEnter][PickID] = CreateDynamicPickup(19132, 1, -1989.8992,1117.9519,54.4688, 0, 0);
+	Pickups[ChurchEnter][PickAreaID] = CreateDynamicSphere(-1989.8992,1117.9519,54.4688, 2.0, 0, 0);
+	Pickups[ChurchEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, -1989.8992,1117.9519,54.4688+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[ChurchEnter][PickAngle] = 271.4752;
+	Pickups[ChurchEnter][IsPickTP] = true;
+	Pickups[ChurchEnter][PickTpPickID] = ChurchExit;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[ChurchEnter][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[ChurchEnter][PickAreaID],  E_STREAMER_INDX, ChurchEnter);
+
+	Pickups[ChurchPick][PickJob] = Job_None;
+	Pickups[ChurchPick][PickFraction] = Fraction_None;
+	Pickups[ChurchPick][PickID] = CreateDynamicPickup(1240, 1, 2214.6396,-1332.7240,252.4141, 6, 3);
+	Pickups[ChurchPick][PickAreaID] = CreateDynamicSphere(2214.6396,-1332.7240,252.4141, 2.0, 6, 3);
+	Pickups[ChurchPick][PickTextID] = CreateDynamic3DTextLabel(Color_White"Изучение стиля боя "Main_Color"\""Color_White"Таек-ван-до"Main_Color"\"", -1, 2214.6396,-1332.7240,252.4141+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 6, 3);
+	Pickups[ChurchPick][IsPickTP] = false;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[ChurchPick][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[ChurchPick][PickAreaID],  E_STREAMER_INDX, ChurchPick);
 	return 1;
 }
 
@@ -32688,7 +33681,9 @@ public StopActorSay(ActorsInfo:ActorIndx)
 {
 	KillTimer(ActorTimerSay[ActorIndx]);
 	ActorTimerSay[ActorIndx] = 0;
+
 	UpdateDynamic3DTextLabelText(ActorsChat[ActorIndx], -1, "");
-	ApplyDynamicActorAnimation(Actors[ActorIndx], "CARRY","crry_prtial",4.0, false, false, false, false, 0);
+
+	ClearActorAnim(Actors[ActorIndx]);
 	return 1;
 }
