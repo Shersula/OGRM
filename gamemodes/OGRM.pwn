@@ -17670,6 +17670,7 @@ CMD:robbery(playerid)
 CMD:rob(playerid)
 {
 	new BusinessID = GetPVarInt(playerid, "InBusiness");
+	if(pInfo[playerid][pLevel] < 2) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно со 2 уровня");
 	if(!BusinessID || bInfo[BusinessID][bType] != BusinessBankFillial) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны находится в банке");
 	if(IsGovFraction(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Представителям закона запрещено грабить.");
 	if(pInfo[playerid][pWanted]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Запрещено грабить пока вы в розыске.");
@@ -19013,7 +19014,7 @@ stock WantedPlayer(playerid, WantedLvl)
 	else if(pInfo[playerid][pWanted] < 0) pInfo[playerid][pWanted] = 0;
 
 	new str[100];
-	switch(WantedLvl)
+	switch(pInfo[playerid][pWanted])
 	{
 		case 0: strcat(str, "ноль звезд");
 		case 1: strcat(str, "одна звезда");
@@ -19027,7 +19028,6 @@ stock WantedPlayer(playerid, WantedLvl)
 	format(str, sizeof(str), Color_Red"***Внимание! Твой уровень розыска ( %s из шести )***", str);
 	SendClientMessage(playerid, BitColor_Main, str);
 
-	pInfo[playerid][pWanted] = WantedLvl;
 	SetPlayerWantedLevel(playerid, pInfo[playerid][pWanted]);
 	SavePlayerInt(playerid, "Wanted", pInfo[playerid][pWanted]);
 	return 1;
