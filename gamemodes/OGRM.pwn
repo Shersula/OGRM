@@ -824,6 +824,7 @@ new Iterator:Bots<MAX_PLAYERS>;
 //////////CasinoTable///////////////
 #define MAX_CASINOTABLE			100
 #define MAX_PLAYER_CASINOTABLE	10
+#define MIN_PLAYER_CASINOTABLE	2
 
 #define CasinoTable_None		0
 #define CasinoTable_Dice		1
@@ -847,7 +848,6 @@ enum CasinoTableInfo
 	CasTabID,
 	CasTabObjectID,
 	CasTabType,
-	CasTabMaxPlayer,
 	CasTabBet,
 	CasTabBank,
 	Text3D:CasTabText,
@@ -871,7 +871,6 @@ stock ClearCasinoTable(TableID)
 {
 	CasinoTable[TableID][CasTabID] = 0;
 	CasinoTable[TableID][CasTabType] = CasinoTable_None;
-	CasinoTable[TableID][CasTabMaxPlayer] = 0;
 	CasinoTable[TableID][CasTabBet] = 0;
 	CasinoTable[TableID][CasTabBank] = 0;
 	if(CasinoTable[TableID][CasTabObjectID] && IsValidDynamicObject(CasinoTable[TableID][CasTabObjectID])) DestroyDynamicObject(CasinoTable[TableID][CasTabObjectID]);
@@ -3983,7 +3982,7 @@ public OnPlayerEditDynamicObject(playerid, STREAMER_TAG_OBJECT:objectid, respons
 	else if(GetPVarInt(playerid, "EditCasinoTable") && (response == EDIT_RESPONSE_CANCEL || response == EDIT_RESPONSE_FINAL))
 	{
 		new query[400];
-		mysql_format(DB, query, sizeof(query), "INSERT INTO `casino_table` (`X`, `Y`, `Z`, `RX`, `RY`, `RZ`, `Int`, `VW`, `Type`, `MaxPlayer`, `Bet`) VALUES ('%f', '%f', '%f', '%f', '%f', '%f', '%d', '%d', '%d', '%d', '%d')", x, y, z, rx, ry, rz, GetPlayerInterior(playerid), GetPlayerVirtualWorld(playerid), GetPVarInt(playerid, "EditCasinoTableType"), GetPVarInt(playerid, "EditCasinoTablePlayers"), GetPVarInt(playerid, "EditCasinoTableBet"));
+		mysql_format(DB, query, sizeof(query), "INSERT INTO `casino_table` (`X`, `Y`, `Z`, `RX`, `RY`, `RZ`, `Int`, `VW`, `Type`, `Bet`) VALUES ('%f', '%f', '%f', '%f', '%f', '%f', '%d', '%d', '%d', '%d')", x, y, z, rx, ry, rz, GetPlayerInterior(playerid), GetPlayerVirtualWorld(playerid), GetPVarInt(playerid, "EditCasinoTableType"), GetPVarInt(playerid, "EditCasinoTableBet"));
 		mysql_tquery(DB, query);
 		DestroyDynamicObject(objectid);
 
@@ -3998,7 +3997,6 @@ public OnPlayerEditDynamicObject(playerid, STREAMER_TAG_OBJECT:objectid, respons
 		mysql_tquery(DB, "SELECT * FROM `casino_table`", "LoadTable");
 		DeletePVar(playerid, "EditCasinoTable");
 		DeletePVar(playerid, "EditCasinoTableType");
-    	DeletePVar(playerid, "EditCasinoTablePlayers");
     	DeletePVar(playerid, "EditCasinoTableBet");
 		SendClientMessage(playerid, -1, Color_Yellow"Редактирование окончено");
 	}
@@ -5801,15 +5799,13 @@ public LoadTable()
 			cache_get_value_name_int(i, "Int", CasinoTable[i][CasTabInt]);
 			cache_get_value_name_int(i, "VW", CasinoTable[i][CasTabVW]);
 			cache_get_value_name_int(i, "Type", CasinoTable[i][CasTabType]);
-			cache_get_value_name_int(i, "MaxPlayer", CasinoTable[i][CasTabMaxPlayer]);
 			cache_get_value_name_int(i, "Bet", CasinoTable[i][CasTabBet]);
 
 			CasinoTable[i][CasTabObjectID] = CreateDynamicObject(19474, CasinoTable[i][CasTabX], CasinoTable[i][CasTabY], CasinoTable[i][CasTabZ], CasinoTable[i][CasTabRX], CasinoTable[i][CasTabRY], CasinoTable[i][CasTabRZ], CasinoTable[i][CasTabVW], CasinoTable[i][CasTabInt]);
 			query[0] = EOS;
 			format(query, sizeof(query), Main_Color"Стол %s\n\
-			"Main_Color"Игроков для старта: "Color_White"%d\n\
 			"Main_Color"Ставка: "Color_Green"%d фишек\n\
-			"Color_White"Чтобы использовать нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", CasinoTableTypeName[CasinoTable[i][CasTabType]], CasinoTable[i][CasTabMaxPlayer], CasinoTable[i][CasTabBet]);
+			"Color_White"Чтобы использовать нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", CasinoTableTypeName[CasinoTable[i][CasTabType]], CasinoTable[i][CasTabBet]);
 			CasinoTable[i][CasTabText] = CreateDynamic3DTextLabel(query, -1, CasinoTable[i][CasTabX], CasinoTable[i][CasTabY], CasinoTable[i][CasTabZ], 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, CasinoTable[i][CasTabVW], CasinoTable[i][CasTabInt]);
 			CasinoTable[i][CasTabArea] = CreateDynamicSphere(CasinoTable[i][CasTabX], CasinoTable[i][CasTabY], CasinoTable[i][CasTabZ], 2.0, CasinoTable[i][CasTabVW], CasinoTable[i][CasTabInt]);
 		}
@@ -23891,17 +23887,16 @@ CMD:deletetable(playerid)
 CMD:createtable(playerid, params[])
 {
 	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
-	new TableType, MaxPlayer, Bet;
-	if(sscanf(params, "ddd", TableType, MaxPlayer, Bet))
+	new TableType, Bet;
+	if(sscanf(params, "dd", TableType, Bet))
 	{
-		SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/createtable [Тип стола] [Количество игроков для игры за столом] [Ставка]");
+		SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/createtable [Тип] [Ставка]");
 		SendClientMessage(playerid, -1, Color_Grey"Тип 1 - Кости");
 		SendClientMessage(playerid, -1, Color_Grey"Тип 2 - 21 очко");
 		SendClientMessage(playerid, -1, Color_Grey"Тип 3 - Рулетка");
 		return 1;
 	}
 	if(TableType < 1 || TableType > 3) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Не верный тип");
-	if(MaxPlayer < 2 || MaxPlayer > MAX_PLAYER_CASINOTABLE) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Количество игроков за столом не может быть меньше 2х и больше "#MAX_PLAYER_CASINOTABLE);
 	if(Bet <= 0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Не верная сумма ставки");
 	if(GetPlayerState(playerid) != PLAYER_STATE_ONFOOT) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть на ногах");
 	if(GetPVarInt(playerid, "EditCasinoTable")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы уже редактируете стол");
@@ -23933,7 +23928,6 @@ CMD:createtable(playerid, params[])
     SendClientMessage(playerid, -1, Color_Yellow"Вы можете поворачивать камеру зажав [SPACE]");
     SetPVarInt(playerid, "EditCasinoTable", objid);
     SetPVarInt(playerid, "EditCasinoTableType", TableType);
-    SetPVarInt(playerid, "EditCasinoTablePlayers", MaxPlayer);
     SetPVarInt(playerid, "EditCasinoTableBet", Bet);
 	return 1;
 }
@@ -27349,12 +27343,12 @@ public SecondTimer()
 		{
 			if(!CasinoTable[i][CasTabStatus])
 			{
-				if(GetPlayerTableCount(i) >= CasinoTable[i][CasTabMaxPlayer])
+				if(GetPlayerTableCount(i) >= MIN_PLAYER_CASINOTABLE)
 				{
 					if(!CasinoTable[i][CasTabTimer])
 					{
-						SendMessageTable(i, "За столом собралось достаточное количество игроков. Игра начнется через 5 секунд");
-						CasinoTable[i][CasTabTimer] = 5;
+						SendMessageTable(i, "За столом собралось достаточное количество игроков. Игра начнется через 30 секунд");
+						CasinoTable[i][CasTabTimer] = 30;
 						TableUpdateInfo(i);
 					}
 					else
@@ -27380,7 +27374,7 @@ public SecondTimer()
 						TableUpdateInfo(i);
 					}
 				}
-				else if(GetPlayerTableCount(i) < CasinoTable[i][CasTabMaxPlayer] && CasinoTable[i][CasTabTimer])
+				else if(GetPlayerTableCount(i) < MIN_PLAYER_CASINOTABLE && CasinoTable[i][CasTabTimer])
 				{
 					SendMessageTable(i, "Кто-то покинул стол. Ожидание игроков");
 					CasinoTable[i][CasTabTimer] = 0;
@@ -31437,7 +31431,7 @@ stock PlayerSitTable(playerid, TableID)
 	if(GetPVarInt(playerid, "CasinoTable")) return 1;
 	if(GetItemCountInInventory(playerid, ItemCasinoCoin) < CasinoTable[TableID][CasTabBet]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно фишек чтобы сделать ставку");
 	if(CasinoTable[TableID][CasTabStatus]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"За этим столом уже идет игра");
-	if(GetPlayerTableCount(TableID) >= CasinoTable[TableID][CasTabMaxPlayer]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"За этим столом уже максимальное количество игроков");
+	if(GetPlayerTableCount(TableID) >= MAX_PLAYER_CASINOTABLE) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"За этим столом уже максимальное количество игроков");
 	RemovePlayerInventory(playerid, ItemCasinoCoin, CasinoTable[TableID][CasTabBet]);
 	CasinoTable[TableID][CasTabBank] += CasinoTable[TableID][CasTabBet];
 	for(new i = 0; i < MAX_PLAYER_CASINOTABLE; i++)
@@ -31791,7 +31785,7 @@ stock TableCheckWinner(TableID)
 			}
 		}
 	}
-	else if(PlayerWithBiggestScore == CasinoTable[TableID][CasTabMaxPlayer])
+	else if(PlayerWithBiggestScore == GetPlayerTableCount(TableID))
 	{
 		SendMessageTable(TableID, "Игра окончена в ничью, ставки возвращены");
 		for(new i = 0; i < MAX_PLAYER_CASINOTABLE; i++)
