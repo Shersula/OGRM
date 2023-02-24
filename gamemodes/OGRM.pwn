@@ -13417,6 +13417,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			SendClientMessage(playerid, -1, str);
 			SendClientMessage(playerid, -1, Color_White"Не забудьте оплатить его в ближайшем отделении банка");
 			SendClientMessage(playerid, -1, Main_Color"В случае если налог на бизнесе закончится, система автоматически оплатит налог на 1 день при наличии денег на банковском счету");
+			SendClientMessage(playerid, -1, Main_Color"Снять прибыль с бизнеса можно в ближайшем отделении банка");
 			return 1;
 		}
 		case D_Inventory:
@@ -14851,17 +14852,17 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			if(GetItemCountInInventory(playerid, ItemCasinoCoin) < count) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас нет столько фишек");
 			new BusinessID = GetPVarInt(playerid, "InBusiness");
 			new Price = floatround(count*1000 - (count*1000)*0.02);
-			if(bInfo[BusinessID][bMoney] < Price) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"В казино сейчас нет столько денег оно не может выкупить фишки");
+			//if(bInfo[BusinessID][bMoney] < Price) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"В казино сейчас нет столько денег оно не может выкупить фишки");
 
 			ActivateBusinessActors(playerid, BusinessID);
 			GivePlayerMoneyEx(playerid, Price);
 			RemovePlayerInventory(playerid, ItemCasinoCoin, count);
 
-			if(bInfo[BusinessID][bOwnerID])
+			/*if(bInfo[BusinessID][bOwnerID])
 			{
 				bInfo[BusinessID][bMoney] -= Price;
 				SaveBusinessInt(bInfo[BusinessID][bID], "Money", bInfo[BusinessID][bMoney]);
-			}
+			}*/
 			return 1;
 		}
 		case D_Casino_Buy_Menu:
@@ -18727,7 +18728,7 @@ CMD:frisk(playerid, params[])
 		{
 			format(str, sizeof(str), "%s"Color_Red"%s\t"Color_White"%dшт.\n", str, Items[pInventory[id][i][ItemID]][ItemName], GetItemCountInInventory(id, pInventory[id][i][ItemID]));
 		}
-		else format(str, sizeof(str), "%s"Color_White"%s\t%dшт.\n", str, Items[pInventory[id][i][ItemID]][ItemName], GetItemCountInInventory(id, pInventory[id][i][ItemID]));
+		else if(pInventory[id][i][ItemID] != ItemNone) format(str, sizeof(str), "%s"Color_White"%s\t%dшт.\n", str, Items[pInventory[id][i][ItemID]][ItemName], GetItemCountInInventory(id, pInventory[id][i][ItemID]));
 	}
 
 	strcat(str, "\n"Color_White"Экипировано:\n");
@@ -27486,8 +27487,9 @@ public SecondTimer()
 			if(PrisonMineMetall[i][MetallTimer] <= 0)
 			{
 				PrisonMineMetall[i][MetallTimer] = 0;
-				PrisonMineMetall[i][MetallID] = CreateDynamicObject(3929+random(3), PrisonMineMetall[i][MetallX], PrisonMineMetall[i][MetallY], PrisonMineMetall[i][MetallZ], PrisonMineMetall[i][MetallRX], PrisonMineMetall[i][MetallRY], PrisonMineMetall[i][MetallRZ], 2, 0);
-				format(str, sizeof(str), Main_Color"Руда: Готово к добыче\n["Color_White KEY_WALK_NAME Main_Color"]\nЧтобы добыть");
+				PrisonMineMetall[i][MetallID] = CreateDynamicObject(3929+random(3), PrisonMineMetall[i][MetallX], PrisonMineMetall[i][MetallY], PrisonMineMetall[i][MetallZ], PrisonMineMetall[i][MetallRX], PrisonMineMetall[i][MetallRY], PrisonMineMetall[i][MetallRZ], 100, 16);
+				format(str, sizeof(str), Main_Color"Камень: Готово к добыче\n["Color_White KEY_WALK_NAME Main_Color"]\nЧтобы добыть");
+			
 			}
 			UpdateDynamic3DTextLabelText(PrisonMineMetall[i][MetallText], -1, str);
 		}
