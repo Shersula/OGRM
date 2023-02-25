@@ -988,6 +988,9 @@ new FractionWare[MAX_FRACTION][FractionWareInfo];
 //////////Thief/////////////////
 new FractionThiefCD[MAX_FRACTION] = {0, ...};
 ////////////////////////////////
+//////Mafia Influence///////////
+new Float:FractionInfluence[MAX_FRACTION] = {0.0, ...};
+////////////////////////////////
 //////////Gang War//////////////
 
 enum WarZoneInfo
@@ -1009,7 +1012,6 @@ new WarZones[MAX_GANG_WAR_ZONES][WarZoneInfo];
 #define Gang_Bet_Type_Money			1
 #define Gang_Bet_Type_Materials 	2
 #define Gang_Bet_Type_Drugs			3
-#define Mafia_Bet_Type_Bizz			4
 
 #define War_Status_None						0
 #define War_Status_Wait_Accept				1
@@ -1018,7 +1020,7 @@ new WarZones[MAX_GANG_WAR_ZONES][WarZoneInfo];
 
 new WarBetType[MAX_FRACTION] = {War_Bet_Type_None, ...};
 new WarOpponent[MAX_FRACTION] = {Fraction_None, ...};
-new WarZone[MAX_FRACTION] = {0, ...}; //Используется для хранения индекса массива WarZones как места войны для банд || Используется как количество членов мафии в зоне бизнеса для войны за бизнесы
+new WarZone[MAX_FRACTION] = {0, ...}; //Используется для хранения индекса массива WarZones как места войны для банд
 new WarStatus[MAX_FRACTION] = {War_Status_None, ...};
 new WarTimer[MAX_FRACTION] = {0, ...};
 new WarBet[MAX_FRACTION] = {0, ...};
@@ -1168,10 +1170,6 @@ enum BusinessInfo
 	bThiefArea,
 	Text3D:bThiefText,
 	bThiefZoneArea,
-	bMafiaOwner,
-	bBizzWarCD,
-	bBizzWarGangZone,
-	bBizzWarZone,
 	bRob
 };
 new bInfo[MAX_BUSINESS+1][BusinessInfo]; //+1 - на 0 индекс который не используется
@@ -1258,15 +1256,6 @@ stock ClearBusiness(BusinessID)
 
 	if(bInfo[BusinessID][bThiefPickup] && IsValidDynamicPickup(bInfo[BusinessID][bThiefPickup])) DestroyDynamicPickup(bInfo[BusinessID][bThiefPickup]);
 	bInfo[BusinessID][bThiefPickup] = 0;
-
-	bInfo[BusinessID][bMafiaOwner] = Fraction_None;
-	bInfo[BusinessID][bBizzWarCD] = 0;
-
-	if(bInfo[BusinessID][bBizzWarZone] && IsValidDynamicArea(bInfo[BusinessID][bBizzWarZone])) DestroyDynamicArea(bInfo[BusinessID][bBizzWarZone]);
-	bInfo[BusinessID][bBizzWarZone] = 0;
-
-	if(bInfo[BusinessID][bBizzWarGangZone]) GangZoneDestroy(bInfo[BusinessID][bBizzWarGangZone]);
-	bInfo[BusinessID][bBizzWarGangZone] = 0;
 	return 1;
 }
 //////////House/////////////////
@@ -1912,7 +1901,6 @@ enum
 	D_EditBusiness_MoneyType,
 	D_EditBusiness_Price,
 	D_EditBusiness_NeedLevel,
-	D_EditBusiness_MafiaOwner,
 	D_EditBusiness_Name,
 	D_EditBusiness_Icon,
 	D_Inventory,
@@ -1992,7 +1980,6 @@ enum
     D_Paint,
 	D_Select_Load,
 	D_Alarm,
-	D_BizzWar,
 	D_Upgrade,
 	D_Upgrade_Accept,
 	D_Quest_Menu,
@@ -2015,7 +2002,8 @@ enum
 	D_Church,
 	D_Church_Wedding,
 	D_Church_Wedding_Accept,
-	D_Church_Divorce
+	D_Church_Divorce,
+	D_Set_Influence
 };
 
 stock ShowDialog(playerid, dialogid, style, const caption[], const info[], const button1[], const button2[])
@@ -2228,7 +2216,7 @@ new Items[][ItemsInfo] =
 	{323, -1, "Вибратор увеличенного диаметра", 12, 1}
 };
 
-#define Max_Slots 	31
+#define Max_Slots 	35
 enum InventoryInfo
 {
 	ItemID,
@@ -2413,6 +2401,7 @@ enum PlayerInfo
 	pSkin,
 	pSkins[MAX_PLAYER_SKINS],
 	pRegIp[17],
+	pIP[17],
 	pRegDate,
 	bool:pAnimLoad,
 	pAdmin,
@@ -2538,6 +2527,7 @@ stock ClearAccount(playerid)
 	pInfo[playerid][pGender] = 0;
 	pInfo[playerid][pSkin] = 0;
 	pInfo[playerid][pRegIp][0] = EOS;
+	pInfo[playerid][pIP][0] = EOS;
 	pInfo[playerid][pRegDate] = 0;
 	pInfo[playerid][pAuth] = false;
 	pInfo[playerid][pAnimLoad] = false;
@@ -2827,9 +2817,14 @@ public OnGameModeInit()
 	mysql_tquery(DB, "SELECT * FROM `bot_time`", "LoadBotSettings");
 	mysql_tquery(DB, "SELECT * FROM `server_info`", "LoadServerInfo");
 
+	WarZones[0][MinX] = 0;
+	WarZones[0][MinY] = 0;
+	WarZones[0][MaxX] = 0;
+	WarZones[0][MaxY] = 0;
 	WarZones[0][WarZoneName][0] = EOS;
 	WarZones[0][WarZoneID] = 0;
     WarZones[0][WarDynamicZone] = 0;
+	WarZones[0][WarIcon] = 0;
 
 	WarZones[1][MinX] = 2159;
 	WarZones[1][MinY] = -162;
@@ -2988,10 +2983,9 @@ public OnPlayerConnect(playerid)
 	SetSpawnInfo(playerid, NO_TEAM, 0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0, 0, 0);
 	TogglePlayerSpectating(playerid, true);
 
-	new query[100];
-	GetPlayerIp(playerid, query, 17);
+	GetPlayerIp(playerid, pInfo[playerid][pIP], 16);
 
-	if(!strcmp(query, "176.32.39.2"))
+	if(!strcmp(pInfo[playerid][pIP], "176.32.39.2"))
 	{
 		ToggleAntiCheat(playerid, false);
 		Iter_Add(Bots, playerid);
@@ -3003,7 +2997,8 @@ public OnPlayerConnect(playerid)
 		RemovePlayerObject(playerid);
     	LoadPlayerTextDraw(playerid);
 
-    	mysql_format(DB, query, sizeof(query), "SELECT * FROM `ipbans` WHERE `IP` = '%s'", query);
+		new query[100];
+    	mysql_format(DB, query, sizeof(query), "SELECT * FROM `ipbans` WHERE `IP` = '%s'", pInfo[playerid][pIP]);
     	mysql_tquery(DB, query, "CheckAccountIPBan", "d", playerid);
 	}
     return 1;
@@ -3319,8 +3314,7 @@ public OnPlayerDisconnect(playerid, reason)
 	TextDrawHideForPlayer(playerid, SiteTD);
 
 	new str[300];
-	GetPlayerIp(playerid, str, 16);
-	format(str, sizeof(str), Color_DarkGrey"%s[%d] отключился от сервера (IP: %s | RegIP: %s)", pInfo[playerid][pName], playerid, str, pInfo[playerid][pRegIp]);
+	format(str, sizeof(str), Color_DarkGrey"%s[%d] отключился от сервера (IP: %s | RegIP: %s)", pInfo[playerid][pName], playerid, pInfo[playerid][pIP], pInfo[playerid][pRegIp]);
 	SendAdminMessage(str);
 
 	SaveAccount(playerid);
@@ -3715,28 +3709,6 @@ public OnPlayerSpawn(playerid)
 
 	        for(new j = 0; j < sizeof(WarPTD[]); j++) PlayerTextDrawShow(playerid, WarPTD[playerid][j]);
 		}
-		else if(IsAMafia(pInfo[playerid][pMembers]))
-		{
-			GangZoneShowForPlayer(playerid, bInfo[WarBet[pInfo[playerid][pMembers]]][bBizzWarGangZone], FractionColor[pInfo[playerid][pMembers]]-0x7F);
-			GangZoneFlashForPlayer(playerid, bInfo[WarBet[pInfo[playerid][pMembers]]][bBizzWarGangZone], FractionColor[WarOpponent[pInfo[playerid][pMembers]]]-0x7F);
-
-            new str[100];
-            ConvertedSecondsWithoutText(WarTimer[pInfo[playerid][pMembers]], str);
-            format(str, sizeof(str), "VS~n~~n~Time:_%s", str);
-            PlayerTextDrawSetString(playerid, WarPTD[playerid][0], str);
-
-            PlayerTextDrawColor(playerid, WarPTD[playerid][1], FractionColor[pInfo[playerid][pMembers]]);
-			str[0] = EOS;
-			format(str, sizeof(str), "%s - %d", FractionName[pInfo[playerid][pMembers]], WarZone[pInfo[playerid][pMembers]]);
-            PlayerTextDrawSetString(playerid, WarPTD[playerid][1], str);
-
-            PlayerTextDrawColor(playerid, WarPTD[playerid][2], FractionColor[WarOpponent[pInfo[playerid][pMembers]]]);
-			str[0] = EOS;
-			format(str, sizeof(str), "%s - %d", FractionName[WarOpponent[pInfo[playerid][pMembers]]], WarZone[WarOpponent[pInfo[playerid][pMembers]]]);
-            PlayerTextDrawSetString(playerid, WarPTD[playerid][2], str);
-
-            for(new j = 0; j < sizeof(WarPTD[]); j++) PlayerTextDrawShow(playerid, WarPTD[playerid][j]);
-		}
     }
 	else for(new i = 1; i < sizeof(WarZones); i++) Streamer_ToggleItem(playerid, STREAMER_TYPE_MAP_ICON, WarZones[i][WarIcon], false);
 
@@ -3780,6 +3752,23 @@ public OnPlayerDeath(playerid, killerid, reason)
 
 	if(killerid != INVALID_PLAYER_ID)
 	{
+		if(!IsGovFraction(pInfo[killerid][pMembers])) WantedPlayer(killerid, 1);
+
+		if(IsAMafia(pInfo[killerid][pMembers]) && IsAMafia(pInfo[playerid][pMembers]))
+		{
+			new str[200];
+			format(str, sizeof(str), "Член мафии %s убил %s (%s). Влияние: +0.5%%", pInfo[killerid][pName], pInfo[playerid][pName], FractionName[pInfo[playerid][pMembers]]);
+			SendRMessageEx(pInfo[killerid][pMembers], str);
+			FractionInfluence[pInfo[killerid][pMembers]] += 0.5;
+			SaveFractionInfluence(pInfo[killerid][pMembers]);
+
+			format(str, sizeof(str), "Член мафии %s убит %s (%s). Влияние: -0.5%%", pInfo[playerid][pName], pInfo[killerid][pName], FractionName[pInfo[killerid][pMembers]]);
+			SendRMessageEx(pInfo[playerid][pMembers], str);
+			FractionInfluence[pInfo[playerid][pMembers]] -= 0.5;
+			SaveFractionInfluence(pInfo[playerid][pMembers]);
+
+		}
+
 		if(IsSecurityAgency(pInfo[killerid][pMembers]) && pInfo[playerid][pWanted])
 		{
 			ArrestPlayer(playerid, killerid);
@@ -4112,16 +4101,14 @@ public OnCheatDetected(playerid, const ip_address[], type, code)
 		if(AntiCheatCode[code] == 1)
 		{
 			new str[200];
-			GetPlayerIp(playerid, str, 16);
-			format(str, sizeof(str), Color_Yellow"%s[%d] (RegIP: %s | IP: %s) Срабатывание античита по коду %d(%s)", pInfo[playerid][pName], playerid, pInfo[playerid][pRegIp], str, code, AntiCheatNaming[code]);
+			format(str, sizeof(str), Color_Yellow"%s[%d] (RegIP: %s | IP: %s) Срабатывание античита по коду %d(%s)", pInfo[playerid][pName], playerid, pInfo[playerid][pRegIp], pInfo[playerid][pIP], code, AntiCheatNaming[code]);
 			SendAdminMessage(str);
 			AddPlayerOnCheaterPanel(playerid);
 		}
 		else if(AntiCheatCode[code] == 2)
 		{
 			new str[200];
-			GetPlayerIp(playerid, str, 16);
-			format(str, sizeof(str), Color_Yellow"Античит автоматически кикнул %s[%d] (RegIP: %s | IP: %s) по коду %d(%s)", pInfo[playerid][pName], playerid, pInfo[playerid][pRegIp], str, code, AntiCheatNaming[code]);
+			format(str, sizeof(str), Color_Yellow"Античит автоматически кикнул %s[%d] (RegIP: %s | IP: %s) по коду %d(%s)", pInfo[playerid][pName], playerid, pInfo[playerid][pRegIp], pInfo[playerid][pIP], code, AntiCheatNaming[code]);
 			SendAdminMessage(str);
 
 			format(str, sizeof(str), Color_Red"Античит сервера"Color_White" кикнул вас, с кодом: %d\n\n\
@@ -4779,8 +4766,6 @@ public LoadBusiness()
 			cache_get_value_name_int(i, "Type", bInfo[indx][bType]);
 			cache_get_value_name_int(i, "Tax", bInfo[indx][bTax]);
 			cache_get_value_name_int(i, "Money", bInfo[indx][bMoney]);
-			cache_get_value_name_int(i, "MafiaOwner", bInfo[indx][bMafiaOwner]);
-			cache_get_value_name_int(i, "BizzWarCD", bInfo[indx][bBizzWarCD]);
 			cache_get_value_name_int(i, "Rob", bInfo[indx][bRob]);
 
 			cache_get_value_name_bool(i, "IsDonate", bInfo[indx][bIsDonate]);
@@ -4895,15 +4880,13 @@ stock UpdateBusiness(BusinessID)
 				"Main_Color"Стоимость входа"Color_White": "Color_Green"%d$\n\
 				"Main_Color"Продается\n\
 				"Main_Color"Цена"Color_White": "Color_Green"%d%s\n\
-				"Main_Color"Требуемый уровень"Color_White": %d\n\
-				"Main_Color"Крышует"Color_White": %s",
+				"Main_Color"Требуемый уровень"Color_White": %d",
 				str,
 				bInfo[BusinessID][bID],
 				bInfo[BusinessID][bEnterPrice],
 				bInfo[BusinessID][bPrice],
 				(bInfo[BusinessID][bIsDonate]) ? (" донат рублей"):("$"),
-				bInfo[BusinessID][bNeedLevel],
-				FractionName[bInfo[BusinessID][bMafiaOwner]]);
+				bInfo[BusinessID][bNeedLevel]);
 			}
 			else
 			{
@@ -4911,14 +4894,12 @@ stock UpdateBusiness(BusinessID)
 				"Main_Color"Бизнес №"Color_White"%d\n\
 				"Main_Color"Продается\n\
 				"Main_Color"Цена"Color_White": "Color_Green"%d%s\n\
-				"Main_Color"Требуемый уровень"Color_White": %d\n\
-				"Main_Color"Крышует"Color_White": %s",
+				"Main_Color"Требуемый уровень"Color_White": %d",
 				str,
 				bInfo[BusinessID][bID],
 				bInfo[BusinessID][bPrice],
 				(bInfo[BusinessID][bIsDonate]) ? (" донат рублей"):("$"),
-				bInfo[BusinessID][bNeedLevel],
-				FractionName[bInfo[BusinessID][bMafiaOwner]]);
+				bInfo[BusinessID][bNeedLevel]);
 			}
 		}
 
@@ -5029,24 +5010,20 @@ public GetBusinesOwnerName(BusinessID)
 				format(str, sizeof(str), Main_Color"%s\n\
 				"Main_Color"Бизнес №"Color_White"%d\n\
 				"Main_Color"Стоимость входа"Color_White": "Color_Green"%d$\n\
-				"Main_Color"Владелец"Color_White": %s\n\
-				"Main_Color"Крышует"Color_White": %s",
+				"Main_Color"Владелец"Color_White": %s",
 				str,
 				bInfo[BusinessID][bID],
 				bInfo[BusinessID][bEnterPrice],
-				bInfo[BusinessID][bOwnerName],
-				FractionName[bInfo[BusinessID][bMafiaOwner]]);
+				bInfo[BusinessID][bOwnerName]);
 			}
 			else
 			{
 				format(str, sizeof(str), Main_Color"%s\n\
 				"Main_Color"Бизнес №"Color_White"%d\n\
-				"Main_Color"Владелец"Color_White": %s\n\
-				"Main_Color"Крышует"Color_White": %s",
+				"Main_Color"Владелец"Color_White": %s",
 				str,
 				bInfo[BusinessID][bID],
-				bInfo[BusinessID][bOwnerName],
-				FractionName[bInfo[BusinessID][bMafiaOwner]]);
+				bInfo[BusinessID][bOwnerName]);
 			}
 		}
 
@@ -5166,6 +5143,8 @@ public LoadFractionInfo()
 			cache_get_value_name_int(i, "FractionMaterials", FractionWare[indx][FractionWareMaterials]);
 			cache_get_value_name_int(i, "FractionDrugs", FractionWare[indx][FractionWareDrugs]);
             cache_get_value_name_int(i, "Thief_CD", FractionThiefCD[indx]);
+
+			cache_get_value_name_float(i, "Influence", FractionInfluence[indx]);
 
 			switch(indx)
 			{
@@ -5304,6 +5283,25 @@ public LoadFractionInfo()
 
 		printf("Загружено %d фракций за %dмс.\n", row, GetTickCount()-time);
 	}
+
+	if((FractionInfluence[Fraction_RussiaMafia]+FractionInfluence[Fraction_LaCosaNostra]+FractionInfluence[Fraction_Yakuza]) != 100.0)
+	{
+		FractionInfluence[Fraction_RussiaMafia] = 100.0/3.0; 
+		FractionInfluence[Fraction_LaCosaNostra] = 100.0/3.0;
+		FractionInfluence[Fraction_Yakuza] = 100.0/3.0;
+
+		SaveFractionInfluence(Fraction_RussiaMafia);
+		SaveFractionInfluence(Fraction_LaCosaNostra);
+		SaveFractionInfluence(Fraction_Yakuza);
+	}
+	return 1;
+}
+
+stock SaveFractionInfluence(FractionID)
+{
+	new query[200];
+	mysql_format(DB, query, sizeof(query), "UPDATE `fraction_info` SET `Influence` = '%f' WHERE `ID` = '%d'", FractionInfluence[FractionID], FractionID);
+	mysql_tquery(DB, query);
 	return 1;
 }
 
@@ -5474,126 +5472,6 @@ stock EndGangWar(FractionID, WinnerType = 0) //WinnerType = 0 - Проигравший || W
         }
     }
     return 1;
-}
-
-stock EndBizzWar(FractionID, WinnerType = 0) //WinnerType = 0 - Проигравший || WinnerType = 1 Победитель || WinnerType = 2 Ничья
-{
-    if(!WinnerType)
-    {
-        new str[200];
-		GetBusinessName(WarBet[FractionID], str);
-		if(bInfo[WarBet[FractionID]][bMafiaOwner] == FractionID)
-		{
-			format(str, sizeof(str), "Ваша мафия проиграла войну. %s завладела бизнесом № %d %s", FractionName[WarOpponent[FractionID]], bInfo[WarBet[FractionID]][bID], str);
-			SendRMessageEx(FractionID, str);
-		}
-		else
-		{
-			format(str, sizeof(str), "Ваша мафия проиграла войну. %s удержала бизнес № %d %s", FractionName[WarOpponent[FractionID]], bInfo[WarBet[FractionID]][bID], str);
-			SendRMessageEx(FractionID, str);
-		}
-    }
-    else if(WinnerType == 1)
-    {
-		new str[200];
-		GetBusinessName(WarBet[FractionID], str);
-		if(bInfo[WarBet[FractionID]][bMafiaOwner] == FractionID)
-		{
-			format(str, sizeof(str), "Ваша мафия удержала бизнес № %d %s", FractionName[WarOpponent[FractionID]], bInfo[WarBet[FractionID]][bID], str);
-			SendRMessageEx(FractionID, str);
-		}
-		else
-		{
-			format(str, sizeof(str), "Ваша мафия выиграла войну и захватила бизнес № %d %s", FractionName[WarOpponent[FractionID]], bInfo[WarBet[FractionID]][bID], str);
-			SendRMessageEx(FractionID, str);
-
-			bInfo[WarBet[FractionID]][bMafiaOwner] = FractionID;
-			SaveBusinessInt(bInfo[WarBet[FractionID]][bID], "MafiaOwner", bInfo[WarBet[FractionID]][bMafiaOwner]);
-			UpdateBusiness(WarBet[FractionID]);
-		}
-    }
-    else
-    {
-        new str[200];
-		GetBusinessName(WarBet[FractionID], str);
-		format(str, sizeof(str), "Война с %s за бизнес № %d %s окончена в ничью.", FractionName[WarOpponent[FractionID]], bInfo[WarBet[FractionID]][bID], str);
-		SendRMessageEx(FractionID, str);
-    }
-
-	bInfo[WarBet[FractionID]][bBizzWarCD] = gettime()+(3600*3);
-	SaveBusinessInt(bInfo[WarBet[FractionID]][bID], "BizzWarCD", bInfo[WarBet[FractionID]][bBizzWarCD]);
-
-    ClearBizzWar(FractionID);
-
-    foreach(new i:FractionMembers[FractionID])
-	{
-		if(pInfo[i][pAuth])
-		{
-        	for(new j = 0; j < sizeof(WarPTD[]); j++) PlayerTextDrawHide(i, WarPTD[i][j]);
-        }
-    }
-    return 1;
-}
-
-stock StartBizzWar(FractionID)
-{
-	if(!Iter_Contains(Business, WarBet[FractionID])) return 1;
-
-	WarStatus[FractionID] = War_Status_War;
-	WarTimer[FractionID] = 600;
-
-	new str[200];
-	GetBusinessName(WarBet[FractionID], str);
-	format(str, sizeof(str), "Война за бизнес № %d %s с %s началась.", bInfo[WarBet[FractionID]][bID], str, FractionName[WarOpponent[FractionID]]);
-	SendRMessageEx(FractionID, str);
-
-	foreach(new i:FractionMembers[FractionID])
-	{
-		if(pInfo[i][pAuth])
-		{
-			GangZoneShowForPlayer(i, bInfo[WarBet[FractionID]][bBizzWarGangZone], FractionColor[FractionID]-0x7F);
-			GangZoneFlashForPlayer(i, bInfo[WarBet[FractionID]][bBizzWarGangZone], FractionColor[WarOpponent[FractionID]]-0x7F);
-
-            str[0] = EOS;
-            ConvertedSecondsWithoutText(WarTimer[FractionID], str);
-            format(str, sizeof(str), "VS~n~~n~Time:_%s", str);
-            PlayerTextDrawSetString(i, WarPTD[i][0], str);
-
-            PlayerTextDrawColor(i, WarPTD[i][1], FractionColor[FractionID]);
-			str[0] = EOS;
-			format(str, sizeof(str), "%s - %d", FractionName[FractionID], WarZone[FractionID]);
-            PlayerTextDrawSetString(i, WarPTD[i][1], str);
-
-            PlayerTextDrawColor(i, WarPTD[i][2], FractionColor[WarOpponent[FractionID]]);
-			str[0] = EOS;
-			format(str, sizeof(str), "%s - %d", FractionName[WarOpponent[FractionID]], WarZone[WarOpponent[FractionID]]);
-            PlayerTextDrawSetString(i, WarPTD[i][2], str);
-
-            for(new j = 0; j < sizeof(WarPTD[]); j++) PlayerTextDrawShow(i, WarPTD[i][j]);
-		}
-	}
-
-	return 1;
-}
-
-stock ClearBizzWar(FractionID)
-{
-	if(Iter_Contains(Business, WarBet[FractionID]))
-	{
-		if(bInfo[WarBet[FractionID]][bBizzWarZone] && IsValidDynamicArea(bInfo[WarBet[FractionID]][bBizzWarZone])) DestroyDynamicArea(bInfo[WarBet[FractionID]][bBizzWarZone]);
-		bInfo[WarBet[FractionID]][bBizzWarZone] = 0;
-
-		if(bInfo[WarBet[FractionID]][bBizzWarGangZone]) GangZoneDestroy(bInfo[WarBet[FractionID]][bBizzWarGangZone]);
-		bInfo[WarBet[FractionID]][bBizzWarGangZone] = 0;
-	}
-
-	WarBetType[FractionID] = War_Bet_Type_None;
-	WarStatus[FractionID] = War_Status_None;
-	WarOpponent[FractionID] = Fraction_None;
-	WarTimer[FractionID] = 0;
-	WarBet[FractionID] = 0;
-	WarZone[FractionID] = 0;
-	return 1;
 }
 
 forward LoadTent();
@@ -6456,7 +6334,7 @@ public ReloadBusiness()
 	return 1;
 }
 
-stock ShowBusinessList(playerid, Type) //Type = 1 GPS || Type = 2 CreateVehicle || Type = 3 TP || Type = 4 BizzWar
+stock ShowBusinessList(playerid, Type) //Type = 1 GPS || Type = 2 CreateVehicle || Type = 3 TP
 {
 	new str[1500];
 	new List = GetPVarInt(playerid, "Business_List");
@@ -6472,24 +6350,13 @@ stock ShowBusinessList(playerid, Type) //Type = 1 GPS || Type = 2 CreateVehicle 
 			format(str, sizeof(str), "%s"Main_Color"%d"Color_White". %s - %.0f метров\n", str, i, substr, GetPlayerDistanceFromPoint(playerid, bInfo[i][bX], bInfo[i][bY], bInfo[i][bZ]));
 		}
 	}
-	else if(Type == 4)
-	{
-		for(new i = (10*List)-9; i <= 10*List; i++)
-		{
-			if(i > count) break;
-			new substr[100];
-			GetBusinessName(i, substr);
-			format(str, sizeof(str), "%s"Main_Color"%d"Color_White". %s%s(%s)\n", str, i, (bInfo[i][bBizzWarCD] > gettime()) ? (Color_Grey):(""), substr, FractionName[bInfo[i][bMafiaOwner]]);
-		}
 
-	}
 	if(List * 10 <  count) format(str, sizeof(str), "%s"Color_White"Следующая страница\n", str);
 	if(List >= 2) format(str, sizeof(str), "%s"Color_White"Предыдущая страница", str);
 
 	if(Type == 1) ShowDialog(playerid, D_GPS_Business, DIALOG_STYLE_LIST, Main_Color"Бизнесы", str, Color_White"Далее", Color_White"Закрыть");
 	else if(Type == 2) ShowDialog(playerid, D_CreateCar_Type_Business, DIALOG_STYLE_LIST, Main_Color"Бизнесы", str, Color_White"Далее", Color_White"Закрыть");
 	else if(Type == 3) ShowDialog(playerid, D_TP_Business, DIALOG_STYLE_LIST, Main_Color"Бизнесы", str, Color_White"Далее", Color_White"Закрыть");
-	else if(Type == 4) ShowDialog(playerid, D_BizzWar, DIALOG_STYLE_LIST, Main_Color"Бизнесы", str, Color_White"Далее", Color_White"Закрыть");
 	return 1;
 }
 
@@ -8186,11 +8053,6 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 
 	if(GetPVarInt(playerid, "ThiefBusiness") && GetPVarInt(playerid, "ThiefBusinessTimer") && areaid == bInfo[GetPVarInt(playerid, "ThiefBusiness")][bThiefZoneArea]) DeletePVar(playerid, "ThiefBusinessTimer");
 
-	if(IsAMafia(pInfo[playerid][pMembers]) && WarStatus[pInfo[playerid][pMembers]] == War_Status_War && areaid == bInfo[WarBet[pInfo[playerid][pMembers]]][bBizzWarZone])
-	{
-		WarZone[pInfo[playerid][pMembers]]++;
-	}
-
 	if(GetPlayerState(playerid) == PLAYER_STATE_ONFOOT)
 	{
 		if(Streamer_HasIntData(STREAMER_TYPE_AREA, areaid, E_STREAMER_ARRAY_TYPE))
@@ -8337,14 +8199,12 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 						"Main_Color"Бизнес №"Color_White"%d\n\
 						"Main_Color"Продается\n\
 						"Main_Color"Цена"Color_White": "Color_Green"%d%s\n\
-						"Main_Color"Требуемый уровень"Color_White": %d\n\
-						"Main_Color"Крышует"Color_White": %s",
+						"Main_Color"Требуемый уровень"Color_White": %d",
 						str,
 						bInfo[indx][bID],
 						bInfo[indx][bPrice],
 						(bInfo[indx][bIsDonate]) ? (" донат рублей"):("$"),
-						bInfo[indx][bNeedLevel],
-						FractionName[bInfo[indx][bMafiaOwner]]);
+						bInfo[indx][bNeedLevel]);
 
 						SetPVarInt(playerid, "Business", indx);
 
@@ -9239,6 +9099,20 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 				SendRMessage(playerid, str);
 
 				SaveFractionWare(pInfo[playerid][pMembers]);
+
+				if(IsAMafia(pInfo[id][pMembers]) && IsAMafia(pInfo[playerid][pMembers]))
+				{
+					format(str, sizeof(str), "Член мафии %s похитил %s (%s). Влияние: +1.0%%", pInfo[playerid][pName], pInfo[id][pName], FractionName[pInfo[id][pMembers]]);
+					SendRMessageEx(pInfo[playerid][pMembers], str);
+					FractionInfluence[pInfo[playerid][pMembers]] += 1.0;
+					SaveFractionInfluence(pInfo[playerid][pMembers]);
+
+					format(str, sizeof(str), "Член мафии %s был похищен %s (%s). Влияние: -1.0%%", pInfo[id][pName], pInfo[playerid][pName], FractionName[pInfo[playerid][pMembers]]);
+					SendRMessageEx(pInfo[id][pMembers], str);
+					FractionInfluence[pInfo[id][pMembers]] -= 1.0;
+					SaveFractionInfluence(pInfo[id][pMembers]);
+
+				}
 			}
 		}
 		else if(areaid == Areas[FarmDeliverUnloadArea])
@@ -9309,12 +9183,6 @@ public OnPlayerLeaveDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 			SendClientMessage(playerid, -1, Color_Yellow"Вы не можете отойти от палатки которую арендуете");
 			SetPlayerPosition(playerid, Tent[indx][TentX], Tent[indx][TentY], Tent[indx][TentZ]);
 		}
-	}
-
-	if(IsAMafia(pInfo[playerid][pMembers]) && WarStatus[pInfo[playerid][pMembers]] == War_Status_War && areaid == bInfo[WarBet[pInfo[playerid][pMembers]]][bBizzWarZone])
-	{
-		WarZone[pInfo[playerid][pMembers]]--;
-		if(WarZone[pInfo[playerid][pMembers]] < 0) WarZone[pInfo[playerid][pMembers]] = 0;
 	}
 
 	if(GetPVarInt(playerid, "ThiefBusiness") && areaid == bInfo[GetPVarInt(playerid, "ThiefBusiness")][bThiefZoneArea] && GetPVarInt(playerid, "InBusiness") != GetPVarInt(playerid, "ThiefBusiness"))
@@ -10503,7 +10371,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
         	new query[700];
         	pInfo[playerid][pRegDate] = gettime();
-        	GetPlayerIp(playerid, pInfo[playerid][pRegIp], 16);
+			strmid(pInfo[playerid][pRegIp], pInfo[playerid][pIP], 0, strlen(pInfo[playerid][pIP]), 17);
 			mysql_format(DB, query, sizeof(query), "INSERT INTO `account` (`Name`, `Password`, `Mail`, `Gender`, `Skin`, `RegIP`, `RegDate`) VALUES ('%e', md5('%e'), '%e', '%d', '%d', '%s', '%d')", pInfo[playerid][pName], pInfo[playerid][pPassword], pInfo[playerid][pMail], pInfo[playerid][pGender], pInfo[playerid][pSkin], pInfo[playerid][pRegIp], pInfo[playerid][pRegDate]);
 			pInfo[playerid][pHealth] = 100.0;
 			pInfo[playerid][pLevel] = 0;
@@ -10630,8 +10498,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			else
 			{
 				new str[200];
-				GetPlayerIp(playerid, str, 16);
-				format(str, sizeof(str), "%s %s неверно ввел пароль от админ панели и был кикнут (RegIP: %s | IP: %s)", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], pInfo[playerid][pRegIp], str);
+				format(str, sizeof(str), "%s %s неверно ввел пароль от админ панели и был кикнут (RegIP: %s | IP: %s)", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], pInfo[playerid][pRegIp], pInfo[playerid][pIP]);
 				SendAdminMessage(str);
 
 				SendClientMessage(playerid, -1, Color_Red"- "Color_White"Вы ввели не верный пароль от админ панели и были кикнуты");
@@ -10700,8 +10567,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			new str[300];
 
 			str[0] = EOS;
-			GetPlayerIp(playerid, str, 16);
-			format(str, sizeof(str), "(IP: %s | RegIP: %s) сменил ник c %s на %s", str, pInfo[playerid][pRegIp], pInfo[playerid][pName], inputtext);
+			format(str, sizeof(str), "(IP: %s | RegIP: %s) сменил ник c %s на %s", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[playerid][pName], inputtext);
 
 			AddLog(LogTypeAccount, pInfo[playerid][pID], str);
 
@@ -10902,6 +10768,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				case 7: pc_cmd_iconsettings(playerid);
 				case 8: pc_cmd_logs(playerid);
 				case 9: pc_cmd_bots(playerid);
+				case 10: pc_cmd_setinfluence(playerid);
 			}
 			return 1;
 		}
@@ -11104,7 +10971,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			Кроме того, фракции равномерно распределены по всему штату, но в соответствии с каноном. Например, Рифа находится в Сан-Фиерро.\n\n\
 			Ты спросишь, а как же капты? Отвечаем, капты заменены на систему «варов» (войн между фракциями), где ставкой является деньги, материалы или наркотики.\n\
 			Вар забивается на определенную локацию. Более подробно, ты сможешь узнать непосредственно вступив в банду.\n\n\
-			Так как мод для сервера писался полностью с нуля, то и остальные системы достаточно уникальны. Например: война за крышевание бизнесов и похищение людей (для мафий)\n\
+			Так как мод для сервера писался полностью с нуля, то и остальные системы достаточно уникальны. Например: Влияние и похищение людей (для мафий)\n\
 			ограбление 24/7 или банков (для банд), введение развлекательных мероприятий (для репортёров), система сдачи крови (для медиков) и многое другое!", Color_White"Далее", "");
 		}
 		case D_Guide_Msg_2:
@@ -11168,31 +11035,33 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				{
 					ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Основные команды", Main_Color"/main(/mm, /menu) "Color_White"- Меню сервера\n\
 					"Main_Color"/quest "Color_White"- Список заданий\n\
-					"Main_Color"/showstats [id] "Color_White"- Показать свою статистику другому игроку\n\
-					"Main_Color"/pay [id] [сумма] "Color_White"- Передать наличные деньги другому игроку\n\
+					"Main_Color"/showstats [ID] "Color_White"- Показать свою статистику другому игроку\n\
+					"Main_Color"/pay [ID] [сумма] "Color_White"- Передать наличные деньги другому игроку\n\
 					"Main_Color"/time "Color_White"- Узнать время(Заключения/Мута/Сервера)\n\
 					"Main_Color"/lotto [0-80] "Color_White"- Купить лотерейный билет\n\
 					"Main_Color"/buylevel "Color_White"- Перейти на следующий уровень\n\
 					"Main_Color"/cvet [1-100] "Color_White"- Изменить цвет ника/цвет на карте\n\
-					"Main_Color"/id [id] "Color_White"- Информация об игроке\n\
-					"Main_Color"/showlicenses [id] "Color_White"- Показать список ваших лицензий другому игроку\n\
+					"Main_Color"/id [ID] "Color_White"- Информация об игроке\n\
+					"Main_Color"/showlicenses [ID] "Color_White"- Показать список ваших лицензий другому игроку\n\
 					"Main_Color"/report "Color_White"- Связь с администрацией\n\
 					"Main_Color"/accept [услуга] "Color_White"- Принять услугу, которую вам предлагают\n\
 					"Main_Color"/cancel [услуга] "Color_White"- Отказаться от услуги, которую вам предлагают\n\
 					"Main_Color"/undo [услуга] "Color_White"- Отменить предложение об услуге\n\
-					"Main_Color"/eject [id] "Color_White"- Выкинуть пассажира из вашего транспортного средства.\n\
+					"Main_Color"/eject [ID] "Color_White"- Выкинуть пассажира из вашего транспортного средства.\n\
 					"Main_Color"/eject "Color_White"- Выкинуть всех пассажиров из транспорта\n\
-					"Main_Color"/kiss [id] "Color_White"- Предложить игроку поцеловаться\n\
-					"Main_Color"/iznas [id] "Color_White"- Изнасиловать игрока.\n\
+					"Main_Color"/kiss [ID] "Color_White"- Предложить игроку поцеловаться\n\
+					"Main_Color"/iznas [ID] "Color_White"- Изнасиловать игрока.\n\
 					"Main_Color"/donate "Color_White"- Открыть меню платных услуг\n\
 					"Main_Color"/skin "Color_White"- Открыть гардероб\n\
 					"Main_Color"/gps off "Color_White"- Убирает активный маркер/метку с радара\n\
-					"Main_Color"/upgrade "Color_White"- Меню улучшений персонажа", Color_White"Закрыть", "");
+					"Main_Color"/upgrade "Color_White"- Меню улучшений персонажа\n\
+					"Main_Color"/givegun [ID] "Color_White" - Собрать оружие из материалов\n\
+					"Main_Color"/sellgun [ID] [Стоимость] "Color_White" - Продать оружие из материалов", Color_White"Закрыть", "");
 				}
 				case 1:
 				{
 					ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Команды чатов", Main_Color"/o(ooc) "Color_White"- Общий чат всех игроков\n\
-					"Main_Color"/pm [id] "Color_White"- Отправить личное сообщение\n\
+					"Main_Color"/pm [ID] "Color_White"- Отправить личное сообщение\n\
 					"Main_Color"/ad "Color_White"- Подать объявление\n\
 					"Main_Color"/s "Color_White"- крикнуть на дальнее расстояние\n\
 					"Main_Color"/me "Color_White"- Совершение какого-либо действия\n\
@@ -11202,10 +11071,10 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					"Main_Color"/togooc "Color_White"- Отключение общего чата лично для вас\n\
 					"Main_Color"/togad "Color_White"- Отключение объявления лично для вас\n\
 					"Main_Color"/togpm "Color_White"- Отключение личных сообщений\n\
-					"Main_Color"/blacklist [id] "Color_White"- Запретить игроку отправлять тебе личные сообщения\n\
-					"Main_Color"/whitelist [id] "Color_White"- Разрешить определенному игроку отправлять вам сообщения, даже когда PM отключен\n\
-					"Main_Color"/unblacklist [id] "Color_White"- Убрать игрока из черного списка\n\
-					"Main_Color"/unwhitelist [id] "Color_White"- Убрать игрока из белого списка", Color_White"Закрыть", "");
+					"Main_Color"/blacklist [ID] "Color_White"- Запретить игроку отправлять тебе личные сообщения\n\
+					"Main_Color"/whitelist [ID] "Color_White"- Разрешить определенному игроку отправлять вам сообщения, даже когда PM отключен\n\
+					"Main_Color"/unblacklist [ID] "Color_White"- Убрать игрока из черного списка\n\
+					"Main_Color"/unwhitelist [ID] "Color_White"- Убрать игрока из белого списка", Color_White"Закрыть", "");
 				}
 				case 2:
 				{
@@ -11214,14 +11083,14 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					"Main_Color"/slapass "Color_White"- шлепнуть по попе\n\
 					"Main_Color"/walk [1-14] "Color_White"- изменить стиль походки персонажа\n\
 					"Main_Color"/dance [1-15] "Color_White"- Танцевать\n\
-					"Main_Color"/hi [id] "Color_White"- дружеское приветствие", Color_White"Закрыть", "");
+					"Main_Color"/hi [ID] "Color_White"- дружеское приветствие", Color_White"Закрыть", "");
 				}
 				case 3:
 				{
 					if(!pInfo[playerid][pHouseID]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас нет дома");
 					ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Дом", Main_Color"/sellhouse "Color_White"- Продать дом штату\n\
-					"Main_Color"/sellhouse [id] [цена] "Color_White"- Продать дом игроку\n\
-					"Main_Color"/exchangehouse [id] "Color_White"- Обменяться домами\n\
+					"Main_Color"/sellhouse [ID] [цена] "Color_White"- Продать дом игроку\n\
+					"Main_Color"/exchangehouse [ID] "Color_White"- Обменяться домами\n\
 					"Main_Color"/open "Color_White"- Открыть/Закрыть дверь в доме\n\
 					"Main_Color"/househeal "Color_White"- Использовать аптечку в доме\n\
 					"Main_Color"/carupgrade "Color_White"- Покупка автомобиля\n\
@@ -11246,8 +11115,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				{
 					if(!pInfo[playerid][pBusinessID]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас нет бизнеса");
 					ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Бизнес", Main_Color"/sellbusiness "Color_White"- Продать бизнес штату\n\
-					"Main_Color"/sellbusiness [id] [цена] "Color_White"- Продать бизнес игроку\n\
-					"Main_Color"/exchangebusiness [id] "Color_White"- Обменяться бизнесами\n\
+					"Main_Color"/sellbusiness [ID] [цена] "Color_White"- Продать бизнес игроку\n\
+					"Main_Color"/exchangebusiness [ID] "Color_White"- Обменяться бизнесами\n\
 					"Main_Color"/setenterprice [цена] "Color_White"- Установить стоимость входа", Color_White"Закрыть", "");
 				}
 				case 6: ShowFractionCommand(playerid);
@@ -11544,8 +11413,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			SendClientMessage(playerid, -1, str);
 
 			str[0] = EOS;
-			GetPlayerIp(playerid, str, 16);
-			format(str, sizeof(str), "(IP: %s | RegIP: %s) сменил пароль", str, pInfo[playerid][pRegIp]);
+			format(str, sizeof(str), "(IP: %s | RegIP: %s) сменил пароль", pInfo[playerid][pIP], pInfo[playerid][pRegIp]);
 
 			AddLog(LogTypeAccount, pInfo[playerid][pID], str);
 			return 1;
@@ -12198,43 +12066,14 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				case 7:
 				{
 					SetPVarInt(playerid, "Business", BusinessID);
-					new str[200];
-					strcat(str, "Никто\n");
-					for(new i = Fraction_RussiaMafia; i <= Fraction_Yakuza; i++)
-					{
-						format(str, sizeof(str), "%s%s\n", str, FractionName[i]);
-					}
-					format(str, sizeof(str), Color_White"%s", str);
-
-					ShowDialog(playerid, D_EditBusiness_MafiaOwner, DIALOG_STYLE_LIST, Main_Color"Выберите кто будет крышевать этот бизнес", str, Color_White"Далее", Color_White"Закрыть");
-				}
-				case 8:
-				{
-					SetPVarInt(playerid, "Business", BusinessID);
 					ShowDialog(playerid, D_EditBusiness_Name, DIALOG_STYLE_INPUT, Main_Color"Название бизнеса", Color_White"Введите название бизнеса", Color_White"Далее", Color_White"Закрыть");
 				}
-				case 9:
+				case 8:
 				{
 					SetPVarInt(playerid, "Business", BusinessID);
 					ShowDialog(playerid, D_EditBusiness_Icon, DIALOG_STYLE_INPUT, Main_Color"Иконка бизнеса", Color_White"Введите ID иконки бизнеса", Color_White"Далее", Color_White"Закрыть");
 				}
 			}
-			return 1;
-		}
-		case D_EditBusiness_MafiaOwner:
-		{
-			if(!response) return DeletePVar(playerid, "Business");
-			new BusinessID = GetPVarInt(playerid, "Business");
-			DeletePVar(playerid, "Business");
-
-			if(!listitem) bInfo[BusinessID][bMafiaOwner] = Fraction_None;
-			else
-			{
-				bInfo[BusinessID][bMafiaOwner] = Fraction_RussiaMafia+(listitem-1);
-			}
-			SaveBusinessInt(BusinessID, "MafiaOwner", bInfo[BusinessID][bMafiaOwner]);
-			UpdateBusiness(BusinessID);
-			SendClientMessage(playerid, -1, Main_Color"Крыша бизнеса изменена");
 			return 1;
 		}
 		case D_EditBusiness_Type:
@@ -13059,6 +12898,28 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			pInfo[id][pMarriedID] = pInfo[playerid][pID];
 			pInfo[id][pMarriedName][0] = EOS;
 			strcat(pInfo[id][pMarriedName], pInfo[playerid][pName]);
+			return 1;
+		}
+		case D_Set_Influence:
+		{
+			if(!response) return pc_cmd_apanel(playerid);
+			new Float:Inf_RussiaMafia, Float:Inf_LaCosaNostra, Float:Inf_Yakuza;
+			if(sscanf(inputtext, "fff", Inf_RussiaMafia, Inf_LaCosaNostra, Inf_Yakuza)) return pc_cmd_setinfluence(playerid);
+			if((Inf_RussiaMafia+Inf_LaCosaNostra+Inf_Yakuza) != 100.0)
+			{
+				SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Сумма влияния должна равняться 100%");
+				return pc_cmd_setinfluence(playerid);
+			}
+
+			FractionInfluence[Fraction_RussiaMafia] = Inf_RussiaMafia; 
+			FractionInfluence[Fraction_LaCosaNostra] = Inf_LaCosaNostra;
+			FractionInfluence[Fraction_Yakuza] = Inf_Yakuza;
+
+			SaveFractionInfluence(Fraction_RussiaMafia);
+			SaveFractionInfluence(Fraction_LaCosaNostra);
+			SaveFractionInfluence(Fraction_Yakuza);
+
+			SendClientMessage(playerid, -1, Color_Yellow"Вы изменили уровень влияния мафий");
 			return 1;
 		}
 		case D_Remove_All_Job:
@@ -13976,6 +13837,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 						format(str, sizeof(str), "%s"Color_White"/rcmd - Отправить RCON команду серверу\n", str);
 						format(str, sizeof(str), "%s"Color_White"/adminfo - Информация о администраторе\n", str);
 						format(str, sizeof(str), "%s"Color_White"/offadmins - Список администрации\n", str);
+						format(str, sizeof(str), "%s"Color_White"/setinfluence - Изменить уровень влияния у мафий\n", str);
 						format(SubStr, sizeof(SubStr), Main_Color"Админ панель ||"Color_White" Команды %s", AdminNames[4]);
 						ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, SubStr, str, Color_White"Закрыть", "");
 					}
@@ -14077,8 +13939,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			SendClientMessage(playerid, -1, str);
 
 			str[0] = EOS;
-			GetPlayerIp(playerid, str, 16);
-			format(str, sizeof(str), "(IP: %s | RegIP: %s) снял с бизнеса №%d %d$", str, pInfo[playerid][pRegIp], bInfo[pInfo[playerid][pBusinessID]][bID], strval(inputtext));
+			format(str, sizeof(str), "(IP: %s | RegIP: %s) снял с бизнеса №%d %d$", pInfo[playerid][pIP], pInfo[playerid][pRegIp], bInfo[pInfo[playerid][pBusinessID]][bID], strval(inputtext));
 			AddLog(LogTypeMoney, pInfo[playerid][pID], str);
 
 			ShowPlayerBankMenu(playerid);
@@ -14117,8 +13978,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			ActivateBusinessActors(playerid, BusinessID);
 
 			str[0] = EOS;
-			GetPlayerIp(playerid, str, 16);
-			format(str, sizeof(str), "(IP: %s | RegIP: %s) пополннил счет на %d$", str, pInfo[playerid][pRegIp], strval(inputtext));
+			format(str, sizeof(str), "(IP: %s | RegIP: %s) пополннил счет на %d$", pInfo[playerid][pIP], pInfo[playerid][pRegIp], strval(inputtext));
 
 			AddLog(LogTypeMoney, pInfo[playerid][pID], str);
 			return 1;
@@ -14161,8 +14021,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			GiveCompanyMoney(playerid, BusinessBank, floatround(BankTax));
 
 			str[0] = EOS;
-			GetPlayerIp(playerid, str, 16);
-			format(str, sizeof(str), "(IP: %s | RegIP: %s) снял со счета %d$", str, pInfo[playerid][pRegIp], strval(inputtext));
+			format(str, sizeof(str), "(IP: %s | RegIP: %s) снял со счета %d$", pInfo[playerid][pIP], pInfo[playerid][pRegIp], strval(inputtext));
 
 			AddLog(LogTypeMoney, pInfo[playerid][pID], str);
 			return 1;
@@ -14272,10 +14131,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			GiveCompanyMoney(playerid, BusinessBank, floatround(BankTax));
 
 			str[0] = EOS;
-			GetPlayerIp(playerid, str, 16);
-			new SubStr[20];
-			GetPlayerIp(id, SubStr, 16);
-			format(str, sizeof(str), "(IP: %s | RegIP: %s) перевел %d$ на счет игрока %s (IP: %s | RegIP: %s)", str, pInfo[playerid][pRegIp], strval(inputtext)-floatround(BankTax), pInfo[id][pName], SubStr, pInfo[id][pRegIp]);
+			format(str, sizeof(str), "(IP: %s | RegIP: %s) перевел %d$ на счет игрока %s (IP: %s | RegIP: %s)", pInfo[playerid][pIP], pInfo[playerid][pRegIp], strval(inputtext)-floatround(BankTax), pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp]);
 
 			AddLog(LogTypeMoney, pInfo[playerid][pID], str);
 			return 1;
@@ -15215,10 +15071,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				SendAdminMessage(str);
 
 				str[0] = EOS;
-				GetPlayerIp(playerid, str, 16);
-				new SubStr[20];
-				GetPlayerIp(id, SubStr, 16);
-				format(str, sizeof(str), "(IP: %s | RegIP: %s) снял %s (IP: %s | RegIP: %s) с должности лидера организации %s", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp], FractionName[pInfo[id][pMembers]]);
+				format(str, sizeof(str), "(IP: %s | RegIP: %s) снял %s (IP: %s | RegIP: %s) с должности лидера организации %s", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp], FractionName[pInfo[id][pMembers]]);
 
 				AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 
@@ -15241,10 +15094,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				SendAdminMessage(str);
 
 				str[0] = EOS;
-				GetPlayerIp(playerid, str, 16);
-				new SubStr[20];
-				GetPlayerIp(id, SubStr, 16);
-				format(str, sizeof(str), "(IP: %s | RegIP: %s) назначил %s (IP: %s | RegIP: %s) на должность лидера организации %s", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp], FractionName[FractionID]);
+				format(str, sizeof(str), "(IP: %s | RegIP: %s) назначил %s (IP: %s | RegIP: %s) на должность лидера организации %s", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp], FractionName[FractionID]);
 
 				AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 
@@ -15300,10 +15150,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			SendClientMessage(playerid, -1, str);
 
 			str[0] = EOS;
-			GetPlayerIp(id, str, 16);
-			new SubStr[20];
-			GetPlayerIp(playerid, SubStr, 16);
-			format(str, sizeof(str), "(IP: %s | RegIP: %s) принял %s (IP: %s | RegIP: %s) в организацию %s", str, pInfo[id][pRegIp], pInfo[playerid][pName], SubStr, pInfo[playerid][pRegIp], FractionName[pInfo[playerid][pMembers]]);
+			format(str, sizeof(str), "(IP: %s | RegIP: %s) принял %s (IP: %s | RegIP: %s) в организацию %s", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[playerid][pName], pInfo[id][pIP], pInfo[id][pRegIp], FractionName[pInfo[playerid][pMembers]]);
 
 			AddLog(LogTypeFraction, pInfo[id][pID], str);
 			return 1;
@@ -16740,115 +16587,6 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			}
 			return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Бизнес уже ограблен. Экстренный вызов отменен");
 		}
-		case D_BizzWar:
-		{
-			if(!response) return DeletePVar(playerid, "Business_List");
-			new count = Iter_Count(Business);
-			new ListCount = count/10;
-			new NextButton = 10;
-			if(GetPVarInt(playerid, "Business_List") > ListCount) NextButton = (count%10);
-			new LastButton = NextButton+1;
-
-			if(listitem == NextButton && count > 10)
-			{
-				if(GetPVarInt(playerid, "Business_List") * 10 <  count) SetPVarInt(playerid, "Business_List", GetPVarInt(playerid, "Business_List")+1);
-				else SetPVarInt(playerid, "Business_List", GetPVarInt(playerid, "Business_List")-1);
-				ShowBusinessList(playerid, 4);
-			}
-			else if(listitem == LastButton && count > 10)
-			{
-				SetPVarInt(playerid, "Business_List", GetPVarInt(playerid, "Business_List")-1);
-				ShowBusinessList(playerid, 4);
-			}
-			else
-			{
-				new BusinessID = listitem+(GetPVarInt(playerid, "Business_List")*10)-9;
-				DeletePVar(playerid, "Business_List");
-				if(bInfo[BusinessID][bBizzWarCD] > gettime())
-				{
-					new str[200];
-					GetBusinessName(BusinessID, str);
-					format(str, sizeof(str), Main_Color"Бизнес № %d %s "Color_White"захватывали недавно. Начать войну за этот бизнес можно %s", bInfo[BusinessID][bID], str, date(bInfo[BusinessID][bBizzWarCD], 3, "%dd.%mm.%yyyy %hh:%ii"));
-					return SendClientMessage(playerid, -1, str);
-				}
-
-				if(bInfo[BusinessID][bMafiaOwner] == pInfo[playerid][pMembers]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша мафия уже владеет этим бизнесом");
-				else if(bInfo[BusinessID][bMafiaOwner] == Fraction_None)
-				{
-					if(GetPlayerDistanceFromPoint(playerid, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ]) > 15.0)
-					{
-						SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть возле этого бизнеса");
-						if(pInfo[playerid][pGPSType] != GPS_Type_Job)
-						{
-							pInfo[playerid][pGPSType] = GPS_Type_GPS;
-							SetPlayerRaceCheckpoint(playerid, 2, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 0.0, 0.0, 0.0, 10.0);
-							SendClientMessage(playerid, -1, Main_Color"[GPS] "Color_White"Навигатор включен");
-						}
-						return 1;
-					}
-
-					new str[200];
-					GetBusinessName(BusinessID, str);
-					format(str, sizeof(str), "Ваша мафия завладела бизнесом № %d %s", bInfo[BusinessID][bID], str);
-					SendRMessage(playerid, str);
-
-					bInfo[BusinessID][bMafiaOwner] = pInfo[playerid][pMembers];
-					SaveBusinessInt(bInfo[BusinessID][bID], "MafiaOwner", bInfo[BusinessID][bMafiaOwner]);
-
-					bInfo[BusinessID][bBizzWarCD] = gettime()+(3600*3);
-					SaveBusinessInt(bInfo[BusinessID][bID], "BizzWarCD", bInfo[BusinessID][bBizzWarCD]);
-					UpdateBusiness(BusinessID);
-				}
-				else
-				{
-					if(WarStatus[pInfo[playerid][pMembers]] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша мафия уже ведет войну за какой-то бизнес");
-					if(WarStatus[bInfo[BusinessID][bMafiaOwner]] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта мафия уже ведет войну за какой-то бизнес");
-					
-					if(Iter_Count(FractionMembers[pInfo[playerid][pMembers]]) < 3) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вашей фракции нет онлайна (минимум 3 человек).");
-					if(Iter_Count(FractionMembers[bInfo[BusinessID][bMafiaOwner]]) < 3) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У этой фракции нет онлайна (минимум 3 человек).");
-
-					if(GetPlayerDistanceFromPoint(playerid, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ]) > 15.0)
-					{
-						SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть возле этого бизнеса");
-						if(pInfo[playerid][pGPSType] != GPS_Type_Job)
-						{
-							pInfo[playerid][pGPSType] = GPS_Type_GPS;
-							SetPlayerRaceCheckpoint(playerid, 2, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 0.0, 0.0, 0.0, 10.0);
-							SendClientMessage(playerid, -1, Main_Color"[GPS] "Color_White"Навигатор включен");
-						}
-						return 1;
-					}
-
-					WarBetType[pInfo[playerid][pMembers]] = Mafia_Bet_Type_Bizz;
-					WarBetType[bInfo[BusinessID][bMafiaOwner]] = Mafia_Bet_Type_Bizz;
-
-					WarOpponent[pInfo[playerid][pMembers]] = bInfo[BusinessID][bMafiaOwner];
-					WarOpponent[bInfo[BusinessID][bMafiaOwner]] = pInfo[playerid][pMembers];
-
-					WarBet[pInfo[playerid][pMembers]] = BusinessID;
-					WarBet[bInfo[BusinessID][bMafiaOwner]] = BusinessID;
-
-					if(bInfo[BusinessID][bBizzWarZone] && IsValidDynamicArea(bInfo[BusinessID][bBizzWarZone])) DestroyDynamicArea(bInfo[BusinessID][bBizzWarZone]);
-					bInfo[BusinessID][bBizzWarZone] = CreateDynamicRectangle(bInfo[BusinessID][bX]-40.0, bInfo[BusinessID][bY]-40.0, bInfo[BusinessID][bX]+40.0, bInfo[BusinessID][bY]+40.0, 0, 0);
-
-					if(bInfo[BusinessID][bBizzWarGangZone]) GangZoneDestroy(bInfo[BusinessID][bBizzWarGangZone]);
-					bInfo[BusinessID][bBizzWarGangZone] = GangZoneCreate(bInfo[BusinessID][bX]-40.0, bInfo[BusinessID][bY]-40.0, bInfo[BusinessID][bX]+40.0, bInfo[BusinessID][bY]+40.0);
-
-					foreach(new i:FractionMembers[pInfo[playerid][pMembers]])
-					{
-						if(pInfo[i][pAuth]) Streamer_Update(i, STREAMER_TYPE_AREA);
-					}
-					foreach(new i:FractionMembers[bInfo[BusinessID][bMafiaOwner]])
-					{
-						if(pInfo[i][pAuth]) Streamer_Update(i, STREAMER_TYPE_AREA);
-					}
-
-					StartBizzWar(pInfo[playerid][pMembers]);
-					StartBizzWar(bInfo[BusinessID][bMafiaOwner]);
-				}
-			}
-			return 1;
-		}
 		case D_Upgrade:
 		{
 			if(!response) return ShowPlayerMenu(playerid);
@@ -17521,14 +17259,46 @@ CMD:quest(playerid)
 	return 1;
 }
 
-CMD:bizzwar(playerid)
+CMD:influence(playerid)
 {
 	if(!IsAMafia(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только мафиям");
-	if(WarStatus[pInfo[playerid][pMembers]] == War_Status_War) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша мафия уже ведет войну за какой-то бизнес");
-	if(Iter_Count(FractionMembers[pInfo[playerid][pMembers]]) < 3) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вашей фракции нет онлайна (минимум 3 человек).");
+	
+	new str[200];
+	format(str, sizeof(str), Main_Color"%s"Color_White": %.2f%%\n\
+	"Main_Color"%s"Color_White": %.2f%%\n\
+	"Main_Color"%s"Color_White": %.2f%%",
+	FractionName[Fraction_RussiaMafia], FractionInfluence[Fraction_RussiaMafia],
+	FractionName[Fraction_LaCosaNostra], FractionInfluence[Fraction_LaCosaNostra],
+	FractionName[Fraction_Yakuza], FractionInfluence[Fraction_Yakuza]);
 
-	SetPVarInt(playerid, "Business_List", 1);
-	ShowBusinessList(playerid, 4);
+	ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color"Влияние", str, Color_White"Закрыть", "");
+	return 1;
+}
+
+CMD:setinfluence(playerid)
+{
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
+
+	new str[600];
+	format(str, sizeof(str), Color_White"Укажите уровень влияния который хотите установить для мафий через пробел\n\
+	"Main_Color"Последовательность"Color_White": %s %s %s\n\n\
+	"Main_Color"Пример"Color_White": 25.5 25.5 49.0\n\
+	Мафии получат следующее влияние\n\
+	"Main_Color"%s"Color_White": 25.5%%\n\
+	"Main_Color"%s"Color_White": 25.5%%\n\
+	"Main_Color"%s"Color_White": 49.0%%\n\n\
+	"Main_Color"Замечание"Color_White": Сумма влияния всех мафий должна быть равна 100%%\n\n\n\
+	"Main_Color"Текущий уровень влияния\n\
+	"Main_Color"%s"Color_White": %.2f%%\n\
+	"Main_Color"%s"Color_White": %.2f%%\n\
+	"Main_Color"%s"Color_White": %.2f%%",
+	FractionName[Fraction_RussiaMafia], FractionName[Fraction_LaCosaNostra], FractionName[Fraction_Yakuza],
+	FractionName[Fraction_RussiaMafia], FractionName[Fraction_LaCosaNostra], FractionName[Fraction_Yakuza],
+	FractionName[Fraction_RussiaMafia], FractionInfluence[Fraction_RussiaMafia],
+	FractionName[Fraction_LaCosaNostra], FractionInfluence[Fraction_LaCosaNostra],
+	FractionName[Fraction_Yakuza], FractionInfluence[Fraction_Yakuza]);
+
+	ShowDialog(playerid, D_Set_Influence, DIALOG_STYLE_INPUT, Main_Color"Изменение влияния", str, Color_White"Далее", Color_White"Закрыть");
 	return 1;
 }
 
@@ -18722,19 +18492,30 @@ CMD:frisk(playerid, params[])
 	if(!IsPlayerInRangeOfPoint(playerid, 5.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от игрока, которого хотите обыскать");
 
 	new str[1000];
+	new bool:Finded = false;
+
+	//Inventory
+	strcat(str, Color_White"Рюкзак:\n");
 	for(new i = 0; i < sizeof(pInventory[]); i++)
 	{
 		if(pInventory[id][i][ItemID] == ItemDrugs || pInventory[id][i][ItemID] == ItemMaterial || Items[pInventory[id][i][ItemID]][WeaponsID])
 		{
 			format(str, sizeof(str), "%s"Color_Red"%s\t"Color_White"%dшт.\n", str, Items[pInventory[id][i][ItemID]][ItemName], GetItemCountInInventory(id, pInventory[id][i][ItemID]));
+			Finded = true;
 		}
-		else if(pInventory[id][i][ItemID] != ItemNone) format(str, sizeof(str), "%s"Color_White"%s\t%dшт.\n", str, Items[pInventory[id][i][ItemID]][ItemName], GetItemCountInInventory(id, pInventory[id][i][ItemID]));
+		else if(pInventory[id][i][ItemID] != ItemNone)
+		{
+			format(str, sizeof(str), "%s"Color_White"%s\t%dшт.\n", str, Items[pInventory[id][i][ItemID]][ItemName], GetItemCountInInventory(id, pInventory[id][i][ItemID]));
+			Finded = true;
+		}
 	}
+	if(!Finded) strcat(str, Color_White"Пусто\n");
+	/////////////////////////////////////////////
 
+	//Weapon
 	strcat(str, "\n"Color_White"Экипировано:\n");
-
 	UpdatePlayerWeapon(id);
-	new bool:Finded = false;
+	Finded = false;
 	for(new i = 0; i < 13; i++)
 	{
 		if(pInfo[id][pWeapon][i] && pInfo[id][pAmmo][i])
@@ -18743,10 +18524,11 @@ CMD:frisk(playerid, params[])
 			Finded = true;
 		}
 	}
-	if(!Finded) strcat(str, Color_White"Пусто");
+	if(!Finded) strcat(str, Color_White"Пусто\n");
+	/////////////////////////////////////////////
 
-	strcat(str, "\n\n");
-
+	//Licenses
+	strcat(str, "\n");
 	if(pInfo[id][pLicAuto]) strcat(str, Color_Green"Лицензия на управление Т/С\n");
 	else strcat(str, Color_Red"Лицензия на управление Т/С\n");
 
@@ -18761,7 +18543,7 @@ CMD:frisk(playerid, params[])
 
 	if(pInfo[id][pLicGun]) strcat(str, Color_Green"Лицензия на оружие\n");
 	else strcat(str, Color_Red"Лицензия на оружие\n");
-
+	/////////////////////////////////////////////
 
 	ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color"Обыск", str, Color_White"Закрыть", "");
 
@@ -19110,10 +18892,7 @@ CMD:uninvite(playerid, params[])
 	SendClientMessage(id, -1, str);
 
 	str[0] = EOS;
-	GetPlayerIp(playerid, str, 16);
-	new SubStr[20];
-	GetPlayerIp(id, SubStr, 16);
-	format(str, sizeof(str), "(IP: %s | RegIP: %s) выгнал %s (IP: %s | RegIP: %s) из организации %s по причине: %s", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp], FractionName[pInfo[playerid][pMembers]], message);
+	format(str, sizeof(str), "(IP: %s | RegIP: %s) выгнал %s (IP: %s | RegIP: %s) из организации %s по причине: %s", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp], FractionName[pInfo[playerid][pMembers]], message);
 
 	AddLog(LogTypeFraction, pInfo[playerid][pID], str);
 	return 1;
@@ -19132,7 +18911,6 @@ stock UninvitePlayer(playerid)
 			GangZoneHideForPlayer(playerid, WarZones[WarZone[members]][WarZoneID]);
 			for(new i = 1; i < sizeof(WarZones); i++) Streamer_ToggleItem(playerid, STREAMER_TYPE_MAP_ICON, WarZones[i][WarIcon], false);
 		}
-		else if(IsAMafia(members)) GangZoneHideForPlayer(playerid, bInfo[WarBet[members]][bBizzWarGangZone]);
 
 		for(new j = 0; j < sizeof(WarPTD[]); j++) PlayerTextDrawHide(playerid, WarPTD[playerid][j]);
     }
@@ -19238,10 +19016,7 @@ CMD:giverank(playerid, params[])
 		SendClientMessage(playerid, -1, str);
 
 		str[0] = EOS;
-		GetPlayerIp(playerid, str, 16);
-		new SubStr[20];
-		GetPlayerIp(id, SubStr, 16);
-		format(str, sizeof(str), "(IP: %s | RegIP: %s) повысил %s (IP: %s | RegIP: %s) в организации %s до ранга %d", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp], FractionName[pInfo[playerid][pMembers]], rank);
+		format(str, sizeof(str), "(IP: %s | RegIP: %s) повысил %s (IP: %s | RegIP: %s) в организации %s до ранга %d", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp], FractionName[pInfo[playerid][pMembers]], rank);
 
 		AddLog(LogTypeFraction, pInfo[playerid][pID], str);
 	}
@@ -19254,10 +19029,7 @@ CMD:giverank(playerid, params[])
 		SendClientMessage(playerid, -1, str);
 
 		str[0] = EOS;
-		GetPlayerIp(playerid, str, 16);
-		new SubStr[20];
-		GetPlayerIp(id, SubStr, 16);
-		format(str, sizeof(str), "(IP: %s | RegIP: %s) понизил %s (IP: %s | RegIP: %s) в организации %s до ранга %d", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp], FractionName[pInfo[playerid][pMembers]], rank);
+		format(str, sizeof(str), "(IP: %s | RegIP: %s) понизил %s (IP: %s | RegIP: %s) в организации %s до ранга %d", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp], FractionName[pInfo[playerid][pMembers]], rank);
 
 		AddLog(LogTypeFraction, pInfo[playerid][pID], str);
 	}
@@ -20665,15 +20437,11 @@ stock PlayerAccept(playerid)
 				GivePlayerMoneyEx(ProposePlayer, money);
 
 				str[0] = EOS;
-				GetPlayerIp(ProposePlayer, str, 16);
-				new SubStr[20];
-				GetPlayerIp(playerid, SubStr, 16);
-				format(str, sizeof(str), "(IP: %s | RegIP: %s) продал бизнес №%d за %d$ игроку %s (IP: %s | RegIP: %s)", str, pInfo[ProposePlayer][pRegIp], pInfo[playerid][pBusinessID], money, pInfo[playerid][pName], SubStr, pInfo[playerid][pRegIp]);
+				format(str, sizeof(str), "(IP: %s | RegIP: %s) продал бизнес №%d за %d$ игроку %s (IP: %s | RegIP: %s)", pInfo[ProposePlayer][pIP], pInfo[ProposePlayer][pRegIp], pInfo[playerid][pBusinessID], money, pInfo[playerid][pName], pInfo[playerid][pIP], pInfo[playerid][pRegIp]);
 				AddLog(LogTypeMoney, pInfo[ProposePlayer][pID], str);
 
 				str[0] = EOS;
-				GetPlayerIp(ProposePlayer, str, 16);
-				format(str, sizeof(str), "(IP: %s | RegIP: %s) купил бизнес №%d за %d$ у %s (IP: %s | RegIP: %s)", SubStr, pInfo[playerid][pRegIp], pInfo[playerid][pBusinessID], money, pInfo[ProposePlayer][pName], str, pInfo[ProposePlayer][pRegIp]);
+				format(str, sizeof(str), "(IP: %s | RegIP: %s) купил бизнес №%d за %d$ у %s (IP: %s | RegIP: %s)", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[playerid][pBusinessID], money, pInfo[ProposePlayer][pName], pInfo[ProposePlayer][pIP], pInfo[ProposePlayer][pRegIp]);
 				AddLog(LogTypeMoney, pInfo[playerid][pID], str);
 			}
 			case OfferID_ExcangeBusiness:
@@ -20709,15 +20477,11 @@ stock PlayerAccept(playerid)
 				UpdateBusiness(pInfo[ProposePlayer][pBusinessID]);
 
 				str[0] = EOS;
-				GetPlayerIp(ProposePlayer, str, 16);
-				new SubStr[20];
-				GetPlayerIp(playerid, SubStr, 16);
-				format(str, sizeof(str), "(IP: %s | RegIP: %s) обменял бизнес №%d на бизнес №%d игрока %s (IP: %s | RegIP: %s)", str, pInfo[ProposePlayer][pRegIp], pInfo[playerid][pBusinessID], pInfo[ProposePlayer][pBusinessID], pInfo[playerid][pName], SubStr, pInfo[playerid][pRegIp]);
+				format(str, sizeof(str), "(IP: %s | RegIP: %s) обменял бизнес №%d на бизнес №%d игрока %s (IP: %s | RegIP: %s)", pInfo[ProposePlayer][pIP], pInfo[ProposePlayer][pRegIp], pInfo[playerid][pBusinessID], pInfo[ProposePlayer][pBusinessID], pInfo[playerid][pName], pInfo[playerid][pIP], pInfo[playerid][pRegIp]);
 				AddLog(LogTypeMoney, pInfo[ProposePlayer][pID], str);
 
 				str[0] = EOS;
-				GetPlayerIp(ProposePlayer, str, 16);
-				format(str, sizeof(str), "(IP: %s | RegIP: %s) обменял бизнес №%d на бизнес №%d игрока %s (IP: %s | RegIP: %s)", SubStr, pInfo[playerid][pRegIp], pInfo[ProposePlayer][pBusinessID], pInfo[playerid][pBusinessID], pInfo[ProposePlayer][pName], str, pInfo[ProposePlayer][pRegIp]);
+				format(str, sizeof(str), "(IP: %s | RegIP: %s) обменял бизнес №%d на бизнес №%d игрока %s (IP: %s | RegIP: %s)", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[ProposePlayer][pBusinessID], pInfo[playerid][pBusinessID], pInfo[ProposePlayer][pName], pInfo[ProposePlayer][pIP], pInfo[ProposePlayer][pRegIp]);
 				AddLog(LogTypeMoney, pInfo[playerid][pID], str);
 			}
 			case OfferID_SellHouse:
@@ -20765,15 +20529,11 @@ stock PlayerAccept(playerid)
 				GivePlayerMoneyEx(ProposePlayer, money);
 
 				str[0] = EOS;
-				GetPlayerIp(ProposePlayer, str, 16);
-				new SubStr[20];
-				GetPlayerIp(playerid, SubStr, 16);
-				format(str, sizeof(str), "(IP: %s | RegIP: %s) продал дом №%d за %d$ игроку %s (IP: %s | RegIP: %s)", str, pInfo[ProposePlayer][pRegIp], pInfo[playerid][pHouseID], money, pInfo[playerid][pName], SubStr, pInfo[playerid][pRegIp]);
+				format(str, sizeof(str), "(IP: %s | RegIP: %s) продал дом №%d за %d$ игроку %s (IP: %s | RegIP: %s)", pInfo[ProposePlayer][pIP], pInfo[ProposePlayer][pRegIp], pInfo[playerid][pHouseID], money, pInfo[playerid][pName], pInfo[playerid][pIP], pInfo[playerid][pRegIp]);
 				AddLog(LogTypeMoney, pInfo[ProposePlayer][pID], str);
 
 				str[0] = EOS;
-				GetPlayerIp(ProposePlayer, str, 16);
-				format(str, sizeof(str), "(IP: %s | RegIP: %s) купил дом №%d за %d$ у %s (IP: %s | RegIP: %s)", SubStr, pInfo[playerid][pRegIp], pInfo[playerid][pHouseID], money, pInfo[ProposePlayer][pName], str, pInfo[ProposePlayer][pRegIp]);
+				format(str, sizeof(str), "(IP: %s | RegIP: %s) купил дом №%d за %d$ у %s (IP: %s | RegIP: %s)", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[playerid][pHouseID], money, pInfo[ProposePlayer][pName], pInfo[ProposePlayer][pIP], pInfo[ProposePlayer][pRegIp]);
 				AddLog(LogTypeMoney, pInfo[playerid][pID], str);
 			}
 			case OfferID_ExcangeHouse:
@@ -20814,15 +20574,11 @@ stock PlayerAccept(playerid)
 				ExcangeHouseVehicle(pInfo[playerid][pID], pInfo[ProposePlayer][pID]);
 
 				str[0] = EOS;
-				GetPlayerIp(ProposePlayer, str, 16);
-				new SubStr[20];
-				GetPlayerIp(playerid, SubStr, 16);
-				format(str, sizeof(str), "(IP: %s | RegIP: %s) обменял дом №%d на дом №%d игрока %s (IP: %s | RegIP: %s)", str, pInfo[ProposePlayer][pRegIp], pInfo[playerid][pHouseID], pInfo[ProposePlayer][pHouseID], pInfo[playerid][pName], SubStr, pInfo[playerid][pRegIp]);
+				format(str, sizeof(str), "(IP: %s | RegIP: %s) обменял дом №%d на дом №%d игрока %s (IP: %s | RegIP: %s)", pInfo[ProposePlayer][pIP], pInfo[ProposePlayer][pRegIp], pInfo[playerid][pHouseID], pInfo[ProposePlayer][pHouseID], pInfo[playerid][pName], pInfo[playerid][pIP], pInfo[playerid][pRegIp]);
 				AddLog(LogTypeMoney, pInfo[ProposePlayer][pID], str);
 
 				str[0] = EOS;
-				GetPlayerIp(ProposePlayer, str, 16);
-				format(str, sizeof(str), "(IP: %s | RegIP: %s) обменял дом №%d на дом №%d игрока %s (IP: %s | RegIP: %s)", SubStr, pInfo[playerid][pRegIp], pInfo[ProposePlayer][pHouseID], pInfo[playerid][pHouseID], pInfo[ProposePlayer][pName], str, pInfo[ProposePlayer][pRegIp]);
+				format(str, sizeof(str), "(IP: %s | RegIP: %s) обменял дом №%d на дом №%d игрока %s (IP: %s | RegIP: %s)", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[ProposePlayer][pHouseID], pInfo[playerid][pHouseID], pInfo[ProposePlayer][pName], pInfo[ProposePlayer][pIP], pInfo[ProposePlayer][pRegIp]);
 				AddLog(LogTypeMoney, pInfo[playerid][pID], str);
 			}
 			case OfferID_SellGun:
@@ -22062,10 +21818,8 @@ CMD:pay(playerid, params[])
 	ApplyAnimation(playerid, "DEALER", "shop_pay", 4.1, 0, 1, 1, 0, 0, true);
 
 	message[0] = EOS;
-	GetPlayerIp(id, message, 16);
 	str[0] = EOS;
-	GetPlayerIp(playerid, str, 16);
-	format(message, sizeof(message), "(IP: %s | RegIP: %s) передал %d$ %s (IP: %s | RegIP: %s)", str, pInfo[playerid][pRegIp], money, pInfo[id][pName], message, pInfo[id][pRegIp]);
+	format(message, sizeof(message), "(IP: %s | RegIP: %s) передал %d$ %s (IP: %s | RegIP: %s)", pInfo[playerid][pIP], pInfo[playerid][pRegIp], money, pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp]);
 
 	AddLog(LogTypeMoney, pInfo[playerid][pID], message);
 	return 1;
@@ -22342,6 +22096,18 @@ CMD:report(playerid)
 }
 CMD:donate(playerid)
 {
+	new query[100];
+	mysql_format(DB, query, sizeof(query), "SELECT `DonateMoney` FROM `account` WHERE `ID` = '%d'", pInfo[playerid][pID]);
+	mysql_tquery(DB, query, "LoadDonatePlayer", "d", playerid);
+	return 1;
+}
+
+forward LoadDonatePlayer(playerid);
+public LoadDonatePlayer(playerid)
+{
+	new row = cache_num_rows();
+	if(row) cache_get_value_name_int(0, "DonateMoney", pInfo[playerid][pDonateMoney]);
+
 	new str[100];
 	format(str, sizeof(str), Main_Color Project_Name " || "Color_White"Баланс: "Main_Color"%d", pInfo[playerid][pDonateMoney]);
 
@@ -22353,6 +22119,7 @@ CMD:donate(playerid)
 	"Main_Color"- "Color_White"Сменить домашний авто", Color_White"Далее", Color_White"Отмена");
 	return 1;
 }
+
 CMD:alogin(playerid)
 {
 	if(pInfo[playerid][pAdmin] < 1 || Iter_Contains(Admins, playerid)) return 1;
@@ -22430,7 +22197,8 @@ CMD:apanel(playerid)
 		"Main_Color"- "Color_White"Настройки фракций\n\
 		"Main_Color"- "Color_White"Настройки иконок\n\
 		"Main_Color"- "Color_White"Логи\n\
-		"Main_Color"- "Color_White"Настройки ботов", Color_White"Далее", Color_White"Отмена");
+		"Main_Color"- "Color_White"Настройки ботов\n\
+		"Main_Color"- "Color_White"Настройки влияния мафий", Color_White"Далее", Color_White"Отмена");
 	}
 	else
 	{
@@ -22488,10 +22256,7 @@ CMD:mute(playerid, params[])
 	ShowDialog(id, D_None, DIALOG_STYLE_MSGBOX, Color_Red"Вы получили мут", str, Color_White"Закрыть", "");
 
 	str[0] = EOS;
-	GetPlayerIp(playerid, str, 16);
-	new SubStr[20];
-	GetPlayerIp(id, SubStr, 16);
-	format(str, sizeof(str), "(IP: %s | RegIP: %s) выдал мут игроку %s (IP: %s | RegIP: %s), на %d минут по причине: %s", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp], time, message);
+	format(str, sizeof(str), "(IP: %s | RegIP: %s) выдал мут игроку %s (IP: %s | RegIP: %s), на %d минут по причине: %s", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp], time, message);
 
 	AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 	return 1;
@@ -22517,10 +22282,7 @@ CMD:unmute(playerid, params[])
 	SendClientMessage(id, -1, Color_Yellow"Вам сняли мут, теперь вы снова можете пользоваться чатом");
 
 	str[0] = EOS;
-	GetPlayerIp(playerid, str, 16);
-	new SubStr[20];
-	GetPlayerIp(id, SubStr, 16);
-	format(str, sizeof(str), "(IP: %s | RegIP: %s) снял мут игроку %s (IP: %s | RegIP: %s)", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp]);
+	format(str, sizeof(str), "(IP: %s | RegIP: %s) снял мут игроку %s (IP: %s | RegIP: %s)", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp]);
 
 	AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 	return 1;
@@ -22560,10 +22322,7 @@ CMD:jail(playerid, params[])
 	ShowDialog(id, D_None, DIALOG_STYLE_MSGBOX, Color_Red"Вас посадили в психушку", str, Color_White"Закрыть", "");
 
 	str[0] = EOS;
-	GetPlayerIp(playerid, str, 16);
-	new SubStr[20];
-	GetPlayerIp(id, SubStr, 16);
-	format(str, sizeof(str), "(IP: %s | RegIP: %s) посадил игрока %s (IP: %s | RegIP: %s) в психушку на %d минут, по причине: %s", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp], time, message);
+	format(str, sizeof(str), "(IP: %s | RegIP: %s) посадил игрока %s (IP: %s | RegIP: %s) в психушку на %d минут, по причине: %s", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp], time, message);
 
 	AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 	return 1;
@@ -22591,10 +22350,7 @@ CMD:unjail(playerid, params[])
 	SpawnPlayer(id);
 
 	str[0] = EOS;
-	GetPlayerIp(playerid, str, 16);
-	new SubStr[20];
-	GetPlayerIp(id, SubStr, 16);
-	format(str, sizeof(str), "(IP: %s | RegIP: %s) выпустил игрока %s (IP: %s | RegIP: %s) из психушки", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp]);
+	format(str, sizeof(str), "(IP: %s | RegIP: %s) выпустил игрока %s (IP: %s | RegIP: %s) из психушки", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp]);
 
 	AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 	return 1;
@@ -22623,10 +22379,7 @@ CMD:warn(playerid, params[])
 	ShowDialog(id, D_None, DIALOG_STYLE_MSGBOX, Color_Red"Вам выдали предупреждение", str, Color_White"Закрыть", "");
 
 	str[0] = EOS;
-	GetPlayerIp(playerid, str, 16);
-	new SubStr[20];
-	GetPlayerIp(id, SubStr, 16);
-	format(str, sizeof(str), "(IP: %s | RegIP: %s) выдал предупреждение игроку %s (IP: %s | RegIP: %s) [%d/3], по причине: %s", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp], pInfo[id][pWarn], message);
+	format(str, sizeof(str), "(IP: %s | RegIP: %s) выдал предупреждение игроку %s (IP: %s | RegIP: %s) [%d/3], по причине: %s", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp], pInfo[id][pWarn], message);
 
 	AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 
@@ -22649,10 +22402,7 @@ CMD:warn(playerid, params[])
 		BanPlayer(id, reason, gettime()+(time*86400), playerid);
 
 		str[0] = EOS;
-		GetPlayerIp(playerid, str, 16);
-		SubStr[0] = EOS;
-		GetPlayerIp(id, SubStr, 16);
-		format(str, sizeof(str), "(IP: %s | RegIP: %s) забанил игрока %s (IP: %s | RegIP: %s) на %d дней по причине: %s", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp], time, reason);
+		format(str, sizeof(str), "(IP: %s | RegIP: %s) забанил игрока %s (IP: %s | RegIP: %s) на %d дней по причине: %s", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp], time, reason);
 
 		AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 	}
@@ -22680,10 +22430,7 @@ CMD:unwarn(playerid, params[])
 	SendClientMessage(id, -1, Color_Yellow"С вас было снято 1 предупреждение");
 
 	str[0] = EOS;
-	GetPlayerIp(playerid, str, 16);
-	new SubStr[20];
-	GetPlayerIp(id, SubStr, 16);
-	format(str, sizeof(str), "(IP: %s | RegIP: %s) снял 1 предупреждение игроку %s (IP: %s | RegIP: %s)", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp]);
+	format(str, sizeof(str), "(IP: %s | RegIP: %s) снял 1 предупреждение игроку %s (IP: %s | RegIP: %s)", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp]);
 
 	AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 	return 1;
@@ -22713,10 +22460,7 @@ CMD:kick(playerid, params[])
 	KickPlayer(id);
 
 	str[0] = EOS;
-	GetPlayerIp(playerid, str, 16);
-	new SubStr[20];
-	GetPlayerIp(id, SubStr, 16);
-	format(str, sizeof(str), "(IP: %s | RegIP: %s) кикнул игрока %s (IP: %s | RegIP: %s) по причине: %s", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp], message);
+	format(str, sizeof(str), "(IP: %s | RegIP: %s) кикнул игрока %s (IP: %s | RegIP: %s) по причине: %s", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp], message);
 
 	AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 	return 1;
@@ -22748,10 +22492,7 @@ CMD:ban(playerid, params[])
 	AInfo[playerid][AdmBan][GetWeekDay()]++;
 
 	str[0] = EOS;
-	GetPlayerIp(playerid, str, 16);
-	new SubStr[20];
-	GetPlayerIp(id, SubStr, 16);
-	format(str, sizeof(str), "(IP: %s | RegIP: %s) забанил игрока %s (IP: %s | RegIP: %s), на %d дней по причине: %s", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp], time, message);
+	format(str, sizeof(str), "(IP: %s | RegIP: %s) забанил игрока %s (IP: %s | RegIP: %s), на %d дней по причине: %s", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp], time, message);
 
 	AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 	return 1;
@@ -22810,9 +22551,7 @@ CMD:banip(playerid, params[])
 		SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/banip [IP] [Причина]");
 		return SendClientMessage(playerid, -1, Color_Grey"Чтобы узнать IP игрока вы можете использовать команду /getip");
 	}
-	new PlayerIP[17];
-	GetPlayerIp(playerid, PlayerIP, 17);
-	if(!strcmp(IP, PlayerIP)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ввели свой IP");
+	if(!strcmp(IP, pInfo[playerid][pIP])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ввели свой IP");
 
 	new str[300];
 	format(str, sizeof(str), Color_Red"%s %s забанил IP %s по причине %s", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], IP, message);
@@ -22823,8 +22562,7 @@ CMD:banip(playerid, params[])
 	BanIP(IP, playerid, message);
 
 	str[0] = EOS;
-	GetPlayerIp(playerid, str, 16);
-	format(str, sizeof(str), "(IP: %s | RegIP: %s) забанил IP %s по причине %s", str, pInfo[playerid][pRegIp], IP, message);
+	format(str, sizeof(str), "(IP: %s | RegIP: %s) забанил IP %s по причине %s", pInfo[playerid][pIP], pInfo[playerid][pRegIp], IP, message);
 
 	AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 	return 1;
@@ -22840,11 +22578,8 @@ CMD:getip(playerid, params[])
 	if(!IsPlayerConnected(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не подключен");
 	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
 
-	new IP[17];
-	GetPlayerIp(id, IP, 17);
-
 	new str[300];
-	format(str, sizeof(str), Color_Yellow"%s[%d]: RegIP %s || Текущий IP %s", pInfo[id][pName], id, pInfo[id][pRegIp], IP);
+	format(str, sizeof(str), Color_Yellow"%s[%d]: RegIP %s || Текущий IP %s", pInfo[id][pName], id, pInfo[id][pRegIp], pInfo[id][pIP]);
 	SendClientMessage(playerid, -1, str);
 
 	return 1;
@@ -22856,9 +22591,7 @@ CMD:unbanip(playerid, params[])
 
 	new IP[17], message[145];
 	if(sscanf(params, "s[17]s[145]", IP, message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/unbanip [IP] [Причина]");
-	new PlayerIP[17];
-	GetPlayerIp(playerid, PlayerIP, 17);
-	if(!strcmp(IP, PlayerIP)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ввели свой IP");
+	if(!strcmp(IP, pInfo[playerid][pIP])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ввели свой IP");
 
 	new query[80];
 	mysql_format(DB, query, sizeof(query), "SELECT * FROM `ipbans` WHERE `IP` = '%s'", IP);
@@ -23031,10 +22764,7 @@ CMD:givelic(playerid, params[])
 	SendClientMessage(playerid, -1, str);
 
 	str[0] = EOS;
-	GetPlayerIp(playerid, str, 16);
-	new SubStr[20];
-	GetPlayerIp(id, SubStr, 16);
-	format(str, sizeof(str), "(IP: %s | RegIP: %s) выдал все лицензии игроку %s (IP: %s | RegIP: %s)", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp]);
+	format(str, sizeof(str), "(IP: %s | RegIP: %s) выдал все лицензии игроку %s (IP: %s | RegIP: %s)", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp]);
 
 	AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 
@@ -23066,10 +22796,7 @@ CMD:setlevel(playerid, params[])
 	SendClientMessage(playerid, -1, str);
 
 	str[0] = EOS;
-	GetPlayerIp(playerid, str, 16);
-	new SubStr[20];
-	GetPlayerIp(id, SubStr, 16);
-	format(str, sizeof(str), "(IP: %s | RegIP: %s) установил %d уровень игроку %s (IP: %s | RegIP: %s)", str, pInfo[playerid][pRegIp], level, pInfo[id][pName], SubStr, pInfo[id][pRegIp]);
+	format(str, sizeof(str), "(IP: %s | RegIP: %s) установил %d уровень игроку %s (IP: %s | RegIP: %s)", pInfo[playerid][pIP], pInfo[playerid][pRegIp], level, pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp]);
 
 	AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 
@@ -23097,10 +22824,7 @@ CMD:giveupgrade(playerid, params[])
 	SendClientMessage(playerid, -1, str);
 
 	str[0] = EOS;
-	GetPlayerIp(playerid, str, 16);
-	new SubStr[20];
-	GetPlayerIp(id, SubStr, 16);
-	format(str, sizeof(str), "(IP: %s | RegIP: %s) выдал %d очков улучшений игроку %s (IP: %s | RegIP: %s)", str, pInfo[playerid][pRegIp], upgrade, pInfo[id][pName], SubStr, pInfo[id][pRegIp]);
+	format(str, sizeof(str), "(IP: %s | RegIP: %s) выдал %d очков улучшений игроку %s (IP: %s | RegIP: %s)", pInfo[playerid][pIP], pInfo[playerid][pRegIp], upgrade, pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp]);
 
 	AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 
@@ -23125,10 +22849,7 @@ CMD:givemoney(playerid, params[])
 	SendClientMessage(playerid, -1, str);
 
 	str[0] = EOS;
-	GetPlayerIp(playerid, str, 16);
-	new SubStr[20];
-	GetPlayerIp(id, SubStr, 16);
-	format(str, sizeof(str), "(IP: %s | RegIP: %s) выдал %d$ игроку %s (IP: %s | RegIP: %s)", str, pInfo[playerid][pRegIp], money, pInfo[id][pName], SubStr, pInfo[id][pRegIp]);
+	format(str, sizeof(str), "(IP: %s | RegIP: %s) выдал %d$ игроку %s (IP: %s | RegIP: %s)", pInfo[playerid][pIP], pInfo[playerid][pRegIp], money, pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp]);
 
 	AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 
@@ -23155,10 +22876,7 @@ CMD:givedonatemoney(playerid, params[])
 	SavePlayerInt(id, "DonateMoney", pInfo[id][pDonateMoney]);
 
 	str[0] = EOS;
-	GetPlayerIp(playerid, str, 16);
-	new SubStr[20];
-	GetPlayerIp(id, SubStr, 16);
-	format(str, sizeof(str), "(IP: %s | RegIP: %s) выдал %d донат рублей игроку %s (IP: %s | RegIP: %s)", str, pInfo[playerid][pRegIp], money, pInfo[id][pName], SubStr, pInfo[id][pRegIp]);
+	format(str, sizeof(str), "(IP: %s | RegIP: %s) выдал %d донат рублей игроку %s (IP: %s | RegIP: %s)", pInfo[playerid][pIP], pInfo[playerid][pRegIp], money, pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp]);
 
 	AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 	return 1;
@@ -23184,10 +22902,7 @@ CMD:giveskin(playerid, params[])
 	AddPlayerSkins(id, skin);
 
 	str[0] = EOS;
-	GetPlayerIp(playerid, str, 16);
-	new SubStr[20];
-	GetPlayerIp(id, SubStr, 16);
-	format(str, sizeof(str), "(IP: %s | RegIP: %s) выдал скин %d игроку %s (IP: %s | RegIP: %s)", str, pInfo[playerid][pRegIp], skin, pInfo[id][pName], SubStr, pInfo[id][pRegIp]);
+	format(str, sizeof(str), "(IP: %s | RegIP: %s) выдал скин %d игроку %s (IP: %s | RegIP: %s)", pInfo[playerid][pIP], pInfo[playerid][pRegIp], skin, pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp]);
 
 	AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 	return 1;
@@ -23696,10 +23411,7 @@ CMD:makeadmin(playerid, params[])
 		mysql_tquery(DB, str);
 
 		str[0] = EOS;
-		GetPlayerIp(playerid, str, 16);
-		new SubStr[20];
-		GetPlayerIp(id, SubStr, 16);
-		format(str, sizeof(str), "(IP: %s | RegIP: %s) снял игрока %s (IP: %s | RegIP: %s) с должности %s", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp], AdminNames[pInfo[id][pAdmin]]);
+		format(str, sizeof(str), "(IP: %s | RegIP: %s) снял игрока %s (IP: %s | RegIP: %s) с должности %s", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp], AdminNames[pInfo[id][pAdmin]]);
 
 		AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 	}
@@ -23722,10 +23434,7 @@ CMD:makeadmin(playerid, params[])
 		}
 
 		str[0] = EOS;
-		GetPlayerIp(playerid, str, 16);
-		new SubStr[20];
-		GetPlayerIp(id, SubStr, 16);
-		format(str, sizeof(str), "(IP: %s | RegIP: %s) назначил игрока %s (IP: %s | RegIP: %s) на должность %s", str, pInfo[playerid][pRegIp], pInfo[id][pName], SubStr, pInfo[id][pRegIp], AdminNames[AdmLevel]);
+		format(str, sizeof(str), "(IP: %s | RegIP: %s) назначил игрока %s (IP: %s | RegIP: %s) на должность %s", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[id][pName], pInfo[id][pIP], pInfo[id][pRegIp], AdminNames[AdmLevel]);
 
 		AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 	}
@@ -24051,7 +23760,6 @@ CMD:editbusiness(playerid, params[])
 		"Main_Color"- "Color_White"Минимальный уровень для покупки\n\
 		"Main_Color"- "Color_White"Место обслуживания на машине(Заправки/KFC)\n\
 		"Main_Color"- "Color_White"Удалить место обслуживания на машине\n\
-		"Main_Color"- "Color_White"Изменить крышу\n\
 		"Main_Color"- "Color_White"Изменить название\n\
 		"Main_Color"- "Color_White"Изменить иконку", Color_White"Далее", Color_White"Закрыть");
 	}
@@ -24063,8 +23771,7 @@ CMD:editbusiness(playerid, params[])
 		"Main_Color"- "Color_White"Цена\n\
 		"Main_Color"- "Color_White"Минимальный уровень для покупки\n\
 		"Main_Color"- "Color_White"Место обслуживания на машине(Заправки/KFC)\n\
-		"Main_Color"- "Color_White"Удалить место обслуживания на машине\n\
-		"Main_Color"- "Color_White"Изменить крышу", Color_White"Далее", Color_White"Закрыть");
+		"Main_Color"- "Color_White"Удалить место обслуживания на машине", Color_White"Далее", Color_White"Закрыть");
 	}
 	return 1;
 }
@@ -25099,7 +24806,7 @@ stock ShowFractionCommand(playerid)
 		{
 			ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Организации", Main_Color"/members "Color_White"- Члены мафии онлайн\n\
 			"Main_Color"/f "Color_White"- Чат банды\n\
-			"Main_Color"/bizzwar "Color_White"- Начать войну за бизнес\n\
+			"Main_Color"/influence "Color_White"- Статистика влияния\n\
 			"Main_Color"/stealdress "Color_White"- Украсть одежду\n\
 			"Main_Color"/rape "Color_White"- Похитить игрока\n\
 			"Main_Color"/invite [ID] "Color_White"- Пригласить в банду\n\
@@ -25180,16 +24887,14 @@ stock ShowBusinessInfo(playerid)
 	"Main_Color"Деньги на счету"Color_White": "Color_Green"%d$\n\
 	"Main_Color"Гос.цена"Color_White": "Color_Green"%d%s\n\
 	"Main_Color"Требуемый уровень"Color_White": %d\n\
-	"Main_Color"Оплачен до"Color_White": %s\n\
-	"Main_Color"Крышует"Color_White": %s",
+	"Main_Color"Оплачен до"Color_White": %s",
 	str,
 	bInfo[BusinessID][bID],
 	bInfo[BusinessID][bMoney],
 	bInfo[BusinessID][bPrice],
 	(bInfo[BusinessID][bIsDonate]) ? (" донат рублей"):("$"),
 	bInfo[BusinessID][bNeedLevel],
-	date(bInfo[BusinessID][bTax], 3, "%dd.%mm.%yyyy %hh:%ii"),
-	FractionName[bInfo[BusinessID][bMafiaOwner]]);
+	date(bInfo[BusinessID][bTax], 3, "%dd.%mm.%yyyy %hh:%ii"));
 	ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color"Информация о бизнесе", str, Color_White"Закрыть", "");
 	return 1;
 }
@@ -25760,9 +25465,7 @@ stock BanIP(const IP[], AdminID, const reason[])
 
 	foreach(new i : Player)
 	{
-		query[0] = EOS;
-		GetPlayerIp(i, query, 17);
-		if(!strcmp(IP, query))
+		if(!strcmp(IP, pInfo[i][pIP]))
 		{
 			query[0] = EOS;
 			format(query, sizeof(query), Color_Red"%s %s "Color_White"забанил ваш IP, по причине:\n\
@@ -25837,8 +25540,7 @@ public OffBanCheckAlreadyBanned(const reason[], AdminID, time, Name[])
 		AInfo[AdminID][AdmBan][GetWeekDay()]++;
 
 		str[0] = EOS;
-		GetPlayerIp(AdminID, str, 16);
-		format(str, sizeof(str), "(IP: %s | RegIP: %s) забанил игрока %s (offline), на %d дней по причине: %s", str, pInfo[AdminID][pRegIp], Name, time, reason);
+		format(str, sizeof(str), "(IP: %s | RegIP: %s) забанил игрока %s (offline), на %d дней по причине: %s", pInfo[AdminID][pIP], pInfo[AdminID][pRegIp], Name, time, reason);
 
 		AddLog(LogTypeAdmin, pInfo[AdminID][pID], str);
 	}
@@ -25860,8 +25562,7 @@ public UnBanCheck(const reason[], AdminID)
 		SendAllMessage(str);
 
 		str[0] = EOS;
-		GetPlayerIp(AdminID, str, 16);
-		format(str, sizeof(str), "(IP: %s | RegIP: %s) разбанил игрока %s, по причине: %s", str, pInfo[AdminID][pRegIp], Name, reason);
+		format(str, sizeof(str), "(IP: %s | RegIP: %s) разбанил игрока %s, по причине: %s", pInfo[AdminID][pIP], pInfo[AdminID][pRegIp], Name, reason);
 
 		AddLog(LogTypeAdmin, pInfo[AdminID][pID], str);
 	}
@@ -25884,8 +25585,7 @@ public UnBanIPCheck(const reason, AdminID)
 		SendAdminMessage(str);
 
 		str[0] = EOS;
-		GetPlayerIp(AdminID, str, 16);
-		format(str, sizeof(str), "(IP: %s | RegIP: %s) разбанил IP %s по причине %s", str, pInfo[AdminID][pRegIp], IP, reason);
+		format(str, sizeof(str), "(IP: %s | RegIP: %s) разбанил IP %s по причине %s", pInfo[AdminID][pIP], pInfo[AdminID][pRegIp], IP, reason);
 
 		AddLog(LogTypeAdmin, pInfo[AdminID][pID], str);
 	}
@@ -26197,8 +25897,7 @@ public GetRegID(playerid)
 	SavePlayerSkins(playerid);
 
 	new str[300];
-	GetPlayerIp(playerid, str, 16);
-	format(str, sizeof(str), Color_Grey"%s[%d] подключился к серверу (IP: %s | RegIP: %s)", pInfo[playerid][pName], playerid, str, pInfo[playerid][pRegIp]);
+	format(str, sizeof(str), Color_Grey"%s[%d] подключился к серверу (IP: %s | RegIP: %s)", pInfo[playerid][pName], playerid, pInfo[playerid][pIP], pInfo[playerid][pRegIp]);
 	SendAdminMessage(str);
 }
 
@@ -26425,6 +26124,9 @@ public LoadAccount(playerid)
 
 	SetPVarInt(playerid, "FirstSpawn", gettime()+10);
 	TogglePlayerSpectating(playerid, false);
+
+	format(str, sizeof(str), Color_Grey"%s[%d] подключился к серверу (IP: %s | RegIP: %s)", pInfo[playerid][pName], playerid, pInfo[playerid][pIP], pInfo[playerid][pRegIp]);
+	SendAdminMessage(str);
 	return 1;
 }
 
@@ -26832,24 +26534,29 @@ stock PayDay()
 		}
 	}
 
+	for(new i = Fraction_RussiaMafia; i <= Fraction_Yakuza; i++)
 	{
-		new MafiaBizzCount[MAX_FRACTION] = {0, ...};
-		foreach(new i: Business)
-		{
-			if(!bInfo[i][bID] || bInfo[i][bMafiaOwner] == Fraction_None) continue;
-			MafiaBizzCount[bInfo[i][bMafiaOwner]]++;
-		}
+		new money = 10000*floatround(FractionInfluence[i], floatround_floor);
+		new materials = 100*floatround(FractionInfluence[i], floatround_floor);
+		new drugs = 10*floatround(FractionInfluence[i], floatround_floor);
 
-		for(new i = Fraction_RussiaMafia; i <= Fraction_Yakuza; i++)
-		{
-			new str[200];
-			format(str, sizeof(str), "За счет крышуемых бизнесов банк мафии пополнен на "Color_Green"%d$", MafiaBizzCount[i]*5000);
-			SendRMessageEx(i, str);
+		FractionWare[i][FractionWareMoney] += money;
+		FractionWare[i][FractionWareMaterials] += materials;
+		FractionWare[i][FractionWareDrugs] += drugs;
+		SaveFractionWare(i);
 
-			FractionWare[i][FractionWareMoney] += MafiaBizzCount[i]*5000;
-			SaveFractionWare(i);
-		}
+		new str[200];
+		format(str, sizeof(str), "Влияние вашей мафии %.2f%%", FractionInfluence[i]);
+		SendRMessageEx(i, str);
 
+		format(str, sizeof(str), "На склад мафии добавлено "Color_Green"%d$", money);
+		SendRMessageEx(i, str);
+
+		format(str, sizeof(str), "На склад мафии добавлено "Color_Gold"%d материалов", materials);
+		SendRMessageEx(i, str);
+
+		format(str, sizeof(str), "На склад мафии добавлено "Color_Gold"%d грамм наркотиков", drugs);
+		SendRMessageEx(i, str);
 	}
 
 	foreach(new i : Player)
@@ -27317,23 +27024,9 @@ public SecondTimer()
 				}
                 else if(WarStatus[i] == War_Status_War)
                 {
-					if(IsAMafia(i))
-					{
-						if(WarZone[i] > WarZone[WarOpponent[i]]) EndBizzWar(i, 1);
-						else if(WarZone[i] < WarZone[WarOpponent[i]]) EndBizzWar(i, 0);
-						else EndBizzWar(i, 2);
-					}
-					else
-					{
-	                    SendRMessageEx(i, "Время войны окончено. Война закончилась в ничью");
-	                    EndGangWar(i, 2);
-					}
+					SendRMessageEx(i, "Время войны окончено. Война закончилась в ничью");
+					EndGangWar(i, 2);
                 }
-			}
-			else if(IsAMafia(i) && bInfo[WarBet[i]][bMafiaOwner] != i && !WarZone[i] && WarZone[WarOpponent[i]])
-			{
-				EndBizzWar(WarOpponent[i], 1);
-				EndBizzWar(i, 0);
 			}
 		}
 	}
@@ -28496,8 +28189,7 @@ stock AuthAdmin(playerid)
 {
     Iter_Add(Admins, playerid);
 	new str[200];
-	GetPlayerIp(playerid, str, 16);
-	format(str, sizeof(str), "%s %s авторизировался в админ панели (RegIP: %s | IP: %s)", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], pInfo[playerid][pRegIp], str);
+	format(str, sizeof(str), "%s %s авторизировался в админ панели (RegIP: %s | IP: %s)", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], pInfo[playerid][pRegIp], pInfo[playerid][pIP]);
 	SendAdminMessage(str);
 	ToggleAntiCheat(playerid, false);
 	RemovePlayerOnCheaterPanel(playerid);
