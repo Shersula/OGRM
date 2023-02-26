@@ -88,6 +88,7 @@
 #define LogTypeAdmin	2
 #define LogTypeAccount	3
 #define LogTypeFraction	4
+#define LogTypeDonate	5
 
 #define Project_Name 		"Old Good RPG mod"
 #define Short_Project_Name 	"OGRM"
@@ -990,9 +991,21 @@ new FractionThiefCD[MAX_FRACTION] = {0, ...};
 ////////////////////////////////
 //////Mafia Influence///////////
 new Float:FractionInfluence[MAX_FRACTION] = {0.0, ...};
+
+stock Float:SetFractionInfluence(GiveFractionID, TakeFractionID, Float:Value)
+{
+	if(FractionInfluence[GiveFractionID] < Value) Value = FractionInfluence[GiveFractionID];
+
+	FractionInfluence[GiveFractionID] -= Value;
+	FractionInfluence[TakeFractionID] += Value;
+
+	SaveFractionInfluence(GiveFractionID);
+	SaveFractionInfluence(TakeFractionID);
+	return Value;
+}
 ////////////////////////////////
 //////////Gang War//////////////
-
+new FractionWarCD[MAX_FRACTION] = {0, ...};
 enum WarZoneInfo
 {
 	WarZoneName[50],
@@ -1002,10 +1015,11 @@ enum WarZoneInfo
 	Float:MinX,
 	Float:MinY,
 	Float:MaxX,
-	Float:MaxY
+	Float:MaxY,
+	bool:OnlyForMafia
 };
 
-#define MAX_GANG_WAR_ZONES	6
+#define MAX_GANG_WAR_ZONES	7
 new WarZones[MAX_GANG_WAR_ZONES][WarZoneInfo];
 
 #define War_Bet_Type_None			0
@@ -1017,13 +1031,15 @@ new WarZones[MAX_GANG_WAR_ZONES][WarZoneInfo];
 #define War_Status_Wait_Accept				1
 #define War_Status_Wait_Accept_Request		2
 #define War_Status_War						3
+#define War_Status_Wait_Player				4
 
-new WarBetType[MAX_FRACTION] = {War_Bet_Type_None, ...};
-new WarOpponent[MAX_FRACTION] = {Fraction_None, ...};
-new WarZone[MAX_FRACTION] = {0, ...}; //Используется для хранения индекса массива WarZones как места войны для банд
-new WarStatus[MAX_FRACTION] = {War_Status_None, ...};
+new WarBetType[MAX_FRACTION] = {War_Bet_Type_None, ...}; //Хранит тип ставки для банд || Хранит виртуальный мир где идет война для мафий
+new WarOpponent[MAX_FRACTION] = {Fraction_None, ...}; //ID оппонента
+new WarZone[MAX_FRACTION] = {0, ...}; //Используется для хранения индекса массива WarZones как места войны для банд/мафий
+new WarStatus[MAX_FRACTION] = {War_Status_None, ...}; //Текущий статус войны
 new WarTimer[MAX_FRACTION] = {0, ...};
-new WarBet[MAX_FRACTION] = {0, ...};
+new WarBet[MAX_FRACTION] = {0, ...}; //Хранит размер ставки для банд || Хранит колечество участников для мафий
+new bool:WarInitiator[MAX_FRACTION] = {false, ...}; //Является ли фракция инициатором войны
 
 ////////////////////////////////
 //////////Business//////////////
@@ -1122,7 +1138,6 @@ new BusinessType[][BusinessTypeInfo] = {
 	{-100.3938,-25.0369,1000.7188,356.7844, {-105.5348,-10.6157,1000.7188}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {-105.6302,-8.9152,1000.7188,183.3645}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, 3,  "Sex Shop", 21, false} //BusinessSexShop
 };
 
-#define Business_World			5000
 #define MAX_BUSINESS			300
 #define Thief_Status_None       0
 #define Thief_Status_Capture    1
@@ -1269,8 +1284,6 @@ enum HouseInteriorInfo
 	hIntName[50],
 	hIntClass
 };
-
-#define House_World		10000
 
 new HouseInterior[][HouseInteriorInfo] = {
 	{0.0, 0.0, 0.0, 0.0, 0, "", 0},
@@ -2003,7 +2016,10 @@ enum
 	D_Church_Wedding,
 	D_Church_Wedding_Accept,
 	D_Church_Divorce,
-	D_Set_Influence
+	D_Set_Influence,
+	D_Maf_War_Select_Maf,
+	D_Maf_War_Select_Count,
+	D_Maf_War_Select_Zone
 };
 
 stock ShowDialog(playerid, dialogid, style, const caption[], const info[], const button1[], const button2[])
@@ -2378,6 +2394,11 @@ new Upgrade[UpgradeType][UpgradeConfig] = {
 	{100.0, 3.0, 20},
 	{100.0, 10.0, 6}
 };
+
+#define Player_World	1000
+#define Other_World		2000
+#define Business_World	5000
+#define House_World		10000
 
 enum PlayerInfo
 {
@@ -2825,6 +2846,7 @@ public OnGameModeInit()
 	WarZones[0][WarZoneID] = 0;
     WarZones[0][WarDynamicZone] = 0;
 	WarZones[0][WarIcon] = 0;
+	WarZones[0][OnlyForMafia] = false;
 
 	WarZones[1][MinX] = 2159;
 	WarZones[1][MinY] = -162;
@@ -2832,8 +2854,9 @@ public OnGameModeInit()
 	WarZones[1][MaxY] = 209;
 	strcat(WarZones[1][WarZoneName], "Паломино");
 	WarZones[1][WarZoneID] = GangZoneCreate(WarZones[1][MinX], WarZones[1][MinY], WarZones[1][MaxX], WarZones[1][MaxY]);
-    WarZones[1][WarDynamicZone] = CreateDynamicRectangle(WarZones[1][MinX], WarZones[1][MinY], WarZones[1][MaxX], WarZones[1][MaxY], 0, 0);
+    WarZones[1][WarDynamicZone] = CreateDynamicRectangle(WarZones[1][MinX], WarZones[1][MinY], WarZones[1][MaxX], WarZones[1][MaxY]);
 	WarZones[1][WarIcon] = CreateDynamicMapIcon(WarZones[1][MinX]+((WarZones[1][MaxX]-WarZones[1][MinX])/2), WarZones[1][MinY]+((WarZones[1][MaxY]-WarZones[1][MinY])/2), 0.0, 0, 0x9b2d30FF, -1, -1, -1, 4000, MAPICON_GLOBAL);
+	WarZones[1][OnlyForMafia] = false;
 
 	WarZones[2][MinX] = -612;
 	WarZones[2][MinY] = -223;
@@ -2841,8 +2864,9 @@ public OnGameModeInit()
 	WarZones[2][MaxY] = -12;
 	strcat(WarZones[2][WarZoneName], "Лесопилка");
 	WarZones[2][WarZoneID] = GangZoneCreate(WarZones[2][MinX], WarZones[2][MinY], WarZones[2][MaxX], WarZones[2][MaxY]);
-    WarZones[2][WarDynamicZone] = CreateDynamicRectangle(WarZones[2][MinX], WarZones[2][MinY], WarZones[2][MaxX], WarZones[2][MaxY], 0, 0);
+    WarZones[2][WarDynamicZone] = CreateDynamicRectangle(WarZones[2][MinX], WarZones[2][MinY], WarZones[2][MaxX], WarZones[2][MaxY]);
 	WarZones[2][WarIcon] = CreateDynamicMapIcon(WarZones[2][MinX]+((WarZones[2][MaxX]-WarZones[2][MinX])/2), WarZones[2][MinY]+((WarZones[2][MaxY]-WarZones[2][MinY])/2), 0.0, 0, 0x9b2d30FF, -1, -1, -1, 4000, MAPICON_GLOBAL);
+	WarZones[2][OnlyForMafia] = false;
 
 	WarZones[3][MinX] = -54;
 	WarZones[3][MinY] = 2386;
@@ -2850,8 +2874,9 @@ public OnGameModeInit()
 	WarZones[3][MaxY] = 2670;
 	strcat(WarZones[3][WarZoneName], "Заброшенный аэропорт");
 	WarZones[3][WarZoneID] = GangZoneCreate(WarZones[3][MinX], WarZones[3][MinY], WarZones[3][MaxX], WarZones[3][MaxY]);
-    WarZones[3][WarDynamicZone] = CreateDynamicRectangle(WarZones[3][MinX], WarZones[3][MinY], WarZones[3][MaxX], WarZones[3][MaxY], 0, 0);
+    WarZones[3][WarDynamicZone] = CreateDynamicRectangle(WarZones[3][MinX], WarZones[3][MinY], WarZones[3][MaxX], WarZones[3][MaxY]);
 	WarZones[3][WarIcon] = CreateDynamicMapIcon(WarZones[3][MinX]+((WarZones[3][MaxX]-WarZones[3][MinX])/2), WarZones[3][MinY]+((WarZones[3][MaxY]-WarZones[3][MinY])/2), 0.0, 0, 0x9b2d30FF, -1, -1, -1, 4000, MAPICON_GLOBAL);
+	WarZones[3][OnlyForMafia] = false;
 
 	WarZones[4][MinX] = -284;
 	WarZones[4][MinY] = -138;
@@ -2859,8 +2884,9 @@ public OnGameModeInit()
 	WarZones[4][MaxY] = 163;
 	strcat(WarZones[4][WarZoneName], "Ферма Блуберри");
 	WarZones[4][WarZoneID] = GangZoneCreate(WarZones[4][MinX], WarZones[4][MinY], WarZones[4][MaxX], WarZones[4][MaxY]);
-    WarZones[4][WarDynamicZone] = CreateDynamicRectangle(WarZones[4][MinX], WarZones[4][MinY], WarZones[4][MaxX], WarZones[4][MaxY], 0, 0);
+    WarZones[4][WarDynamicZone] = CreateDynamicRectangle(WarZones[4][MinX], WarZones[4][MinY], WarZones[4][MaxX], WarZones[4][MaxY]);
 	WarZones[4][WarIcon] = CreateDynamicMapIcon(WarZones[4][MinX]+((WarZones[4][MaxX]-WarZones[4][MinX])/2), WarZones[4][MinY]+((WarZones[4][MaxY]-WarZones[4][MinY])/2), 0.0, 0, 0x9b2d30FF, -1, -1, -1, 4000, MAPICON_GLOBAL);
+	WarZones[4][OnlyForMafia] = false;
 
 	WarZones[5][MinX] = 405;
 	WarZones[5][MinY] = 714;
@@ -2868,8 +2894,19 @@ public OnGameModeInit()
 	WarZones[5][MaxY] = 1024;
 	strcat(WarZones[5][WarZoneName], "Карьер");
 	WarZones[5][WarZoneID] = GangZoneCreate(WarZones[5][MinX], WarZones[5][MinY], WarZones[5][MaxX], WarZones[5][MaxY]);
-    WarZones[5][WarDynamicZone] = CreateDynamicRectangle(WarZones[5][MinX], WarZones[5][MinY], WarZones[5][MaxX], WarZones[5][MaxY], 0, 0);
+    WarZones[5][WarDynamicZone] = CreateDynamicRectangle(WarZones[5][MinX], WarZones[5][MinY], WarZones[5][MaxX], WarZones[5][MaxY]);
 	WarZones[5][WarIcon] = CreateDynamicMapIcon(WarZones[5][MinX]+((WarZones[5][MaxX]-WarZones[5][MinX])/2), WarZones[5][MinY]+((WarZones[5][MaxY]-WarZones[5][MinY])/2), 0.0, 0, 0x9b2d30FF, -1, -1, -1, 4000, MAPICON_GLOBAL);
+	WarZones[5][OnlyForMafia] = false;
+
+	WarZones[6][MinX] = 405;
+	WarZones[6][MinY] = 714;
+	WarZones[6][MaxX] = 795;
+	WarZones[6][MaxY] = 1024;
+	strcat(WarZones[6][WarZoneName], "Заброшенная деревня");
+	WarZones[6][WarZoneID] = GangZoneCreate(WarZones[6][MinX], WarZones[6][MinY], WarZones[6][MaxX], WarZones[6][MaxY]);
+    WarZones[6][WarDynamicZone] = CreateDynamicRectangle(WarZones[6][MinX], WarZones[6][MinY], WarZones[6][MaxX], WarZones[6][MaxY]);
+	WarZones[6][WarIcon] = CreateDynamicMapIcon(WarZones[6][MinX]+((WarZones[6][MaxX]-WarZones[6][MinX])/2), WarZones[6][MinY]+((WarZones[6][MaxY]-WarZones[6][MinY])/2), 0.0, 0, 0x9b2d30FF, -1, -1, -1, 4000, MAPICON_GLOBAL);
+	WarZones[6][OnlyForMafia] = true;
 
 	new hour;
 	gettime(hour, _, _);
@@ -3052,17 +3089,15 @@ public OnPlayerDisconnect(playerid, reason)
 		StopBusinessThief(BusinessID);
 	}
 
-	if(pInfo[playerid][pMembers] != Fraction_None && IsABand(pInfo[playerid][pMembers]) && pInfo[playerid][pRank] >= FractionMaxRank)
+	if(IsABand(pInfo[playerid][pMembers]) && pInfo[playerid][pRank] >= FractionMaxRank && WarStatus[pInfo[playerid][pMembers]] == War_Status_War)
 	{
-		if(WarStatus[pInfo[playerid][pMembers]] == War_Status_War)
-        {
-            SendRMessageEx(pInfo[playerid][pMembers], "Лидер вашей банды покинул игру. Вы проиграли войну");
-            SendRMessageEx(WarOpponent[pInfo[playerid][pMembers]], "Лидер банды соперника покинул игру. Вы выиграли войну");
+		SendRMessageEx(pInfo[playerid][pMembers], "Лидер вашей банды покинул игру. Вы проиграли войну");
+		SendRMessageEx(WarOpponent[pInfo[playerid][pMembers]], "Лидер банды соперника покинул игру. Вы выиграли войну");
 
-            EndGangWar(WarOpponent[pInfo[playerid][pMembers]], 1);
-            EndGangWar(pInfo[playerid][pMembers], 0);
-        }
+		EndWar(WarOpponent[pInfo[playerid][pMembers]], 1);
+		EndWar(pInfo[playerid][pMembers], 0);
 	}
+	else if(IsAMafia(pInfo[playerid][pMembers]) && GetPVarInt(playerid, "OnMafiaWar")) RemoveFromMafiaWar(playerid);
 
 	if(GetPVarInt(playerid, "TaxiDriver"))
 	{
@@ -3687,30 +3722,27 @@ public OnPlayerSpawn(playerid)
 	SetPlayerHealth(playerid, pInfo[playerid][pHealth]);
 	SetPlayerArmour(playerid, pInfo[playerid][pArmor]);
 
-    if(pInfo[playerid][pMembers] != Fraction_None && WarStatus[pInfo[playerid][pMembers]] == War_Status_War)
+    if(IsABand(pInfo[playerid][pMembers]) && WarStatus[pInfo[playerid][pMembers]] == War_Status_War)
     {
-		if(IsABand(pInfo[playerid][pMembers]))
-		{
-	        GangZoneShowForPlayer(playerid, WarZones[WarZone[pInfo[playerid][pMembers]]][WarZoneID], FractionColor[pInfo[playerid][pMembers]]-0x7F);
-	        GangZoneFlashForPlayer(playerid, WarZones[WarZone[pInfo[playerid][pMembers]]][WarZoneID], FractionColor[WarOpponent[pInfo[playerid][pMembers]]]-0x7F);
+		GangZoneShowForPlayer(playerid, WarZones[WarZone[pInfo[playerid][pMembers]]][WarZoneID], FractionColor[pInfo[playerid][pMembers]]-0x7F);
+		GangZoneFlashForPlayer(playerid, WarZones[WarZone[pInfo[playerid][pMembers]]][WarZoneID], FractionColor[WarOpponent[pInfo[playerid][pMembers]]]-0x7F);
 
-			Streamer_ToggleItem(playerid, STREAMER_TYPE_MAP_ICON, WarZones[WarZone[pInfo[playerid][pMembers]]][WarIcon], true);
+		Streamer_ToggleItem(playerid, STREAMER_TYPE_MAP_ICON, WarZones[WarZone[pInfo[playerid][pMembers]]][WarIcon], true);
 
-	        new str[100];
-	        ConvertedSecondsWithoutText(WarTimer[pInfo[playerid][pMembers]], str);
-	        format(str, sizeof(str), "VS~n~~n~Time:_%s", str);
-	        PlayerTextDrawSetString(playerid, WarPTD[playerid][0], str);
+		new str[100];
+		ConvertedSecondsWithoutText(WarTimer[pInfo[playerid][pMembers]], str);
+		format(str, sizeof(str), "VS~n~~n~Time:_%s", str);
+		PlayerTextDrawSetString(playerid, WarPTD[playerid][0], str);
 
-	        PlayerTextDrawColor(playerid, WarPTD[playerid][1], FractionColor[pInfo[playerid][pMembers]]);
-	        PlayerTextDrawSetString(playerid, WarPTD[playerid][1], FractionName[pInfo[playerid][pMembers]]);
+		PlayerTextDrawColor(playerid, WarPTD[playerid][1], FractionColor[pInfo[playerid][pMembers]]);
+		PlayerTextDrawSetString(playerid, WarPTD[playerid][1], FractionName[pInfo[playerid][pMembers]]);
 
-	        PlayerTextDrawColor(playerid, WarPTD[playerid][2], FractionColor[WarOpponent[pInfo[playerid][pMembers]]]);
-	        PlayerTextDrawSetString(playerid, WarPTD[playerid][2], FractionName[WarOpponent[pInfo[playerid][pMembers]]]);
+		PlayerTextDrawColor(playerid, WarPTD[playerid][2], FractionColor[WarOpponent[pInfo[playerid][pMembers]]]);
+		PlayerTextDrawSetString(playerid, WarPTD[playerid][2], FractionName[WarOpponent[pInfo[playerid][pMembers]]]);
 
-	        for(new j = 0; j < sizeof(WarPTD[]); j++) PlayerTextDrawShow(playerid, WarPTD[playerid][j]);
-		}
+		for(new i = 0; i < sizeof(WarPTD[]); i++) PlayerTextDrawShow(playerid, WarPTD[playerid][i]);
     }
-	else for(new i = 1; i < sizeof(WarZones); i++) Streamer_ToggleItem(playerid, STREAMER_TYPE_MAP_ICON, WarZones[i][WarIcon], false);
+	else if(IsAMafia(pInfo[playerid][pMembers]) && GetPVarInt(playerid, "OnMafiaWar")) RemoveFromMafiaWar(playerid);
 
 	KnockoutPlayer(playerid);
 	return 1;
@@ -3756,17 +3788,14 @@ public OnPlayerDeath(playerid, killerid, reason)
 
 		if(IsAMafia(pInfo[killerid][pMembers]) && IsAMafia(pInfo[playerid][pMembers]))
 		{
+			new Float:Value = SetFractionInfluence(pInfo[playerid][pMembers], pInfo[killerid][pMembers], 0.5);
+
 			new str[200];
-			format(str, sizeof(str), "Член мафии %s убил %s (%s). Влияние: +0.5%%", pInfo[killerid][pName], pInfo[playerid][pName], FractionName[pInfo[playerid][pMembers]]);
+			format(str, sizeof(str), "Член мафии %s убил %s (%s). Влияние: +%.2f%%", pInfo[killerid][pName], pInfo[playerid][pName], FractionName[pInfo[playerid][pMembers]], Value);
 			SendRMessageEx(pInfo[killerid][pMembers], str);
-			FractionInfluence[pInfo[killerid][pMembers]] += 0.5;
-			SaveFractionInfluence(pInfo[killerid][pMembers]);
 
-			format(str, sizeof(str), "Член мафии %s убит %s (%s). Влияние: -0.5%%", pInfo[playerid][pName], pInfo[killerid][pName], FractionName[pInfo[killerid][pMembers]]);
+			format(str, sizeof(str), "Член мафии %s убит %s (%s). Влияние: -%.2f%%", pInfo[playerid][pName], pInfo[killerid][pName], FractionName[pInfo[killerid][pMembers]], Value);
 			SendRMessageEx(pInfo[playerid][pMembers], str);
-			FractionInfluence[pInfo[playerid][pMembers]] -= 0.5;
-			SaveFractionInfluence(pInfo[playerid][pMembers]);
-
 		}
 
 		if(IsSecurityAgency(pInfo[killerid][pMembers]) && pInfo[playerid][pWanted])
@@ -3783,19 +3812,15 @@ public OnPlayerDeath(playerid, killerid, reason)
 				SavePlayerInt(killerid, "BankMoney", pInfo[killerid][pBankMoney]);
 			}
 		}
-        else if(pInfo[killerid][pMembers] != Fraction_None && pInfo[playerid][pMembers] != Fraction_None && IsABand(pInfo[playerid][pMembers]) && IsABand(pInfo[killerid][pMembers]) && WarStatus[pInfo[playerid][pMembers]] == War_Status_War && WarOpponent[pInfo[playerid][pMembers]] == pInfo[killerid][pMembers])
+        else if(IsABand(pInfo[playerid][pMembers]) && IsABand(pInfo[killerid][pMembers]) && WarStatus[pInfo[playerid][pMembers]] == War_Status_War && WarOpponent[pInfo[playerid][pMembers]] == pInfo[killerid][pMembers])
         {
             if(pInfo[playerid][pRank] >= FractionMaxRank)
             {
-                for(new i = 1; i < sizeof(WarZones); i++)
-                {
-                    if(IsPlayerInDynamicArea(playerid, WarZones[i][WarDynamicZone]) && WarZone[pInfo[playerid][pMembers]] == i)
-                    {
-                        EndGangWar(WarOpponent[pInfo[playerid][pMembers]], 1);
-                        EndGangWar(pInfo[playerid][pMembers], 0);
-                        break;
-                    }
-                }
+				if(WarZone[pInfo[playerid][pMembers]] && IsPlayerInDynamicArea(playerid, WarZones[WarZone[pInfo[playerid][pMembers]]][WarDynamicZone]))
+				{
+					EndWar(WarOpponent[pInfo[playerid][pMembers]], 1);
+					EndWar(pInfo[playerid][pMembers], 0);
+				}
             }
         }
 	}
@@ -5143,6 +5168,7 @@ public LoadFractionInfo()
 			cache_get_value_name_int(i, "FractionMaterials", FractionWare[indx][FractionWareMaterials]);
 			cache_get_value_name_int(i, "FractionDrugs", FractionWare[indx][FractionWareDrugs]);
             cache_get_value_name_int(i, "Thief_CD", FractionThiefCD[indx]);
+			cache_get_value_name_int(i, "War_CD", FractionWarCD[indx]);
 
 			cache_get_value_name_float(i, "Influence", FractionInfluence[indx]);
 
@@ -5283,23 +5309,12 @@ public LoadFractionInfo()
 
 		printf("Загружено %d фракций за %dмс.\n", row, GetTickCount()-time);
 	}
-
-	if((FractionInfluence[Fraction_RussiaMafia]+FractionInfluence[Fraction_LaCosaNostra]+FractionInfluence[Fraction_Yakuza]) != 100.0)
-	{
-		FractionInfluence[Fraction_RussiaMafia] = 100.0/3.0; 
-		FractionInfluence[Fraction_LaCosaNostra] = 100.0/3.0;
-		FractionInfluence[Fraction_Yakuza] = 100.0/3.0;
-
-		SaveFractionInfluence(Fraction_RussiaMafia);
-		SaveFractionInfluence(Fraction_LaCosaNostra);
-		SaveFractionInfluence(Fraction_Yakuza);
-	}
 	return 1;
 }
 
 stock SaveFractionInfluence(FractionID)
 {
-	new query[200];
+	new query[100];
 	mysql_format(DB, query, sizeof(query), "UPDATE `fraction_info` SET `Influence` = '%f' WHERE `ID` = '%d'", FractionInfluence[FractionID], FractionID);
 	mysql_tquery(DB, query);
 	return 1;
@@ -5313,7 +5328,88 @@ stock SaveFractionWare(FractionID)
 	return 1;
 }
 
-stock ClearGangWar(FractionID)
+stock TeleportToMafiaWar(playerid)
+{
+	new ZoneID = WarZone[pInfo[playerid][pMembers]];
+
+	GangZoneShowForPlayer(playerid, WarZones[ZoneID][WarZoneID], FractionColor[pInfo[playerid][pMembers]]-0x7F);
+	GangZoneFlashForPlayer(playerid, WarZones[ZoneID][WarZoneID], FractionColor[WarOpponent[pInfo[playerid][pMembers]]]-0x7F);
+
+	Streamer_ToggleItem(playerid, STREAMER_TYPE_MAP_ICON, WarZones[ZoneID][WarIcon], true);
+
+	new str[100];
+	ConvertedSecondsWithoutText(WarTimer[pInfo[playerid][pMembers]], str);
+	if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Player) format(str, sizeof(str), "VS~n~~n~Wait_Player:_%s", str);
+	else format(str, sizeof(str), "VS~n~~n~Time:_%s", str);
+	PlayerTextDrawSetString(playerid, WarPTD[playerid][0], str);
+
+	PlayerTextDrawColor(playerid, WarPTD[playerid][1], FractionColor[pInfo[playerid][pMembers]]);
+	PlayerTextDrawSetString(playerid, WarPTD[playerid][1], FractionName[pInfo[playerid][pMembers]]);
+
+	PlayerTextDrawColor(playerid, WarPTD[playerid][2], FractionColor[WarOpponent[pInfo[playerid][pMembers]]]);
+	PlayerTextDrawSetString(playerid, WarPTD[playerid][2], FractionName[WarOpponent[pInfo[playerid][pMembers]]]);
+
+	for(new i = 0; i < sizeof(WarPTD[]); i++) PlayerTextDrawShow(playerid, WarPTD[playerid][i]);
+
+	if(WarBet[pInfo[playerid][pMembers]] != -1) WarBet[pInfo[playerid][pMembers]]--;
+
+	if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Player) SetPlayerTeam(playerid, NO_DMG_TEAM);
+	else SetPlayerTeam(playerid, NO_TEAM);
+
+	foreach(new i:FractionMembers[pInfo[playerid][pMembers]])
+	{
+		if(pInfo[i][pAuth] && pInfo[i][pRank] >= FractionMaxRank && GetPVarInt(i, "OnMafiaWar"))
+		{
+			TpPlayerToPlayer(i, playerid);
+			SetPVarInt(playerid, "OnMafiaWar", 1);
+			return 1;
+		}
+	}
+
+	new Float:X = WarZones[ZoneID][MinX]+((WarZones[ZoneID][MaxX]-WarZones[ZoneID][MinX])/2);
+	new Float:Y = WarZones[ZoneID][MinY]+((WarZones[ZoneID][MaxY]-WarZones[ZoneID][MinY])/2);
+	new Float:Z;
+	MapAndreas_FindZ_For2DCoord(X, Y, Z);
+
+	SetPlayerPosition(playerid, X, Y, Z, 0.0, WarBetType[pInfo[playerid][pMembers]]);
+	SetPVarInt(playerid, "OnMafiaWar", 1);
+	return 1;
+}
+
+stock RemoveFromMafiaWar(playerid)
+{
+	GangZoneStopFlashForPlayer(playerid, WarZones[WarZone[pInfo[playerid][pMembers]]][WarZoneID]);
+	GangZoneHideForPlayer(playerid, WarZones[WarZone[pInfo[playerid][pMembers]]][WarZoneID]);
+
+	Streamer_ToggleItem(playerid, STREAMER_TYPE_MAP_ICON, WarZones[pInfo[playerid][pMembers]][WarIcon], false);
+
+	for(new i = 0; i < sizeof(WarPTD[]); i++) PlayerTextDrawHide(playerid, WarPTD[playerid][i]);
+	
+	DeletePVar(playerid, "OnMafiaWar");
+
+	if(WarStatus[pInfo[playerid][pMembers]] == War_Status_War)
+	{
+		new Finded = false;
+		foreach(new i:FractionMembers[pInfo[playerid][pMembers]])
+		{
+			if(pInfo[i][pAuth] && GetPVarInt(i, "OnMafiaWar"))
+			{
+				Finded = true;
+				break;
+			}
+		}
+		if(!Finded)
+		{
+			EndWar(WarOpponent[pInfo[playerid][pMembers]], 1);
+			EndWar(pInfo[playerid][pMembers], 0);
+		}
+	}
+	else if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Player && WarBet[pInfo[playerid][pMembers]] != -1) WarBet[pInfo[playerid][pMembers]]++;
+
+	return 1;
+}
+
+stock ClearWar(FractionID)
 {
 	WarBetType[FractionID] = War_Bet_Type_None;
 	WarStatus[FractionID] = War_Status_None;
@@ -5321,156 +5417,215 @@ stock ClearGangWar(FractionID)
 	WarTimer[FractionID] = 0;
 	WarBet[FractionID] = 0;
 	WarZone[FractionID] = 0;
+	WarInitiator[FractionID] = false;
 	return 1;
 }
 
-stock StartGangWar(FractionID)
+stock StartWar(FractionID)
 {
-	WarStatus[FractionID] = War_Status_War;
-	WarTimer[FractionID] = 600;
-
-	switch(WarBetType[FractionID])
+	if(IsAMafia(FractionID))
 	{
-		case Gang_Bet_Type_Money:
+		WarStatus[FractionID] = War_Status_Wait_Player;
+		WarTimer[FractionID] = 60;
+
+		new str[200];
+		format(str, sizeof(str), "Война с %s начнется через 60 секунд. Количество участников: %d. Место: %s", FractionName[WarOpponent[FractionID]], WarBet[FractionID], WarZones[WarZone[FractionID]][WarZoneName]);
+		SendRMessageEx(FractionID, str);
+		SendRMessageEx(FractionID, "Чтобы принять участие введите /invitewar");
+
+		
+		foreach(new i:FractionMembers[FractionID])
 		{
-			new str[200];
-			format(str, sizeof(str), "Война с %s началась. Ставка: %d$. Место: %s", FractionName[WarOpponent[FractionID]], WarBet[FractionID], WarZones[WarZone[FractionID]][WarZoneName]);
-			SendRMessageEx(FractionID, str);
-		}
-		case Gang_Bet_Type_Materials:
-		{
-			new str[200];
-			format(str, sizeof(str), "Война с %s началась. Ставка: %d материалов. Место: %s", FractionName[WarOpponent[FractionID]], WarBet[FractionID], WarZones[WarZone[FractionID]][WarZoneName]);
-			SendRMessageEx(FractionID, str);
-		}
-		case Gang_Bet_Type_Drugs:
-		{
-			new str[200];
-			format(str, sizeof(str), "Война с %s началась. Ставка: %d наркотиков. Место: %s", FractionName[WarOpponent[FractionID]], WarBet[FractionID], WarZones[WarZone[FractionID]][WarZoneName]);
-			SendRMessageEx(FractionID, str);
+			if(pInfo[i][pAuth] && pInfo[i][pRank] >= FractionMaxRank) TeleportToMafiaWar(i);
 		}
 	}
-
-	foreach(new i:FractionMembers[FractionID])
+	else
 	{
-		if(pInfo[i][pAuth])
+		WarStatus[FractionID] = War_Status_War;
+		WarTimer[FractionID] = 600;
+
+		switch(WarBetType[FractionID])
 		{
-			GangZoneShowForPlayer(i, WarZones[WarZone[FractionID]][WarZoneID], FractionColor[FractionID]-0x7F);
-			GangZoneFlashForPlayer(i, WarZones[WarZone[FractionID]][WarZoneID], FractionColor[WarOpponent[FractionID]]-0x7F);
+			case Gang_Bet_Type_Money:
+			{
+				new str[200];
+				format(str, sizeof(str), "Война с %s началась. Ставка: %d$. Место: %s", FractionName[WarOpponent[FractionID]], WarBet[FractionID], WarZones[WarZone[FractionID]][WarZoneName]);
+				SendRMessageEx(FractionID, str);
+			}
+			case Gang_Bet_Type_Materials:
+			{
+				new str[200];
+				format(str, sizeof(str), "Война с %s началась. Ставка: %d материалов. Место: %s", FractionName[WarOpponent[FractionID]], WarBet[FractionID], WarZones[WarZone[FractionID]][WarZoneName]);
+				SendRMessageEx(FractionID, str);
+			}
+			case Gang_Bet_Type_Drugs:
+			{
+				new str[200];
+				format(str, sizeof(str), "Война с %s началась. Ставка: %d наркотиков. Место: %s", FractionName[WarOpponent[FractionID]], WarBet[FractionID], WarZones[WarZone[FractionID]][WarZoneName]);
+				SendRMessageEx(FractionID, str);
+			}
+		}
 
-			Streamer_ToggleItem(i, STREAMER_TYPE_MAP_ICON, WarZones[WarZone[FractionID]][WarIcon], true);
+		foreach(new i:FractionMembers[FractionID])
+		{
+			if(pInfo[i][pAuth])
+			{
+				GangZoneShowForPlayer(i, WarZones[WarZone[FractionID]][WarZoneID], FractionColor[FractionID]-0x7F);
+				GangZoneFlashForPlayer(i, WarZones[WarZone[FractionID]][WarZoneID], FractionColor[WarOpponent[FractionID]]-0x7F);
 
-            new str[100];
-            ConvertedSecondsWithoutText(WarTimer[FractionID], str);
-            format(str, sizeof(str), "VS~n~~n~Time:_%s", str);
-            PlayerTextDrawSetString(i, WarPTD[i][0], str);
+				Streamer_ToggleItem(i, STREAMER_TYPE_MAP_ICON, WarZones[WarZone[FractionID]][WarIcon], true);
 
-            PlayerTextDrawColor(i, WarPTD[i][1], FractionColor[FractionID]);
-            PlayerTextDrawSetString(i, WarPTD[i][1], FractionName[FractionID]);
+				new str[100];
+				ConvertedSecondsWithoutText(WarTimer[FractionID], str);
+				format(str, sizeof(str), "VS~n~~n~Time:_%s", str);
+				PlayerTextDrawSetString(i, WarPTD[i][0], str);
 
-            PlayerTextDrawColor(i, WarPTD[i][2], FractionColor[WarOpponent[FractionID]]);
-            PlayerTextDrawSetString(i, WarPTD[i][2], FractionName[WarOpponent[FractionID]]);
+				PlayerTextDrawColor(i, WarPTD[i][1], FractionColor[FractionID]);
+				PlayerTextDrawSetString(i, WarPTD[i][1], FractionName[FractionID]);
 
-            for(new j = 0; j < sizeof(WarPTD[]); j++) PlayerTextDrawShow(i, WarPTD[i][j]);
+				PlayerTextDrawColor(i, WarPTD[i][2], FractionColor[WarOpponent[FractionID]]);
+				PlayerTextDrawSetString(i, WarPTD[i][2], FractionName[WarOpponent[FractionID]]);
+
+				for(new j = 0; j < sizeof(WarPTD[]); j++) PlayerTextDrawShow(i, WarPTD[i][j]);
+			}
 		}
 	}
 
 	return 1;
 }
 
-stock EndGangWar(FractionID, WinnerType = 0) //WinnerType = 0 - Проигравший || WinnerType = 1 Победитель || WinnerType = 2 Ничья
+stock EndWar(FractionID, WinnerType = 0) //WinnerType = 0 - Проигравший || WinnerType = 1 Победитель || WinnerType = 2 Ничья
 {
-	switch(WarBetType[FractionID])
+	if(IsABand(FractionID))
 	{
-		case Gang_Bet_Type_Money:
+		switch(WarBetType[FractionID])
 		{
-            if(!WinnerType)
-            {
-                new str[200];
-    			format(str, sizeof(str), "Война с %s окончена. Победитель %s. Банда проиграла: %d$", FractionName[WarOpponent[FractionID]], (WinnerType == 1) ? (FractionName[FractionID]):(FractionName[WarOpponent[FractionID]]), WarBet[FractionID]);
-    			SendRMessageEx(FractionID, str);
-            }
-            else if(WinnerType == 1)
-            {
-                new str[200];
-    			format(str, sizeof(str), "Война с %s окончена. Победитель %s. Выигрышь: %d$", FractionName[WarOpponent[FractionID]], (WinnerType == 1) ? (FractionName[FractionID]):(FractionName[WarOpponent[FractionID]]), WarBet[FractionID]);
-    			SendRMessageEx(FractionID, str);
-                FractionWare[FractionID][FractionWareMoney] += WarBet[FractionID]+WarBet[WarOpponent[FractionID]];
-                SaveFractionWare(FractionID);
-            }
-            else
-            {
-                new str[200];
-    			format(str, sizeof(str), "Война с %s окончена в ничью.", FractionName[WarOpponent[FractionID]]);
-    			SendRMessageEx(FractionID, str);
-                FractionWare[FractionID][FractionWareMoney] += WarBet[FractionID];
-                SaveFractionWare(FractionID);
-            }
-		}
-		case Gang_Bet_Type_Materials:
-		{
-            if(!WinnerType)
-            {
-                new str[200];
-    			format(str, sizeof(str), "Война с %s окончена. Победитель %s. Банда проиграла: %d материалов", FractionName[WarOpponent[FractionID]], (WinnerType == 1) ? (FractionName[FractionID]):(FractionName[WarOpponent[FractionID]]), WarBet[FractionID]);
-    			SendRMessageEx(FractionID, str);
-            }
-            else if(WinnerType == 1)
-            {
-                new str[200];
-    			format(str, sizeof(str), "Война с %s окончена. Победитель %s. Выигрышь: %d материалов", FractionName[WarOpponent[FractionID]], (WinnerType == 1) ? (FractionName[FractionID]):(FractionName[WarOpponent[FractionID]]), WarBet[FractionID]);
-    			SendRMessageEx(FractionID, str);
-                FractionWare[FractionID][FractionWareMaterials] += WarBet[FractionID]+WarBet[WarOpponent[FractionID]];
-                SaveFractionWare(FractionID);
-            }
-            else
-            {
-                new str[200];
-    			format(str, sizeof(str), "Война с %s окончена в ничью.", FractionName[WarOpponent[FractionID]]);
-    			SendRMessageEx(FractionID, str);
-                FractionWare[FractionID][FractionWareMaterials] += WarBet[FractionID];
-                SaveFractionWare(FractionID);
-            }
-		}
-		case Gang_Bet_Type_Drugs:
-		{
-            if(!WinnerType)
-            {
-                new str[200];
-    			format(str, sizeof(str), "Война с %s окончена. Победитель %s. Банда проиграла: %d наркотиков", FractionName[WarOpponent[FractionID]], (WinnerType == 1) ? (FractionName[FractionID]):(FractionName[WarOpponent[FractionID]]), WarBet[FractionID]);
-    			SendRMessageEx(FractionID, str);
-            }
-            else if(WinnerType == 1)
-            {
-                new str[200];
-    			format(str, sizeof(str), "Война с %s окончена. Победитель %s. Выигрышь: %d наркотиков", FractionName[WarOpponent[FractionID]], (WinnerType == 1) ? (FractionName[FractionID]):(FractionName[WarOpponent[FractionID]]), WarBet[FractionID]);
-    			SendRMessageEx(FractionID, str);
-                FractionWare[FractionID][FractionWareDrugs] += WarBet[FractionID]+WarBet[WarOpponent[FractionID]];
-                SaveFractionWare(FractionID);
-            }
-            else
-            {
-                new str[200];
-    			format(str, sizeof(str), "Война с %s окончена в ничью.", FractionName[WarOpponent[FractionID]]);
-    			SendRMessageEx(FractionID, str);
-                FractionWare[FractionID][FractionWareDrugs] += WarBet[FractionID];
-                SaveFractionWare(FractionID);
-            }
+			case Gang_Bet_Type_Money:
+			{
+				if(!WinnerType)
+				{
+					new str[200];
+					format(str, sizeof(str), "Война с %s окончена. Победитель %s. Банда проиграла: %d$", FractionName[WarOpponent[FractionID]], (WinnerType == 1) ? (FractionName[FractionID]):(FractionName[WarOpponent[FractionID]]), WarBet[FractionID]);
+					SendRMessageEx(FractionID, str);
+				}
+				else if(WinnerType == 1)
+				{
+					new str[200];
+					format(str, sizeof(str), "Война с %s окончена. Победитель %s. Выигрыш: %d$", FractionName[WarOpponent[FractionID]], (WinnerType == 1) ? (FractionName[FractionID]):(FractionName[WarOpponent[FractionID]]), WarBet[FractionID]);
+					SendRMessageEx(FractionID, str);
+					FractionWare[FractionID][FractionWareMoney] += WarBet[FractionID]+WarBet[WarOpponent[FractionID]];
+					SaveFractionWare(FractionID);
+				}
+				else
+				{
+					new str[200];
+					format(str, sizeof(str), "Война с %s окончена в ничью.", FractionName[WarOpponent[FractionID]]);
+					SendRMessageEx(FractionID, str);
+					FractionWare[FractionID][FractionWareMoney] += WarBet[FractionID];
+					SaveFractionWare(FractionID);
+				}
+			}
+			case Gang_Bet_Type_Materials:
+			{
+				if(!WinnerType)
+				{
+					new str[200];
+					format(str, sizeof(str), "Война с %s окончена. Победитель %s. Банда проиграла: %d материалов", FractionName[WarOpponent[FractionID]], (WinnerType == 1) ? (FractionName[FractionID]):(FractionName[WarOpponent[FractionID]]), WarBet[FractionID]);
+					SendRMessageEx(FractionID, str);
+				}
+				else if(WinnerType == 1)
+				{
+					new str[200];
+					format(str, sizeof(str), "Война с %s окончена. Победитель %s. Выигрыш: %d материалов", FractionName[WarOpponent[FractionID]], (WinnerType == 1) ? (FractionName[FractionID]):(FractionName[WarOpponent[FractionID]]), WarBet[FractionID]);
+					SendRMessageEx(FractionID, str);
+					FractionWare[FractionID][FractionWareMaterials] += WarBet[FractionID]+WarBet[WarOpponent[FractionID]];
+					SaveFractionWare(FractionID);
+				}
+				else
+				{
+					new str[200];
+					format(str, sizeof(str), "Война с %s окончена в ничью.", FractionName[WarOpponent[FractionID]]);
+					SendRMessageEx(FractionID, str);
+					FractionWare[FractionID][FractionWareMaterials] += WarBet[FractionID];
+					SaveFractionWare(FractionID);
+				}
+			}
+			case Gang_Bet_Type_Drugs:
+			{
+				if(!WinnerType)
+				{
+					new str[200];
+					format(str, sizeof(str), "Война с %s окончена. Победитель %s. Банда проиграла: %d наркотиков", FractionName[WarOpponent[FractionID]], (WinnerType == 1) ? (FractionName[FractionID]):(FractionName[WarOpponent[FractionID]]), WarBet[FractionID]);
+					SendRMessageEx(FractionID, str);
+				}
+				else if(WinnerType == 1)
+				{
+					new str[200];
+					format(str, sizeof(str), "Война с %s окончена. Победитель %s. Выигрыш: %d наркотиков", FractionName[WarOpponent[FractionID]], (WinnerType == 1) ? (FractionName[FractionID]):(FractionName[WarOpponent[FractionID]]), WarBet[FractionID]);
+					SendRMessageEx(FractionID, str);
+					FractionWare[FractionID][FractionWareDrugs] += WarBet[FractionID]+WarBet[WarOpponent[FractionID]];
+					SaveFractionWare(FractionID);
+				}
+				else
+				{
+					new str[200];
+					format(str, sizeof(str), "Война с %s окончена в ничью.", FractionName[WarOpponent[FractionID]]);
+					SendRMessageEx(FractionID, str);
+					FractionWare[FractionID][FractionWareDrugs] += WarBet[FractionID];
+					SaveFractionWare(FractionID);
+				}
+			}
 		}
 	}
+	else
+	{
+		if(WinnerType == 1)
+		{
+			new Float:Value = SetFractionInfluence(FractionID, WarOpponent[FractionID], 10.0);
 
-	GangZoneStopFlashForAll(WarZones[WarZone[FractionID]][WarZoneID]);
-    GangZoneHideForAll(WarZones[WarZone[FractionID]][WarZoneID]);
-    ClearGangWar(FractionID);
+			new str[200];
+			format(str, sizeof(str), "Война с %s окончена. Победитель %s. Выигрыш: %.2f%% влияния", FractionName[WarOpponent[FractionID]], FractionName[FractionID], Value);
+			SendRMessageEx(FractionID, str);
+
+			format(str, sizeof(str), "Война с %s окончена. Победитель %s. Мафия проиграла: %.2f%% влияния", FractionName[FractionID], FractionName[FractionID], Value);
+			SendRMessageEx(WarOpponent[FractionID], str);
+		}
+		else if(WinnerType == 2)
+		{
+			new str[200];
+			format(str, sizeof(str), "Война с %s окончена в ничью.", FractionName[WarOpponent[FractionID]]);
+			SendRMessageEx(FractionID, str);
+		}
+
+		if(WarInitiator[FractionID])
+		{
+			FractionWarCD[FractionID] = gettime()+(3600*3);
+
+			new query[100];
+			mysql_format(DB, query, sizeof(query), "UPDATE `fraction_info` SET `War_CD` = '%d' WHERE `ID` = '%d'", FractionWarCD[FractionID], FractionID);
+			mysql_tquery(DB, query);
+		}
+	}
 
     foreach(new i:FractionMembers[FractionID])
 	{
 		if(pInfo[i][pAuth])
 		{
-			for(new j = 1; j < sizeof(WarZones); j++) Streamer_ToggleItem(i, STREAMER_TYPE_MAP_ICON, WarZones[j][WarIcon], false);
+			GangZoneStopFlashForPlayer(i, WarZones[WarZone[FractionID]][WarZoneID]);
+			GangZoneHideForPlayer(i, WarZones[WarZone[FractionID]][WarZoneID]);
+
+			Streamer_ToggleItem(i, STREAMER_TYPE_MAP_ICON, WarZones[FractionID][WarIcon], false);
             for(new j = 0; j < sizeof(WarPTD[]); j++) PlayerTextDrawHide(i, WarPTD[i][j]);
+
+			if(GetPVarInt(i, "OnMafiaWar"))
+			{
+				DeletePVar(i, "OnMafiaWar");
+				SpawnPlayer(i);
+			}
         }
     }
+
+	ClearWar(FractionID);
     return 1;
 }
 
@@ -9102,15 +9257,13 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 
 				if(IsAMafia(pInfo[id][pMembers]) && IsAMafia(pInfo[playerid][pMembers]))
 				{
-					format(str, sizeof(str), "Член мафии %s похитил %s (%s). Влияние: +1.0%%", pInfo[playerid][pName], pInfo[id][pName], FractionName[pInfo[id][pMembers]]);
-					SendRMessageEx(pInfo[playerid][pMembers], str);
-					FractionInfluence[pInfo[playerid][pMembers]] += 1.0;
-					SaveFractionInfluence(pInfo[playerid][pMembers]);
+					new Float:Value = SetFractionInfluence(pInfo[id][pMembers], pInfo[playerid][pMembers], 1.0);
 
-					format(str, sizeof(str), "Член мафии %s был похищен %s (%s). Влияние: -1.0%%", pInfo[id][pName], pInfo[playerid][pName], FractionName[pInfo[playerid][pMembers]]);
+					format(str, sizeof(str), "Член мафии %s похитил %s (%s). Влияние: +%.2f%%", pInfo[playerid][pName], pInfo[id][pName], FractionName[pInfo[id][pMembers]], Value);
+					SendRMessageEx(pInfo[playerid][pMembers], str);
+
+					format(str, sizeof(str), "Член мафии %s был похищен %s (%s). Влияние: -%.2f%%", pInfo[id][pName], pInfo[playerid][pName], FractionName[pInfo[playerid][pMembers]], Value);
 					SendRMessageEx(pInfo[id][pMembers], str);
-					FractionInfluence[pInfo[id][pMembers]] -= 1.0;
-					SaveFractionInfluence(pInfo[id][pMembers]);
 
 				}
 			}
@@ -9174,6 +9327,15 @@ public FillingBarrel(playerid)
 
 public OnPlayerLeaveDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 {
+	if(GetPVarInt(playerid, "OnMafiaWar")
+	&& IsAMafia(pInfo[playerid][pMembers])
+	&& (WarStatus[pInfo[playerid][pMembers]] == War_Status_War || WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Player)
+	&& WarZone[pInfo[playerid][pMembers]] && areaid == WarZones[WarZone[pInfo[playerid][pMembers]]][WarDynamicZone])
+	{
+		RemoveFromMafiaWar(playerid);
+		TeleportToMafiaWar(playerid);
+	}
+
 	if(GetPVarInt(playerid, "TentRent"))
 	{
 		new indx = GetPVarInt(playerid, "TentRent");
@@ -10568,7 +10730,6 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 			str[0] = EOS;
 			format(str, sizeof(str), "(IP: %s | RegIP: %s) сменил ник c %s на %s", pInfo[playerid][pIP], pInfo[playerid][pRegIp], pInfo[playerid][pName], inputtext);
-
 			AddLog(LogTypeAccount, pInfo[playerid][pID], str);
 
 			SetPlayerName(playerid, inputtext);
@@ -10583,6 +10744,10 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			str[0] = EOS;
 			format(str, sizeof(str), Color_Yellow"Вы сменили ник. Не забудьте при следующем входе поменять ник в клиенте на %s", pInfo[playerid][pName]);
 			SendClientMessage(playerid, -1, str);
+
+			str[0] = EOS;
+			format(str, sizeof(str), "(IP: %s | RegIP: %s) потратил 100 доната на смену ника", pInfo[playerid][pIP], pInfo[playerid][pRegIp]);
+			AddLog(LogTypeDonate, pInfo[playerid][pID], str);
 
 			return 1;
 		}
@@ -10612,6 +10777,14 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			SavePlayerInt(playerid, "DonateMoney", pInfo[playerid][pDonateMoney]);
 
 			SendClientMessage(playerid, -1, Color_Yellow"Вы сменили пол!");
+
+			new str[300];
+			format(str, sizeof(str), "(IP: %s | RegIP: %s) сменил пол на %s", pInfo[playerid][pIP], pInfo[playerid][pRegIp], (pInfo[playerid][pGender]) ? ("женский"):("мужской"));
+			AddLog(LogTypeAccount, pInfo[playerid][pID], str);
+
+			str[0] = EOS;
+			format(str, sizeof(str), "(IP: %s | RegIP: %s) потратил 100 доната на смену пола", pInfo[playerid][pIP], pInfo[playerid][pRegIp]);
+			AddLog(LogTypeDonate, pInfo[playerid][pID], str);
 			return 1;
 		}
 		case D_Donate_Buy_Level:
@@ -10634,9 +10807,17 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 			PlayerLevelUpdate(playerid);
 
-			new str[100];
+			new str[300];
 			format(str, sizeof(str), Color_Yellow"Вы купили %d уровней", lvl);
 			SendClientMessage(playerid, -1, str);
+
+			str[0] = EOS;
+			format(str, sizeof(str), "(IP: %s | RegIP: %s) купил %d уровней", pInfo[playerid][pIP], pInfo[playerid][pRegIp], lvl);
+			AddLog(LogTypeAccount, pInfo[playerid][pID], str);
+
+			str[0] = EOS;
+			format(str, sizeof(str), "(IP: %s | RegIP: %s) потратил %d доната на покупку уровня", pInfo[playerid][pIP], pInfo[playerid][pRegIp], lvl*100);
+			AddLog(LogTypeDonate, pInfo[playerid][pID], str);
 			return 1;
 		}
 		case D_Donate_Buy_UnWarn:
@@ -10652,6 +10833,14 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			SavePlayerInt(playerid, "Warn", pInfo[playerid][pWarn]);
 
 			SendClientMessage(playerid, -1, Color_Yellow"Вы сняли 1 варн!");
+
+			new str[300];
+			format(str, sizeof(str), "(IP: %s | RegIP: %s) купил снятие варна", pInfo[playerid][pIP], pInfo[playerid][pRegIp]);
+			AddLog(LogTypeAccount, pInfo[playerid][pID], str);
+
+			str[0] = EOS;
+			format(str, sizeof(str), "(IP: %s | RegIP: %s) потратил 150 доната на снятие варна", pInfo[playerid][pIP], pInfo[playerid][pRegIp]);
+			AddLog(LogTypeDonate, pInfo[playerid][pID], str);
 		}
 		case D_Donate_Buy_Money:
 		{
@@ -10667,9 +10856,17 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 			GivePlayerMoneyEx(playerid, donatemoney*100);
 
-			new str[100];
+			new str[300];
 			format(str, sizeof(str), Color_Yellow"Вы купили %d виртов", donatemoney*100);
 			SendClientMessage(playerid, -1, str);
+
+			str[0] = EOS;
+			format(str, sizeof(str), "(IP: %s | RegIP: %s) купил %d виртов за донат", pInfo[playerid][pIP], pInfo[playerid][pRegIp], donatemoney*100);
+			AddLog(LogTypeMoney, pInfo[playerid][pID], str);
+
+			str[0] = EOS;
+			format(str, sizeof(str), "(IP: %s | RegIP: %s) потратил %d доната на покупку виртов", pInfo[playerid][pIP], pInfo[playerid][pRegIp], donatemoney);
+			AddLog(LogTypeDonate, pInfo[playerid][pID], str);
 		}
 		case D_AC_Settings:
 		{
@@ -11884,7 +12081,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				if(CarUpgrade[indx][cuCarType] == CarUpgradeTypeVIP1 && pInfo[playerid][pLevel] < 15) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Транспорт VIP 1 доступен с 15го уровня");
 				if(CarUpgrade[indx][cuCarType] == CarUpgradeTypeVIP2 && pInfo[playerid][pLevel] < 20) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Транспорт VIP 2 доступен с 20го уровня");
 
-				new str[150];
+				new str[300];
 
 				format(str, sizeof(str), "GarageID_%d", slot);
 				DeleteCar(-1, GetPVarInt(playerid, str));
@@ -11898,6 +12095,10 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				SendClientMessage(playerid, -1, str);
 
 				AddHouseVehicle(playerid, CarUpgrade[indx][cuCarModel], slot);
+
+				str[0] = EOS;
+				format(str, sizeof(str), "(IP: %s | RegIP: %s) потратил %d$ на покупку машины", pInfo[playerid][pIP], pInfo[playerid][pRegIp], CarUpgrade[indx][cuCarPrice]);
+				AddLog(LogTypeMoney, pInfo[playerid][pID], str);
 			}
 			else if(GetPVarInt(playerid, "OpenGarage") && GetPVarInt(playerid, "CarUpgrade") == 2)
 			{
@@ -11905,7 +12106,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				if(CarUpgradeDonate[indx][cuCarType] == CarUpgradeTypeVIP1 && pInfo[playerid][pLevel] < 15) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Транспорт VIP 1 доступен с 15го уровня");
 				if(CarUpgradeDonate[indx][cuCarType] == CarUpgradeTypeVIP2 && pInfo[playerid][pLevel] < 20) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Транспорт VIP 2 доступен с 20го уровня");
 
-				new str[150];
+				new str[300];
 
 				format(str, sizeof(str), "GarageID_%d", slot);
 				DeleteCar(-1, GetPVarInt(playerid, str));
@@ -11917,6 +12118,10 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				SendClientMessage(playerid, -1, str);
 
 				AddHouseVehicle(playerid, CarUpgradeDonate[indx][cuCarModel], slot);
+
+				str[0] = EOS;
+				format(str, sizeof(str), "(IP: %s | RegIP: %s) потратил %d доната на покупку машины", pInfo[playerid][pIP], pInfo[playerid][pRegIp], CarUpgradeDonate[indx][cuCarPrice]);
+				AddLog(LogTypeDonate, pInfo[playerid][pID], str);
 			}
 			CloseCarUpgrade(playerid);
 			return 1;
@@ -13745,6 +13950,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 						new str[500], SubStr[100];
 						format(str, sizeof(str), "%s"Color_White"/alogin - Авторизация в админ панели\n", str);
 						format(str, sizeof(str), "%s"Color_White"/tp - Телепорт меню\n", str);
+						format(str, sizeof(str), "%s"Color_White"/tppos - Телепорт по координатам\n", str);
 						format(str, sizeof(str), "%s"Color_White"/reportlist - Список репортов\n", str);
 						format(str, sizeof(str), "%s"Color_White"/apanel - Панель администратора\n", str);
 						format(str, sizeof(str), "%s"Color_White"/(a)msg - Чат администраторов\n", str);
@@ -14492,7 +14698,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				{
 					if(pInfo[playerid][pStealSkin]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вашу одежду украли. Сперва верните её");
 					new BusinessID = GetPVarInt(playerid, "InBusiness");
-					SetPlayerPosition(playerid, 215.1753, -41.2095, 1002.0234, 117.0, playerid+1000, BusinessType[bInfo[BusinessID][bType]][bInt], false);
+					SetPlayerPosition(playerid, 215.1753, -41.2095, 1002.0234, 117.0, playerid+Player_World, BusinessType[bInfo[BusinessID][bType]][bInt], false);
 					new Float:X, Float:Y, Float:Z, Float:A;
 					GetPlayerCameraPos(playerid, X, Y, Z);
 					InterpolateCameraPos(playerid, X, Y, Z, 210.2262, -41.2242, 1003.0, 1000, CAMERA_MOVE);
@@ -16255,20 +16461,211 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			Streamer_Update(playerid);
 			return 1;
 		}
-		case D_War_Select_Zone:
+		case D_Maf_War_Select_Maf:
 		{
 			if(!response) return 1;
 
+			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_War || WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Player) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша мафия уже с кем-то ведет войну");
+			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Accept) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вашей мафии уже кто-то сделал предложение о войне");
+			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Accept_Request) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша мафия уже предложила войну кому-то");
+		
+			if(FractionWarCD[pInfo[playerid][pMembers]] > gettime())
+			{
+				new str[150];
+				format(str, sizeof(str), Color_Grey"Ваша мафия снова сможет объявить войну в "Color_Red"%s", date(FractionWarCD[pInfo[playerid][pMembers]], 3, "%dd.%mm.%yyyy %hh:%ii"));
+				return SendClientMessage(playerid, -1, str);
+			}
+
+			new FractionID = listitem+Fraction_RussiaMafia;
+
+			if(WarStatus[FractionID] == War_Status_War || WarStatus[FractionID] == War_Status_Wait_Player) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта мафия уже с кем-то ведет войну");
+			if(WarStatus[FractionID] == War_Status_Wait_Accept) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этой мафии уже кто-то сделал предложение о войне");
+			if(WarStatus[FractionID] == War_Status_Wait_Accept_Request) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта мафия уже предложила войну кому-то");
+
+			if(FractionWarCD[FractionID] > gettime())
+			{
+				new str[150];
+				format(str, sizeof(str), Color_Grey"Эта мафия снова сможет участвовать в войне в "Color_Red"%s", date(FractionWarCD[FractionID], 3, "%dd.%mm.%yyyy %hh:%ii"));
+				return SendClientMessage(playerid, -1, str);
+			}
+
+			new Finded = false;
+			foreach(new i:FractionMembers[FractionID])
+			{
+				if(pInfo[i][pAuth] && pInfo[i][pRank] >= FractionMaxRank)
+				{
+					Finded = true;
+					break;
+				}
+			}
+			if(!Finded) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Лидер этой мафии не в сети");
+			
+			SetPVarInt(playerid, "StartMafWarFraction", FractionID);
+
+			ShowDialog(playerid, D_Maf_War_Select_Count, DIALOG_STYLE_LIST, Main_Color"Выбор количества участников", Color_White"1x1\n3x3\n5x5\n10x10\nНеограниченно", Color_White"Далее", Color_White"Закрыть");
+			return 1;
+		}
+		case D_Maf_War_Select_Count:
+		{
+			if(!response) return DeletePVar(playerid, "StartMafWarFraction");
+
+			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_War || WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Player) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша мафия уже с кем-то ведет войну");
+			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Accept) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вашей мафии уже кто-то сделал предложение о войне");
+			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Accept_Request) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша мафия уже предложила войну кому-то");
+		
+			if(FractionWarCD[pInfo[playerid][pMembers]] > gettime())
+			{
+				new str[150];
+				format(str, sizeof(str), Color_Grey"Ваша мафия снова сможет объявить войну в "Color_Red"%s", date(FractionWarCD[pInfo[playerid][pMembers]], 3, "%dd.%mm.%yyyy %hh:%ii"));
+				return SendClientMessage(playerid, -1, str);
+			}
+
+			new FractionID = GetPVarInt(playerid, "StartMafWarFraction");
+
+			if(WarStatus[FractionID] == War_Status_War || WarStatus[FractionID] == War_Status_Wait_Player) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта мафия уже с кем-то ведет войну");
+			if(WarStatus[FractionID] == War_Status_Wait_Accept) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этой мафии уже кто-то сделал предложение о войне");
+			if(WarStatus[FractionID] == War_Status_Wait_Accept_Request) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта мафия уже предложила войну кому-то");
+
+			if(FractionWarCD[FractionID] > gettime())
+			{
+				new str[150];
+				format(str, sizeof(str), Color_Grey"Эта мафия снова сможет участвовать в войне в "Color_Red"%s", date(FractionWarCD[FractionID], 3, "%dd.%mm.%yyyy %hh:%ii"));
+				return SendClientMessage(playerid, -1, str);
+			}
+
+			switch(listitem)
+			{
+				case 0: SetPVarInt(playerid, "StartMafWarCount", 1);
+				case 1: SetPVarInt(playerid, "StartMafWarCount", 3);
+				case 2: SetPVarInt(playerid, "StartMafWarCount", 5);
+				case 3: SetPVarInt(playerid, "StartMafWarCount", 10);
+				case 4: SetPVarInt(playerid, "StartMafWarCount", -1);
+			}
+
+			new str[200];
+			for(new i = 1; i < sizeof(WarZones); i++)
+			{
+				format(str, sizeof(str), "%s%s\n", str, WarZones[i][WarZoneName]);
+			}
+			format(str, sizeof(str), Color_White"%s", str);
+			ShowDialog(playerid, D_Maf_War_Select_Zone, DIALOG_STYLE_LIST, Main_Color"Выбор места проведения войны", str, Color_White"Далее", Color_White"Закрыть");
+
+			return 1;
+		}
+		case D_Maf_War_Select_Zone:
+		{
+			if(!response)
+			{
+				DeletePVar(playerid, "StartMafWarFraction");
+				return DeletePVar(playerid, "StartMafWarCount");
+			}
+
+			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_War || WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Player) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша мафия уже с кем-то ведет войну");
+			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Accept) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вашей мафии уже кто-то сделал предложение о войне");
+			if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Accept_Request) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша мафия уже предложила войну кому-то");
+		
+			if(FractionWarCD[pInfo[playerid][pMembers]] > gettime())
+			{
+				new str[150];
+				format(str, sizeof(str), Color_Grey"Ваша мафия снова сможет объявить войну в "Color_Red"%s", date(FractionWarCD[pInfo[playerid][pMembers]], 3, "%dd.%mm.%yyyy %hh:%ii"));
+				return SendClientMessage(playerid, -1, str);
+			}
+
+			new FractionID = GetPVarInt(playerid, "StartMafWarFraction");
+			DeletePVar(playerid, "StartMafWarFraction");
+
+			if(WarStatus[FractionID] == War_Status_War || WarStatus[FractionID] == War_Status_Wait_Player) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта мафия уже с кем-то ведет войну");
+			if(WarStatus[FractionID] == War_Status_Wait_Accept) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этой мафии уже кто-то сделал предложение о войне");
+			if(WarStatus[FractionID] == War_Status_Wait_Accept_Request) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Эта мафия уже предложила войну кому-то");
+
+			if(FractionWarCD[FractionID] > gettime())
+			{
+				new str[150];
+				format(str, sizeof(str), Color_Grey"Эта мафия снова сможет участвовать в войне в "Color_Red"%s", date(FractionWarCD[FractionID], 3, "%dd.%mm.%yyyy %hh:%ii"));
+				return SendClientMessage(playerid, -1, str);
+			}
+
+			new WarCount = GetPVarInt(playerid, "StartMafWarCount");
+			DeletePVar(playerid, "StartMafWarCount");
+
+			new str[300];
+			format(str, sizeof(str), Color_White"Мафия "Main_Color"%s "Color_White"объявила войну вашей мафии.", FractionName[pInfo[playerid][pMembers]]);
+			SendRMessageEx(FractionID, str);
+
+			str[0] = EOS;
+			switch(WarCount)
+			{
+				case -1: strcat(str, "Неогр.");
+				case 1: strcat(str, "1x1");
+				case 3: strcat(str, "3x3");
+				case 5: strcat(str, "5x5");
+				case 10: strcat(str, "10x10");
+			}
+			format(str, sizeof(str), Color_White"Место: "Main_Color"%s "Color_White"Количество участников: %s", WarZones[listitem+1][WarZoneName], str);
+			SendRMessageEx(FractionID, str);
+			SendRMessageEx(FractionID, "/accept war - Принять войну || /cancel war - Отказаться от войны");
+
+
+			format(str, sizeof(str), Main_Color"%s %s "Color_White"объявил войну мафии "Main_Color"%s"Color_White".", FractionRankName[pInfo[playerid][pMembers]][pInfo[playerid][pRank]], pInfo[playerid][pName], FractionName[FractionID]);
+			SendRMessage(playerid, str);
+
+			str[0] = EOS;
+			switch(WarCount)
+			{
+				case -1: strcat(str, "Неогр.");
+				case 1: strcat(str, "1x1");
+				case 3: strcat(str, "3x3");
+				case 5: strcat(str, "5x5");
+				case 10: strcat(str, "10x10");
+			}
+			format(str, sizeof(str), Color_White"Место: "Main_Color"%s "Color_White"Количество участников: %s", WarZones[listitem+1][WarZoneName], str);
+			SendRMessage(playerid, str);
+
+			WarBetType[FractionID] = pInfo[playerid][pMembers]+Other_World;
+			WarBetType[pInfo[playerid][pMembers]] = pInfo[playerid][pMembers]+Other_World;
+			
+			WarBet[FractionID] = WarCount;
+			WarBet[pInfo[playerid][pMembers]] = WarCount;
+
+			WarStatus[FractionID] = War_Status_Wait_Accept;
+			WarStatus[pInfo[playerid][pMembers]] = War_Status_Wait_Accept_Request;
+
+			WarOpponent[FractionID] = pInfo[playerid][pMembers];
+			WarOpponent[pInfo[playerid][pMembers]] = FractionID;
+
+			WarTimer[FractionID] = 300;
+			WarTimer[pInfo[playerid][pMembers]] = 300;
+
+			WarZone[FractionID] = listitem+1;
+			WarZone[pInfo[playerid][pMembers]] = listitem+1;
+			return 1;
+		}
+		case D_War_Select_Zone:
+		{
+			if(!response) return 1;
+			new id = -1;
+			for(new i = 1; i < sizeof(WarZones); i++)
+			{
+				if(WarZones[i][OnlyForMafia]) continue;
+				if(listitem) listitem--;
+				else
+				{
+					id = i;
+					break;
+				}
+			}
+			if(id == -1) return 1;
+
 			for(new i = 1; i < MAX_FRACTION; i++)
 			{
-				if(WarZone[i] == listitem+1 && WarStatus[i] == War_Status_War)
+				if(WarZone[i] == id && WarStatus[i] == War_Status_War)
 				{
 					pc_cmd_war(playerid);
 					return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Это место для войны уже занято какой-то бандой");
 				}
 			}
 
-			SetPVarInt(playerid, "StartWarZone", listitem+1);
+			SetPVarInt(playerid, "StartWarZone", id);
 
 			new str[200];
 			for(new i = Fraction_Vagos; i <= Fraction_FarmOfTruth; i++)
@@ -16781,6 +17178,10 @@ public OnPlayerClickPlayerTextDraw(playerid, PlayerText:playertextid)
 							format(str, sizeof(str), Color_White"Вы приобрели "Main_Color"%s "Color_White"за "Color_Green"%d$", CarName[CarUpgrade[indx][cuCarModel]-400], CarUpgrade[indx][cuCarPrice]);
 							SendClientMessage(playerid, -1, str);
 							CloseCarUpgrade(playerid);
+
+							str[0] = EOS;
+							format(str, sizeof(str), "(IP: %s | RegIP: %s) потратил %d$ на покупку машины", pInfo[playerid][pIP], pInfo[playerid][pRegIp], CarUpgrade[indx][cuCarPrice]);
+							AddLog(LogTypeMoney, pInfo[playerid][pID], str);
 						}
 						else
 						{
@@ -16805,7 +17206,7 @@ public OnPlayerClickPlayerTextDraw(playerid, PlayerText:playertextid)
 					if(GaragePTD[playerid][i] == playertextid)
 					{
 
-						new str[150];
+						new str[300];
 						format(str, sizeof(str), "GarageID_%d", i+1);
 						new VehID = GetPVarInt(playerid, str);
 						if(!VehID)
@@ -16816,6 +17217,10 @@ public OnPlayerClickPlayerTextDraw(playerid, PlayerText:playertextid)
 							format(str, sizeof(str), Color_White"Вы приобрели "Main_Color"%s "Color_White"за "Color_Green"%d донат рублей", CarName[CarUpgradeDonate[indx][cuCarModel]-400], CarUpgradeDonate[indx][cuCarPrice]);
 							SendClientMessage(playerid, -1, str);
 							CloseCarUpgrade(playerid);
+
+							str[0] = EOS;
+							format(str, sizeof(str), "(IP: %s | RegIP: %s) потратил %d доната на покупку машины", pInfo[playerid][pIP], pInfo[playerid][pRegIp], CarUpgradeDonate[indx][cuCarPrice]);
+							AddLog(LogTypeDonate, pInfo[playerid][pID], str);
 						}
 						else
 						{
@@ -17481,6 +17886,45 @@ CMD:rob(playerid)
 	return 1;
 }
 
+CMD:invitewar(playerid)
+{
+	if(!IsAMafia(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только мафиям");
+	if(WarOpponent[pInfo[playerid][pMembers]] == Fraction_None) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Сейчас ваша мафия не ведет войну");
+	if(WarStatus[pInfo[playerid][pMembers]] != War_Status_Wait_Player) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Время на присоединение к войне закончилось");
+
+	if(WarBet[pInfo[playerid][pMembers]] != -1 && WarBet[pInfo[playerid][pMembers]] <= 0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Уже набрано максимальное количество участников со стороны вашей мафии");
+
+	TeleportToMafiaWar(playerid);
+	return 1;
+}
+
+CMD:createmwar(playerid)
+{
+	if(!IsAMafia(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только мафиям");
+	if(pInfo[playerid][pRank] < FractionMaxRank) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только лидеру");
+
+	if(WarStatus[pInfo[playerid][pMembers]] == War_Status_War || WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Player) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша мафия уже с кем-то ведет войну");
+	if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Accept) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вашей мафии уже кто-то сделал предложение о войне");
+	if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Accept_Request) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша мафия уже предложила войну кому-то");
+
+	if(FractionWarCD[pInfo[playerid][pMembers]] > gettime())
+	{
+		new str[150];
+        format(str, sizeof(str), Color_Grey"Ваша мафия снова сможет объявить войну в "Color_Red"%s", date(FractionWarCD[pInfo[playerid][pMembers]], 3, "%dd.%mm.%yyyy %hh:%ii"));
+        return SendClientMessage(playerid, -1, str);
+	}
+
+	new str[200];
+	for(new i = Fraction_RussiaMafia; i <= Fraction_Yakuza; i++)
+	{
+		format(str, sizeof(str), "%s%s\n", str, FractionName[i]);
+	}
+	format(str, sizeof(str), Color_White"%s", str);
+
+	ShowDialog(playerid, D_Maf_War_Select_Maf, DIALOG_STYLE_LIST, Main_Color"Выбор оппонента", str, Color_White"Далее", Color_White"Закрыть");
+	return 1;
+}
+
 CMD:war(playerid)
 {
 	if(!IsABand(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам");
@@ -17492,14 +17936,14 @@ CMD:war(playerid)
 	if(WarStatus[pInfo[playerid][pMembers]] == War_Status_Wait_Accept_Request) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша банда уже предложила войну кому-то");
 
 	new str[200];
-
 	for(new i = 1; i < sizeof(WarZones); i++)
 	{
+		if(WarZones[i][OnlyForMafia]) continue;
 		new bool:Finded = false;
 
 		for(new j = 1; j < MAX_FRACTION; j++)
 		{
-			if(WarZone[j] == i && WarStatus[j] == War_Status_War)
+			if(WarZone[j] == i && WarStatus[j] == War_Status_War && !IsAMafia(j))
 			{
 				Finded = true;
 				break;
@@ -18904,15 +19348,16 @@ stock UninvitePlayer(playerid)
 
 	if(members == Fraction_FBI && pInfo[playerid][pMask]) pc_cmd_maskoff(playerid);
 
-	if(members != Fraction_None && WarStatus[members] == War_Status_War)
+	if(members != Fraction_None && (WarStatus[members] == War_Status_War || WarStatus[members] == War_Status_Wait_Player))
     {
-		if(IsABand(members))
-		{
-			GangZoneHideForPlayer(playerid, WarZones[WarZone[members]][WarZoneID]);
-			for(new i = 1; i < sizeof(WarZones); i++) Streamer_ToggleItem(playerid, STREAMER_TYPE_MAP_ICON, WarZones[i][WarIcon], false);
-		}
+		if(GetPVarInt(playerid, "OnMafiaWar") && IsAMafia(members)) RemoveFromMafiaWar(playerid);
 
-		for(new j = 0; j < sizeof(WarPTD[]); j++) PlayerTextDrawHide(playerid, WarPTD[playerid][j]);
+		GangZoneStopFlashForPlayer(playerid, WarZones[WarZone[members]][WarZoneID]);
+		GangZoneHideForPlayer(playerid, WarZones[WarZone[members]][WarZoneID]);
+
+		Streamer_ToggleItem(playerid, STREAMER_TYPE_MAP_ICON, WarZones[members][WarIcon], false);
+
+		for(new i = 0; i < sizeof(WarPTD[]); i++) PlayerTextDrawHide(playerid, WarPTD[playerid][i]);
     }
 
 	Iter_Remove(FractionMembers[members], playerid);
@@ -20795,8 +21240,14 @@ CMD:accept(playerid, params[])
 	}
 	else if(!strcmp(type, "war"))
 	{
-		if(!IsABand(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам");
-		if(WarOpponent[pInfo[playerid][pMembers]] == Fraction_None || WarStatus[pInfo[playerid][pMembers]] != War_Status_Wait_Accept) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вашей банде не предлагали войну");
+		if(!IsABand(pInfo[playerid][pMembers]) && !IsAMafia(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам и мафиям");
+		if(IsAMafia(pInfo[playerid][pMembers]) && pInfo[playerid][pRank] < FractionMaxRank) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только лидеру мафии");
+		
+		if(WarOpponent[pInfo[playerid][pMembers]] == Fraction_None || WarStatus[pInfo[playerid][pMembers]] != War_Status_Wait_Accept)
+		{
+			if(IsAMafia(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вашей мафии не предлагали войну");
+			else return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вашей банде не предлагали войну");
+		}
 
 		new bool:FindedAcceptLeader = false;
 		new bool:FindedRequestLeader = false;
@@ -20824,10 +21275,10 @@ CMD:accept(playerid, params[])
 		if(!FindedAcceptLeader)
 		{
 			SendRMessageEx(FractionID, "В банде соперника нет лидера онлайн. Предложение о войне автоматически отклонено");
-			ClearGangWar(FractionID);
+			ClearWar(FractionID);
 
 			SendRMessageEx(pInfo[playerid][pMembers], "В вашей банде нет лидера онлайн. Предложение о войне автоматически отклонено");
-			ClearGangWar(pInfo[playerid][pMembers]);
+			ClearWar(pInfo[playerid][pMembers]);
 
 			return 1;
 		}
@@ -20835,141 +21286,172 @@ CMD:accept(playerid, params[])
 		if(!FindedRequestLeader)
 		{
 			SendRMessageEx(FractionID, "В вашей банде нет лидера онлайн. Предложение о войне автоматически отклонено");
-			ClearGangWar(FractionID);
+			ClearWar(FractionID);
 
 			SendRMessageEx(pInfo[playerid][pMembers], "В банде соперника нет лидера онлайн. Предложение о войне автоматически отклонено");
-			ClearGangWar(pInfo[playerid][pMembers]);
+			ClearWar(pInfo[playerid][pMembers]);
 
 			return 1;
 		}
 
-		if(Iter_Count(FractionMembers[pInfo[playerid][pMembers]]) < 3)
+		if(IsABand(pInfo[playerid][pMembers]))
 		{
-			SendRMessageEx(FractionID, "У данной фракции нет онлайна (минимум 3 человек). Предложение о войне автоматически отклонено");
-			ClearGangWar(FractionID);
-
-			SendRMessageEx(pInfo[playerid][pMembers], "У вашей фракции нет онлайна (минимум 3 человек). Предложение о войне автоматически отклонено");
-			ClearGangWar(pInfo[playerid][pMembers]);
-			return 1;
-		}
-
-		if(Iter_Count(FractionMembers[FractionID]) < 3)
-		{
-			SendRMessageEx(FractionID, "У вашей фракции нет онлайна (минимум 3 человек). Предложение о войне автоматически отклонено");
-			ClearGangWar(FractionID);
-
-			SendRMessageEx(pInfo[playerid][pMembers], "У данной фракции нет онлайна (минимум 3 человек). Предложение о войне автоматически отклонено");
-			ClearGangWar(pInfo[playerid][pMembers]);
-			return 1;
-		}
-
-		for(new i = 1; i < MAX_FRACTION; i++)
-		{
-			if((WarZone[i] == WarZone[FractionID] || WarZone[i] == WarZone[pInfo[playerid][pMembers]]) && WarStatus[i] == War_Status_War)
+			if(Iter_Count(FractionMembers[pInfo[playerid][pMembers]]) < 3)
 			{
-				SendRMessageEx(FractionID, "Выбранное место для войны уже занято. Предложение о войне автоматически отклонено");
-				ClearGangWar(FractionID);
+				SendRMessageEx(FractionID, "У данной фракции нет онлайна (минимум 3 человек). Предложение о войне автоматически отклонено");
+				ClearWar(FractionID);
 
-				SendRMessageEx(pInfo[playerid][pMembers], "Выбранное место для войны уже занято. Предложение о войне автоматически отклонено");
-				ClearGangWar(pInfo[playerid][pMembers]);
+				SendRMessageEx(pInfo[playerid][pMembers], "У вашей фракции нет онлайна (минимум 3 человек). Предложение о войне автоматически отклонено");
+				ClearWar(pInfo[playerid][pMembers]);
+				return 1;
+			}
 
+			if(Iter_Count(FractionMembers[FractionID]) < 3)
+			{
+				SendRMessageEx(FractionID, "У вашей фракции нет онлайна (минимум 3 человек). Предложение о войне автоматически отклонено");
+				ClearWar(FractionID);
+
+				SendRMessageEx(pInfo[playerid][pMembers], "У данной фракции нет онлайна (минимум 3 человек). Предложение о войне автоматически отклонено");
+				ClearWar(pInfo[playerid][pMembers]);
+				return 1;
+			}
+
+			for(new i = 1; i < MAX_FRACTION; i++)
+			{
+				if((WarZone[i] == WarZone[FractionID] || WarZone[i] == WarZone[pInfo[playerid][pMembers]]) && WarStatus[i] == War_Status_War)
+				{
+					SendRMessageEx(FractionID, "Выбранное место для войны уже занято. Предложение о войне автоматически отклонено");
+					ClearWar(FractionID);
+
+					SendRMessageEx(pInfo[playerid][pMembers], "Выбранное место для войны уже занято. Предложение о войне автоматически отклонено");
+					ClearWar(pInfo[playerid][pMembers]);
+
+					return 1;
+				}
+			}
+
+			switch(WarBetType[FractionID])
+			{
+				case Gang_Bet_Type_Money:
+				{
+					if(FractionWare[pInfo[playerid][pMembers]][FractionWareMoney] < WarBet[pInfo[playerid][pMembers]])
+					{
+						SendRMessageEx(FractionID, "На складе банды соперника недостаточно средств. Предложение о войне автоматически отклонено");
+						ClearWar(FractionID);
+
+						SendRMessageEx(pInfo[playerid][pMembers], "На складе вашей банды недостаточно средств. Предложение о войне автоматически отклонено");
+						ClearWar(pInfo[playerid][pMembers]);
+						return 1;
+					}
+
+					if(FractionWare[FractionID][FractionWareMoney] < WarBet[FractionID])
+					{
+						SendRMessageEx(FractionID, "На складе вашей банды недостаточно средств. Предложение о войне автоматически отклонено");
+						ClearWar(FractionID);
+
+						SendRMessageEx(pInfo[playerid][pMembers], "На складе банды соперника недостаточно средств. Предложение о войне автоматически отклонено");
+						ClearWar(pInfo[playerid][pMembers]);
+
+						return 1;
+					}
+
+					FractionWare[pInfo[playerid][pMembers]][FractionWareMoney] -= WarBet[pInfo[playerid][pMembers]];
+					FractionWare[FractionID][FractionWareMoney] -= WarBet[FractionID];
+
+					SaveFractionWare(pInfo[playerid][pMembers]);
+					SaveFractionWare(FractionID);
+				}
+				case Gang_Bet_Type_Materials:
+				{
+					if(FractionWare[pInfo[playerid][pMembers]][FractionWareMaterials] < WarBet[pInfo[playerid][pMembers]])
+					{
+						SendRMessageEx(FractionID, "На складе банды соперника недостаточно материалов. Предложение о войне автоматически отклонено");
+						ClearWar(FractionID);
+
+						SendRMessageEx(pInfo[playerid][pMembers], "На складе вашей банды недостаточно материалов. Предложение о войне автоматически отклонено");
+						ClearWar(pInfo[playerid][pMembers]);
+
+						return 1;
+					}
+
+					if(FractionWare[FractionID][FractionWareMaterials] < WarBet[FractionID])
+					{
+						SendRMessageEx(FractionID, "На складе вашей банды недостаточно материалов. Предложение о войне автоматически отклонено");
+						ClearWar(FractionID);
+
+						SendRMessageEx(pInfo[playerid][pMembers], "На складе банды соперника недостаточно материалов. Предложение о войне автоматически отклонено");
+						ClearWar(pInfo[playerid][pMembers]);
+						return 1;
+					}
+
+					FractionWare[pInfo[playerid][pMembers]][FractionWareMaterials] -= WarBet[pInfo[playerid][pMembers]];
+					FractionWare[FractionID][FractionWareMaterials] -= WarBet[FractionID];
+
+					SaveFractionWare(pInfo[playerid][pMembers]);
+					SaveFractionWare(FractionID);
+				}
+				case Gang_Bet_Type_Drugs:
+				{
+					if(FractionWare[pInfo[playerid][pMembers]][FractionWareDrugs] < WarBet[pInfo[playerid][pMembers]])
+					{
+						SendRMessageEx(FractionID, "На складе банды соперника недостаточно наркотиков. Предложение о войне автоматически отклонено");
+						ClearWar(FractionID);
+
+						SendRMessageEx(pInfo[playerid][pMembers], "На складе вашей банды недостаточно наркотиков. Предложение о войне автоматически отклонено");
+						ClearWar(pInfo[playerid][pMembers]);
+
+						return 1;
+					}
+
+					if(FractionWare[FractionID][FractionWareDrugs] < WarBet[FractionID])
+					{
+						SendRMessageEx(FractionID, "На складе вашей банды недостаточно наркотиков. Предложение о войне автоматически отклонено");
+						ClearWar(FractionID);
+
+						SendRMessageEx(pInfo[playerid][pMembers], "На складе банды соперника недостаточно наркотиков. Предложение о войне автоматически отклонено");
+						ClearWar(pInfo[playerid][pMembers]);
+
+						return 1;
+					}
+
+					FractionWare[pInfo[playerid][pMembers]][FractionWareDrugs] -= WarBet[pInfo[playerid][pMembers]];
+					FractionWare[FractionID][FractionWareDrugs] -= WarBet[FractionID];
+
+					SaveFractionWare(pInfo[playerid][pMembers]);
+					SaveFractionWare(FractionID);
+				}
+			}
+		}
+		else
+		{
+			if(FractionWarCD[pInfo[playerid][pMembers]] > gettime())
+			{
+				new str[150];
+				format(str, sizeof(str), "Мафия противника снова сможет участвовать в войне в %s", date(FractionWarCD[pInfo[playerid][pMembers]], 3, "%dd.%mm.%yyyy %hh:%ii"));
+				SendRMessageEx(FractionID, str);
+				ClearWar(FractionID);
+
+				format(str, sizeof(str), "Ваша мафия снова сможет участвовать в войне в %s", date(FractionWarCD[pInfo[playerid][pMembers]], 3, "%dd.%mm.%yyyy %hh:%ii"));
+				SendRMessageEx(pInfo[playerid][pMembers], str);
+				ClearWar(pInfo[playerid][pMembers]);
+				return 1;
+			}
+			else if(FractionWarCD[FractionID] > gettime())
+			{
+				new str[150];
+				format(str, sizeof(str), "Мафия противника снова сможет участвовать в войне в %s", date(FractionWarCD[FractionID], 3, "%dd.%mm.%yyyy %hh:%ii"));
+				SendRMessageEx(pInfo[playerid][pMembers], str);
+				ClearWar(pInfo[playerid][pMembers]);
+
+				format(str, sizeof(str), "Ваша мафия снова сможет участвовать в войне в %s", date(FractionWarCD[FractionID], 3, "%dd.%mm.%yyyy %hh:%ii"));
+				SendRMessageEx(FractionID, str);
+				ClearWar(FractionID);
 				return 1;
 			}
 		}
-
-		switch(WarBetType[FractionID])
-		{
-			case Gang_Bet_Type_Money:
-			{
-				if(FractionWare[pInfo[playerid][pMembers]][FractionWareMoney] < WarBet[pInfo[playerid][pMembers]])
-				{
-					SendRMessageEx(FractionID, "На складе банды соперника недостаточно средств. Предложение о войне автоматически отклонено");
-					ClearGangWar(FractionID);
-
-					SendRMessageEx(pInfo[playerid][pMembers], "На складе вашей банды недостаточно средств. Предложение о войне автоматически отклонено");
-					ClearGangWar(pInfo[playerid][pMembers]);
-					return 1;
-				}
-
-				if(FractionWare[FractionID][FractionWareMoney] < WarBet[FractionID])
-				{
-					SendRMessageEx(FractionID, "На складе вашей банды недостаточно средств. Предложение о войне автоматически отклонено");
-					ClearGangWar(FractionID);
-
-					SendRMessageEx(pInfo[playerid][pMembers], "На складе банды соперника недостаточно средств. Предложение о войне автоматически отклонено");
-					ClearGangWar(pInfo[playerid][pMembers]);
-
-					return 1;
-				}
-
-				FractionWare[pInfo[playerid][pMembers]][FractionWareMoney] -= WarBet[pInfo[playerid][pMembers]];
-				FractionWare[FractionID][FractionWareMoney] -= WarBet[FractionID];
-
-				SaveFractionWare(pInfo[playerid][pMembers]);
-				SaveFractionWare(FractionID);
-			}
-			case Gang_Bet_Type_Materials:
-			{
-				if(FractionWare[pInfo[playerid][pMembers]][FractionWareMaterials] < WarBet[pInfo[playerid][pMembers]])
-				{
-					SendRMessageEx(FractionID, "На складе банды соперника недостаточно материалов. Предложение о войне автоматически отклонено");
-					ClearGangWar(FractionID);
-
-					SendRMessageEx(pInfo[playerid][pMembers], "На складе вашей банды недостаточно материалов. Предложение о войне автоматически отклонено");
-					ClearGangWar(pInfo[playerid][pMembers]);
-
-					return 1;
-				}
-
-				if(FractionWare[FractionID][FractionWareMaterials] < WarBet[FractionID])
-				{
-					SendRMessageEx(FractionID, "На складе вашей банды недостаточно материалов. Предложение о войне автоматически отклонено");
-					ClearGangWar(FractionID);
-
-					SendRMessageEx(pInfo[playerid][pMembers], "На складе банды соперника недостаточно материалов. Предложение о войне автоматически отклонено");
-					ClearGangWar(pInfo[playerid][pMembers]);
-					return 1;
-				}
-
-				FractionWare[pInfo[playerid][pMembers]][FractionWareMaterials] -= WarBet[pInfo[playerid][pMembers]];
-				FractionWare[FractionID][FractionWareMaterials] -= WarBet[FractionID];
-
-				SaveFractionWare(pInfo[playerid][pMembers]);
-				SaveFractionWare(FractionID);
-			}
-			case Gang_Bet_Type_Drugs:
-			{
-				if(FractionWare[pInfo[playerid][pMembers]][FractionWareDrugs] < WarBet[pInfo[playerid][pMembers]])
-				{
-					SendRMessageEx(FractionID, "На складе банды соперника недостаточно наркотиков. Предложение о войне автоматически отклонено");
-					ClearGangWar(FractionID);
-
-					SendRMessageEx(pInfo[playerid][pMembers], "На складе вашей банды недостаточно наркотиков. Предложение о войне автоматически отклонено");
-					ClearGangWar(pInfo[playerid][pMembers]);
-
-					return 1;
-				}
-
-				if(FractionWare[FractionID][FractionWareDrugs] < WarBet[FractionID])
-				{
-					SendRMessageEx(FractionID, "На складе вашей банды недостаточно наркотиков. Предложение о войне автоматически отклонено");
-					ClearGangWar(FractionID);
-
-					SendRMessageEx(pInfo[playerid][pMembers], "На складе банды соперника недостаточно наркотиков. Предложение о войне автоматически отклонено");
-					ClearGangWar(pInfo[playerid][pMembers]);
-
-					return 1;
-				}
-
-				FractionWare[pInfo[playerid][pMembers]][FractionWareDrugs] -= WarBet[pInfo[playerid][pMembers]];
-				FractionWare[FractionID][FractionWareDrugs] -= WarBet[FractionID];
-
-				SaveFractionWare(pInfo[playerid][pMembers]);
-				SaveFractionWare(FractionID);
-			}
-		}
-		StartGangWar(pInfo[playerid][pMembers]);
-		StartGangWar(FractionID);
+		StartWar(pInfo[playerid][pMembers]);
+		StartWar(FractionID);
+		WarInitiator[FractionID] = true;
 	}
 	else SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/accept [kiss/mechanic/repair/mfill/givekey/house/exchangehouse/free/business/exchangebusiness/sellgun/selldrugs/war]");
 	return 1;
@@ -21082,17 +21564,25 @@ CMD:cancel(playerid, params[])
     }
     else if(!strcmp(type, "war"))
 	{
-		if(!IsABand(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам");
-		if(WarOpponent[pInfo[playerid][pMembers]] == Fraction_None || WarStatus[pInfo[playerid][pMembers]] != War_Status_Wait_Accept) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вашей банде не предлагали войну");
+		if(!IsABand(pInfo[playerid][pMembers]) && !IsAMafia(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только бандам и мафиям");
+		if(IsAMafia(pInfo[playerid][pMembers]) && pInfo[playerid][pRank] < FractionMaxRank) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только лидеру мафии");
+		
+		if(WarOpponent[pInfo[playerid][pMembers]] == Fraction_None || WarStatus[pInfo[playerid][pMembers]] != War_Status_Wait_Accept)
+		{
+			if(IsAMafia(pInfo[playerid][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вашей мафии не предлагали войну");
+			else return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вашей банде не предлагали войну");
+		}
 
 		new str[200];
-        format(str, sizeof(str), "Банда %s отклонила прдложение о войне", FractionName[pInfo[playerid][pMembers]]);
+		if(IsAMafia(pInfo[playerid][pMembers])) format(str, sizeof(str), "Мафия %s отклонила прдложение о войне", FractionName[pInfo[playerid][pMembers]]);
+        else format(str, sizeof(str), "Банда %s отклонила прдложение о войне", FractionName[pInfo[playerid][pMembers]]);
         SendRMessageEx(WarOpponent[pInfo[playerid][pMembers]], str);
 
-		SendRMessageEx(pInfo[playerid][pMembers], "Ваша банда отклонила прдложение о войне");
+		if(IsAMafia(pInfo[playerid][pMembers]))  SendRMessageEx(pInfo[playerid][pMembers], "Ваша мафия отклонила прдложение о войне");
+		else SendRMessageEx(pInfo[playerid][pMembers], "Ваша банда отклонила прдложение о войне");
 
-        ClearGangWar(WarOpponent[pInfo[playerid][pMembers]]);
-		ClearGangWar(pInfo[playerid][pMembers]);
+        ClearWar(WarOpponent[pInfo[playerid][pMembers]]);
+		ClearWar(pInfo[playerid][pMembers]);
 	}
 	else SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/accept [kiss/repair/mfill/free/givekey/house/exchangehouse/business/exchangebusiness/sellgun/selldrugs/war]");
 	return 1;
@@ -23010,6 +23500,17 @@ CMD:tp(playerid)
 	return 1;
 }
 
+CMD:tppos(playerid, params[])
+{
+	if(pInfo[playerid][pAdmin] < 2 || !Iter_Contains(Admins, playerid)) return 1;
+	
+	new Float:X, Float:Y, Float:Z;
+	if(sscanf(params, "fff", X, Y, Z)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/tppos [X] [Y] [Z]");
+
+	SetPlayerPosition(playerid, X, Y, Z);
+	return 1;
+}
+
 CMD:spawn(playerid, params[])
 {
 	if(pInfo[playerid][pAdmin] < 2 || !Iter_Contains(Admins, playerid)) return 1;
@@ -23163,7 +23664,8 @@ CMD:logs(playerid)
 	ShowDialog(playerid, D_Log_Type, DIALOG_STYLE_LIST, Main_Color"Админ панель || "Color_White"Логи", Main_Color"1"Color_White". Деньги\n\
 	"Main_Color"2"Color_White". Действия администраторов/модераторов\n\
 	"Main_Color"3"Color_White". Действия с аккаунтом\n\
-	"Main_Color"4"Color_White". Логи фракций", Color_White"Далее", Color_White"Закрыть");
+	"Main_Color"4"Color_White". Логи фракций\n\
+	"Main_Color"5"Color_White". Логи донат-покупок", Color_White"Далее", Color_White"Закрыть");
 	return 1;
 }
 
@@ -24337,8 +24839,8 @@ stock PutVehicleInTuning(playerid, vehicleid)
 {
 	SetPlayerInterior(playerid, 3);
 	LinkVehicleToInterior(vehicleid, 3);
-	SetPlayerVirtualWorld(playerid, playerid+1000);
-	SetVehicleVirtualWorld(vehicleid, playerid+1000);
+	SetPlayerVirtualWorld(playerid, playerid+Player_World);
+	SetVehicleVirtualWorld(vehicleid, playerid+Player_World);
 	PutPlayerInVehicle(playerid, vehicleid, 0);
 
 	SetVehiclePos(vehicleid, 615.5032,-124.1655,997.7191);
@@ -24807,6 +25309,8 @@ stock ShowFractionCommand(playerid)
 			ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Организации", Main_Color"/members "Color_White"- Члены мафии онлайн\n\
 			"Main_Color"/f "Color_White"- Чат банды\n\
 			"Main_Color"/influence "Color_White"- Статистика влияния\n\
+			"Main_Color"/createmwar "Color_White"- Объявить войну\n\
+			"Main_Color"/invitewar "Color_White"- Присоедениться к войне\n\
 			"Main_Color"/stealdress "Color_White"- Украсть одежду\n\
 			"Main_Color"/rape "Color_White"- Похитить игрока\n\
 			"Main_Color"/invite [ID] "Color_White"- Пригласить в банду\n\
@@ -27014,18 +27518,39 @@ public SecondTimer()
 			{
 				if(WarStatus[i] == War_Status_Wait_Accept)
 				{
-					SendRMessageEx(i, "Ваша банда не приняла предложение о войне в течении 5 минут. Предложение автоматически отклонено");
-					ClearGangWar(i);
+					if(IsAMafia(i)) SendRMessageEx(i, "Ваша мафия не приняла предложение о войне в течении 5 минут. Предложение автоматически отклонено");
+					else SendRMessageEx(i, "Ваша банда не приняла предложение о войне в течении 5 минут. Предложение автоматически отклонено");
+					ClearWar(i);
 				}
 				else if(WarStatus[i] == War_Status_Wait_Accept_Request)
 				{
-					SendRMessageEx(i, "Банда соперника не приняла предложение о войне в течении 5 минут. Предложение автоматически отклонено");
-					ClearGangWar(i);
+					if(IsAMafia(WarOpponent[i])) SendRMessageEx(i, "Мафия соперника не приняла предложение о войне в течении 5 минут. Предложение автоматически отклонено");
+					else SendRMessageEx(i, "Банда соперника не приняла предложение о войне в течении 5 минут. Предложение автоматически отклонено");
+					ClearWar(i);
 				}
-                else if(WarStatus[i] == War_Status_War)
+				else if(WarStatus[i] == War_Status_Wait_Player && IsAMafia(i))
+				{
+					if(WarBet[i] > 0)
+					{
+						SendRMessageEx(i, "Ваша мафия не набрала необходимое количество участников для войны. Война отменена");
+						SendRMessageEx(WarOpponent[i], "Мафия соперника не набрала необходимое количество участников для войны. Война отменена");
+						ClearWar(i);
+						ClearWar(WarOpponent[i]);
+					}
+					else
+					{
+						WarStatus[i] = War_Status_War;
+
+						foreach(new j:FractionMembers[i])
+						{
+							if(pInfo[j][pAuth] && GetPVarInt(j, "OnMafiaWar")) SetPlayerTeam(j, NO_TEAM);
+						}
+					}
+				}
+                else if(WarStatus[i] == War_Status_War && !IsAMafia(i))
                 {
 					SendRMessageEx(i, "Время войны окончено. Война закончилась в ничью");
-					EndGangWar(i, 2);
+					EndWar(i, 2);
                 }
 			}
 		}
@@ -27299,29 +27824,30 @@ public SecondTimer()
 			DeletePVar(i, "PostDrugEffect");
 		}
 
-        if(pInfo[i][pMembers] != Fraction_None && WarStatus[pInfo[i][pMembers]] == War_Status_War)
+        if(pInfo[i][pMembers] != Fraction_None)
         {
-			if(IsABand(pInfo[i][pMembers]))
+			if(IsABand(pInfo[i][pMembers]) && WarStatus[pInfo[i][pMembers]] == War_Status_War)
 			{
 	            new str[100];
 	            ConvertedSecondsWithoutText(WarTimer[pInfo[i][pMembers]], str);
 	            format(str, sizeof(str), "VS~n~~n~Time:_%s", str);
 	            PlayerTextDrawSetString(i, WarPTD[i][0], str);
 			}
-			else if(IsAMafia(pInfo[i][pMembers]))
+			else if(IsAMafia(pInfo[i][pMembers]) && GetPVarInt(i, "OnMafiaWar"))
 			{
 				new str[100];
-	            ConvertedSecondsWithoutText(WarTimer[pInfo[i][pMembers]], str);
-	            format(str, sizeof(str), "VS~n~~n~Time:_%s", str);
-	            PlayerTextDrawSetString(i, WarPTD[i][0], str);
-
-				str[0] = EOS;
-				format(str, sizeof(str), "%s - %d", FractionName[pInfo[i][pMembers]], WarZone[pInfo[i][pMembers]]);
-	            PlayerTextDrawSetString(i, WarPTD[i][1], str);
-
-				str[0] = EOS;
-				format(str, sizeof(str), "%s - %d", FractionName[WarOpponent[pInfo[i][pMembers]]], WarZone[WarOpponent[pInfo[i][pMembers]]]);
-	            PlayerTextDrawSetString(i, WarPTD[i][2], str);
+				if(WarStatus[pInfo[i][pMembers]] == War_Status_Wait_Player)
+				{
+					ConvertedSecondsWithoutText(WarTimer[pInfo[i][pMembers]], str);
+					format(str, sizeof(str), "VS~n~~n~Wait_Player:_%s", str);
+					PlayerTextDrawSetString(i, WarPTD[i][0], str);
+				}
+				else if(WarStatus[pInfo[i][pMembers]] == War_Status_War)
+				{
+					ConvertedSecondsWithoutText(WarTimer[pInfo[i][pMembers]], str);
+					format(str, sizeof(str), "VS~n~~n~Time:_%s", str);
+					PlayerTextDrawSetString(i, WarPTD[i][0], str);
+				}
 			}
         }
 
