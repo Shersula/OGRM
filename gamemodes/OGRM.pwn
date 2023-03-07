@@ -2793,7 +2793,7 @@ public OnGameModeInit()
 	AddPlayerClass(0, 1958.3783, 1343.1572, 15.3746, 269.1425, 0, 0, 0, 0, 0, 0);
 
 	//DB = mysql_connect("localhost", "mysql", "mysql", "ogrm");
-	DB = mysql_connect("46.174.50.7", "u33233_ogrm", "3610584So", "u33233_ogrm");
+	DB = mysql_connect("51.89.28.163", "hcr", "3w9bW65Rfx", "hcr");
 
 	new error = mysql_errno();
 	switch(error)
@@ -27546,6 +27546,7 @@ public SecondTimer()
 						{
 							if(pInfo[j][pAuth] && GetPVarInt(j, "OnWar"))
 							{
+								PlayerPlaySound(j, 17802, 0.0, 0.0, 0.0);
 								SetPlayerTeam(j, NO_TEAM);
 								PlayerTextDrawSetString(j, WarPTD[j][0], "FIGHT");
 							}
