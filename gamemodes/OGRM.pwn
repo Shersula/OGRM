@@ -93,6 +93,7 @@
 #define Project_Name 		"Old Good RPG mod"
 #define Short_Project_Name 	"OGRM"
 #define Project_Site		"ogrm-project.ru"
+#define Project_Version		"1.0"
 
 new MySQL:DB;
 new AdminBoard; //Объект с информацией об администраторах в Мэрии
@@ -2010,7 +2011,21 @@ enum
 	D_Set_Influence,
 	D_Maf_War_Select_Maf,
 	D_Maf_War_Select_Count,
-	D_Maf_War_Select_Zone
+	D_Maf_War_Select_Zone,
+	D_Promo_Settings,
+	D_Promo_List,
+	D_Promo_Edit,
+	D_Promo_Edit_Name,
+	D_Promo_Edit_Money,
+	D_Promo_Edit_Level,
+	D_Promo_Edit_Donate,
+	D_Promo_Edit_Exp,
+	D_Promo_Edit_PromoLevel,
+	D_Promo_Edit_PromoActivation,
+	D_Promo_Edit_PromoTime,
+	D_Promo_Delete,
+	D_Activate_Promo,
+	D_Activate_Promo_Submit
 };
 
 stock ShowDialog(playerid, dialogid, style, const caption[], const info[], const button1[], const button2[])
@@ -2633,6 +2648,12 @@ stock ClearAccount(playerid)
 	return 1;
 }
 
+stock HelloMSG(playerid)
+{
+	SendClientMessage(playerid, -1, Color_White"Приветствуем на "Main_Color Project_Name Color_White". Версия мода - "Main_Color Project_Version Color_White". Приятной игры!");
+	return 1;
+}
+
 stock SaveQuest(playerid)
 {
 	new query[70];
@@ -2782,7 +2803,7 @@ stock ClearTent(TentsID)
 main()
 {
 	print("\n----------------------------------");
-	print("------------"Short_Project_Name" v0.95-------------\n");
+	print("------------"Short_Project_Name" v"Project_Version"-------------\n");
 	print("----------------------------------\n");
 }
 
@@ -5389,6 +5410,7 @@ stock RemoveFromWar(playerid)
 	for(new i = 0; i < sizeof(WarPTD[]); i++) PlayerTextDrawHide(playerid, WarPTD[playerid][i]);
 	
 	DeletePVar(playerid, "OnWar");
+	DeletePVar(playerid, "WarStartTimer");
 
 	if(WarStatus[pInfo[playerid][pMembers]] == War_Status_War)
 	{
@@ -5633,6 +5655,7 @@ stock EndWar(FractionID, WinnerType = 0) //WinnerType = 0 - Проигравший || Winne
 			if(GetPVarInt(i, "OnWar"))
 			{
 				DeletePVar(i, "OnWar");
+				DeletePVar(i, "WarStartTimer");
 				SpawnPlayer(i);
 			}
         }
@@ -10551,7 +10574,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			pInfo[playerid][pDonateMoney] = 0;
 			pInfo[playerid][pAuth] = true;
 
-			SendClientMessage(playerid, -1, Color_White"Приветствуем на "Main_Color Project_Name Color_White". Приятной игры!");
+			HelloMSG(playerid);
 
 			if(GetPVarInt(playerid, "LoginCameraTimer"))
 			{
@@ -10700,7 +10723,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				case 4:
 				{
-					ShowDialog(playerid, D_Donate_Buy_Money, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Покупка виртов", Color_White"Введите количество донат рублей которое хотите обменять на вирты\n\n"Color_Green"10.000$ "Color_White"- 100р", Color_White"Далее", Color_White"Отмена");
+					ShowDialog(playerid, D_Donate_Buy_Money, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Покупка виртов", Color_White"Введите количество донат рублей которое хотите обменять на вирты\n\n"Color_Green"5.000$ "Color_White"- 1р", Color_White"Далее", Color_White"Отмена");
 				}
 				case 5:
 				{
@@ -10854,8 +10877,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 		case D_Donate_Buy_Money:
 		{
 			if(!response) return 1;
-			if(!strlen(inputtext)) return ShowDialog(playerid, D_Donate_Buy_Money, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Покупка виртов", Color_White"Введите количество донат рублей которое хотите обменять на вирты\n\n"Color_Green"10.000$ "Color_White"- 100р\n\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Отмена");
-			if(strval(inputtext) <= 0) return ShowDialog(playerid, D_Donate_Buy_Money, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Покупка виртов", Color_White"Введите количество донат рублей которое хотите обменять на вирты\n\n"Color_Green"10.000$ "Color_White"- 100р\n\n"Color_Red"Неверное количество донат рублей", Color_White"Далее", Color_White"Отмена");
+			if(!strlen(inputtext)) return ShowDialog(playerid, D_Donate_Buy_Money, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Покупка виртов", Color_White"Введите количество донат рублей которое хотите обменять на вирты\n\n"Color_Green"5.000$ "Color_White"- 1р\n\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Отмена");
+			if(strval(inputtext) <= 0) return ShowDialog(playerid, D_Donate_Buy_Money, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Покупка виртов", Color_White"Введите количество донат рублей которое хотите обменять на вирты\n\n"Color_Green"5.000$ "Color_White"- 1р\n\n"Color_Red"Неверное количество донат рублей", Color_White"Далее", Color_White"Отмена");
 
 			new donatemoney = strval(inputtext);
 			if(pInfo[playerid][pDonateMoney] < donatemoney) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно донат рублей");
@@ -10863,14 +10886,14 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			pInfo[playerid][pDonateMoney] -= donatemoney;
 			SavePlayerInt(playerid, "DonateMoney", pInfo[playerid][pDonateMoney]);
 
-			GivePlayerMoneyEx(playerid, donatemoney*100);
+			GivePlayerMoneyEx(playerid, donatemoney*5000);
 
 			new str[300];
-			format(str, sizeof(str), Color_Yellow"Вы купили %d виртов", donatemoney*100);
+			format(str, sizeof(str), Color_Yellow"Вы купили %d виртов", donatemoney*5000);
 			SendClientMessage(playerid, -1, str);
 
 			str[0] = EOS;
-			format(str, sizeof(str), "(IP: %s | RegIP: %s) купил %d виртов за донат", pInfo[playerid][pIP], pInfo[playerid][pRegIp], donatemoney*100);
+			format(str, sizeof(str), "(IP: %s | RegIP: %s) купил %d виртов за донат", pInfo[playerid][pIP], pInfo[playerid][pRegIp], donatemoney*5000);
 			AddLog(LogTypeMoney, pInfo[playerid][pID], str);
 
 			str[0] = EOS;
@@ -10975,6 +10998,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				case 8: pc_cmd_logs(playerid);
 				case 9: pc_cmd_bots(playerid);
 				case 10: pc_cmd_setinfluence(playerid);
+				case 11: pc_cmd_promosettings(playerid);
 			}
 			return 1;
 		}
@@ -11241,6 +11265,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				{
 					ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Основные команды", Main_Color"/main(/mm, /menu) "Color_White"- Меню сервера\n\
 					"Main_Color"/quest "Color_White"- Список заданий\n\
+					"Main_Color"/promo "Color_White"- Активировать промокод\n\
 					"Main_Color"/showstats [ID] "Color_White"- Показать свою статистику другому игроку\n\
 					"Main_Color"/pay [ID] [сумма] "Color_White"- Передать наличные деньги другому игроку\n\
 					"Main_Color"/time "Color_White"- Узнать время(Заключения/Мута/Сервера)\n\
@@ -13325,6 +13350,403 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			SendClientMessage(playerid, -1, Color_White"Место появления изменено");
 			return 1;
 		}
+		case D_Promo_Settings:
+		{
+			ClearPromoInfo(playerid);
+
+			if(!response) return pc_cmd_apanel(playerid);
+
+			switch(listitem)
+			{
+				case 0:
+				{
+					SetPVarInt(playerid, "PromoCount", -1);
+					SetPVarInt(playerid, "PromoTime", -1);
+					SetPVarInt(playerid, "IsNewPromo", 1);
+					ShowPromoEdit(playerid, true);
+				}
+				case 1: mysql_tquery(DB, "SELECT * FROM `promocode`", "ShowPromoList", "ddd", playerid, false, 1);
+				case 2:
+				{
+					SetPVarInt(playerid, "PromoDelete", 1);
+					mysql_tquery(DB, "SELECT * FROM `promocode`", "ShowPromoList", "ddd", playerid, true, 1);
+				}
+			}
+			return 1;
+		}
+		case D_Promo_List:
+		{
+			if(!response)
+			{
+				ClearPromoList(playerid);
+				ClearPromoInfo(playerid);
+				return pc_cmd_promosettings(playerid);
+			}
+
+			if(listitem == GetPVarInt(playerid, "PromoListNext")) mysql_tquery(DB, "SELECT * FROM `promocode`", "ShowPromoList", "ddd", playerid, GetPVarInt(playerid, "PromoDelete"), GetPVarInt(playerid, "PromoList")+1);
+			else if(listitem == GetPVarInt(playerid, "PromoListPrev")) mysql_tquery(DB, "SELECT * FROM `promocode`", "ShowPromoList", "ddd", playerid, GetPVarInt(playerid, "PromoDelete"), GetPVarInt(playerid, "PromoList")-1);
+			else
+			{
+				if(GetPVarInt(playerid, "PromoDelete"))
+				{
+					new str[100];
+					format(str, sizeof(str), "PromoList_%d", listitem);
+					SetPVarInt(playerid, "DeletePromoID", GetPVarInt(playerid, str));
+
+					mysql_format(DB, str, sizeof(str), "SELECT * FROM `promocode` WHERE `ID` = '%d'", GetPVarInt(playerid, "DeletePromoID"));
+					mysql_tquery(DB, str, "LoadPromoInfo", "dd", playerid, 2);
+				}
+				else
+				{
+					new str[100];
+					format(str, sizeof(str), "PromoList_%d", listitem);
+					SetPVarInt(playerid, "EditPromoID", GetPVarInt(playerid, str));
+
+					mysql_format(DB, str, sizeof(str), "SELECT * FROM `promocode` WHERE `ID` = '%d'", GetPVarInt(playerid, "EditPromoID"));
+					mysql_tquery(DB, str, "LoadPromoInfo", "dd", playerid, 1);
+				}
+
+				ClearPromoList(playerid);
+			}
+
+			return 1;
+		}
+		case D_Promo_Delete:
+		{
+			if(!response)
+			{
+				mysql_tquery(DB, "SELECT * FROM `promocode`", "ShowPromoList", "ddd", playerid, GetPVarInt(playerid, "PromoDelete"), GetPVarInt(playerid, "PromoList"));
+				return 1;
+			}
+
+			new query[100];
+			mysql_format(DB, query, sizeof(query), "DELETE FROM `promocode` WHERE `ID` = '%d'", GetPVarInt(playerid, "DeletePromoID"));
+			mysql_tquery(DB, query);
+
+			query[0] = EOS;
+			GetPVarString(playerid, "PromoName", query, sizeof(query));
+			format(query, sizeof(query), Color_Gold"Промокод %s успешно удален", query);
+			SendClientMessage(playerid, -1, query);
+
+			ClearPromoInfo(playerid);
+			return 1;
+		}
+		case D_Promo_Edit:
+		{
+			if(!response)
+			{
+				if(GetPVarInt(playerid, "IsNewPromo"))
+				{
+					ClearPromoInfo(playerid);
+					pc_cmd_promosettings(playerid);
+				}
+				else mysql_tquery(DB, "SELECT * FROM `promocode`", "ShowPromoList", "ddd", playerid, GetPVarInt(playerid, "PromoDelete"), GetPVarInt(playerid, "PromoList"));
+				return 1;
+			}
+
+			if(GetPVarInt(playerid, "IsNewPromo"))
+			{
+				switch(listitem)
+				{
+					case 0: ShowDialog(playerid, D_Promo_Edit_Name, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Создание промокода", Color_White"Введите название для промокода", Color_White"Далее", Color_White"Назад");
+					case 1: ShowDialog(playerid, D_Promo_Edit_Money, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Создание промокода", Color_White"Введите количество виртов которое будет выдаваться при активации", Color_White"Далее", Color_White"Назад");
+					case 2: ShowDialog(playerid, D_Promo_Edit_Level, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Создание промокода", Color_White"Введите количество уровней которое будет выдаваться при активации", Color_White"Далее", Color_White"Назад");
+					case 3: ShowDialog(playerid, D_Promo_Edit_Donate, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Создание промокода", Color_White"Введите количество доната которое будет выдаваться при активации", Color_White"Далее", Color_White"Назад");
+					case 4: ShowDialog(playerid, D_Promo_Edit_Exp, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Создание промокода", Color_White"Введите количество Exp которое будет выдаваться при активации", Color_White"Далее", Color_White"Назад");
+					case 5: ShowDialog(playerid, D_Promo_Edit_PromoLevel, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Создание промокода", Color_White"Введите минимальный уровень который будет требоваться для активации", Color_White"Далее", Color_White"Назад");
+					case 6: ShowDialog(playerid, D_Promo_Edit_PromoActivation, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Создание промокода", Color_White"Введите количество активаций\nОставьте поле пустым если нет необходимости в ограничении", Color_White"Далее", Color_White"Назад");
+					case 7: ShowDialog(playerid, D_Promo_Edit_PromoTime, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Создание промокода", Color_White"Введите количество дней которые будет существовать промокод\nОставьте поле пустым если нет необходимости в ограничении", Color_White"Далее", Color_White"Назад");
+					case 8:
+					{
+						new query[100];
+						GetPVarString(playerid, "PromoName", query, sizeof(query));
+
+						if(!strlen(query))
+						{
+							SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не ввели имя промокода");
+
+							ShowPromoEdit(playerid, true);
+							return 1;
+						}
+
+						mysql_format(DB, query, sizeof(query), "SELECT * FROM `promocode` WHERE `Code` = '%s'", query);
+						mysql_tquery(DB, query, "CheckPromocodeName", "dd", playerid, false);
+					}
+				}
+			}
+			else
+			{
+				switch(listitem)
+				{
+					case 0: ShowDialog(playerid, D_Promo_Edit_Name, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Редактирование промокода", Color_White"Введите название для промокода", Color_White"Далее", Color_White"Назад");
+					case 1: ShowDialog(playerid, D_Promo_Edit_Money, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Редактирование промокода", Color_White"Введите количество виртов которое будет выдаваться при активации", Color_White"Далее", Color_White"Назад");
+					case 2: ShowDialog(playerid, D_Promo_Edit_Level, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Редактирование промокода", Color_White"Введите количество уровней которое будет выдаваться при активации", Color_White"Далее", Color_White"Назад");
+					case 3: ShowDialog(playerid, D_Promo_Edit_Donate, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Редактирование промокода", Color_White"Введите количество доната которое будет выдаваться при активации", Color_White"Далее", Color_White"Назад");
+					case 4: ShowDialog(playerid, D_Promo_Edit_Exp, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Редактирование промокода", Color_White"Введите количество Exp которое будет выдаваться при активации", Color_White"Далее", Color_White"Назад");
+					case 5: ShowDialog(playerid, D_Promo_Edit_PromoLevel, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Редактирование промокода", Color_White"Введите минимальный уровень который будет требоваться для активации", Color_White"Далее", Color_White"Назад");
+					case 6: ShowDialog(playerid, D_Promo_Edit_PromoActivation, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Редактирование промокода", Color_White"Введите количество активаций\nОставьте поле пустым если нет необходимости в ограничении", Color_White"Далее", Color_White"Назад");
+					case 7: ShowDialog(playerid, D_Promo_Edit_PromoTime, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Редактирование промокода", Color_White"Введите количество дней которые будет существовать промокод\nОставьте поле пустым если нет необходимости в ограничении", Color_White"Далее", Color_White"Назад");
+					case 8:
+					{
+						new query[100];
+						GetPVarString(playerid, "PromoName", query, sizeof(query));
+
+						if(!strlen(query))
+						{
+							SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не ввели имя промокода");
+
+							ShowPromoEdit(playerid, false);
+							return 1;
+						}
+
+						mysql_format(DB, query, sizeof(query), "SELECT * FROM `promocode` WHERE `Code` = '%s'", query);
+						mysql_tquery(DB, query, "CheckPromocodeName", "dd", playerid, true);
+					}
+				}
+			}
+
+			return 1;
+		}
+		case D_Promo_Edit_Name:
+		{
+			if(!response)
+			{
+				ShowPromoEdit(playerid, bool:GetPVarInt(playerid, "IsNewPromo"));
+				return 1;
+			}
+
+			if(!strlen(inputtext))
+			{
+				if(GetPVarInt(playerid, "IsNewPromo")) ShowDialog(playerid, D_Promo_Edit_Name, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Создание промокода", Color_White"Введите название для промокода\n\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Назад");
+				else ShowDialog(playerid, D_Promo_Edit_Name, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Редактирование промокода", Color_White"Введите название для промокода\n\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Назад");
+				return 1;
+			}
+
+			if(strlen(inputtext) > 50)
+			{
+				if(GetPVarInt(playerid, "IsNewPromo")) ShowDialog(playerid, D_Promo_Edit_Name, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Создание промокода", Color_White"Введите название для промокода\n\n"Color_Red"Имя промокода не может быть длинее 50 символов", Color_White"Далее", Color_White"Назад");
+				else ShowDialog(playerid, D_Promo_Edit_Name, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Редактирование промокода", Color_White"Введите название для промокода\n\n"Color_Red"Имя промокода не может быть длинее 50 символов", Color_White"Далее", Color_White"Назад");
+				return 1;
+			}
+
+			SetPVarString(playerid, "PromoName", inputtext);
+
+			ShowPromoEdit(playerid, bool:GetPVarInt(playerid, "IsNewPromo"));
+
+			return 1;
+		}
+		case D_Promo_Edit_Money:
+		{
+			if(!response)
+			{
+				ShowPromoEdit(playerid, bool:GetPVarInt(playerid, "IsNewPromo"));
+				return 1;
+			}
+
+			if(!strlen(inputtext))
+			{
+				if(GetPVarInt(playerid, "IsNewPromo")) ShowDialog(playerid, D_Promo_Edit_Money, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Создание промокода", Color_White"Введите количество виртов которое будет выдаваться при активации\n\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Назад");
+				else ShowDialog(playerid, D_Promo_Edit_Money, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Редактирование промокода", Color_White"Введите количество виртов которое будет выдаваться при активации\n\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Назад");
+				return 1;
+			}
+
+			new money = strval(inputtext);
+
+			if(money < 0)
+			{
+				if(GetPVarInt(playerid, "IsNewPromo")) ShowDialog(playerid, D_Promo_Edit_Money, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Создание промокода", Color_White"Введите количество виртов которое будет выдаваться при активации\n\n"Color_Red"Сумма не может быть меньше 0", Color_White"Далее", Color_White"Назад");
+				else ShowDialog(playerid, D_Promo_Edit_Money, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Редактирование промокода", Color_White"Введите количество виртов которое будет выдаваться при активации\n\n"Color_Red"Сумма не может быть меньше 0", Color_White"Далее", Color_White"Назад");
+				return 1;
+			}
+
+			SetPVarInt(playerid, "PromoMoney", money);
+
+			ShowPromoEdit(playerid, bool:GetPVarInt(playerid, "IsNewPromo"));
+
+			return 1;
+		}
+		case D_Promo_Edit_Level:
+		{
+			if(!response)
+			{
+				ShowPromoEdit(playerid, bool:GetPVarInt(playerid, "IsNewPromo"));
+				return 1;
+			}
+
+			if(!strlen(inputtext))
+			{
+				if(GetPVarInt(playerid, "IsNewPromo")) ShowDialog(playerid, D_Promo_Edit_Level, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Создание промокода", Color_White"Введите количество уровней которое будет выдаваться при активации\n\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Назад");
+				else ShowDialog(playerid, D_Promo_Edit_Level, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Редактирование промокода", Color_White"Введите количество уровней которое будет выдаваться при активации\n\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Назад");
+				return 1;
+			}
+
+			new level = strval(inputtext);
+
+			if(level < 0)
+			{
+				if(GetPVarInt(playerid, "IsNewPromo")) ShowDialog(playerid, D_Promo_Edit_Level, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Создание промокода", Color_White"Введите количество уровней которое будет выдаваться при активации\n\n"Color_Red"Уровень не может быть меньше 0", Color_White"Далее", Color_White"Назад");
+				else ShowDialog(playerid, D_Promo_Edit_Level, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Редактирование промокода", Color_White"Введите количество уровней которое будет выдаваться при активации\n\n"Color_Red"Уровень не может быть меньше 0", Color_White"Далее", Color_White"Назад");
+				return 1;
+			}
+
+			SetPVarInt(playerid, "PromoLevel", level);
+
+			ShowPromoEdit(playerid, bool:GetPVarInt(playerid, "IsNewPromo"));
+
+			return 1;
+		}
+		case D_Promo_Edit_Donate:
+		{
+			if(!response)
+			{
+				ShowPromoEdit(playerid, bool:GetPVarInt(playerid, "IsNewPromo"));
+				return 1;
+			}
+
+			if(!strlen(inputtext))
+			{
+				if(GetPVarInt(playerid, "IsNewPromo")) ShowDialog(playerid, D_Promo_Edit_Donate, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Создание промокода", Color_White"Введите количество доната которое будет выдаваться при активации\n\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Назад");
+				else ShowDialog(playerid, D_Promo_Edit_Donate, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Редактирование промокода", Color_White"Введите количество доната которое будет выдаваться при активации\n\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Назад");
+				return 1;
+			}
+
+			new donate = strval(inputtext);
+
+			if(donate < 0)
+			{
+				if(GetPVarInt(playerid, "IsNewPromo")) ShowDialog(playerid, D_Promo_Edit_Donate, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Создание промокода", Color_White"Введите количество доната которое будет выдаваться при активации\n\n"Color_Red"Количество доната не может быть меньше 0", Color_White"Далее", Color_White"Назад");
+				else ShowDialog(playerid, D_Promo_Edit_Donate, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Редактирование промокода", Color_White"Введите количество доната которое будет выдаваться при активации\n\n"Color_Red"Количество доната не может быть меньше 0", Color_White"Далее", Color_White"Назад");
+				return 1;
+			}
+
+			SetPVarInt(playerid, "PromoDonate", donate);
+
+			ShowPromoEdit(playerid, bool:GetPVarInt(playerid, "IsNewPromo"));
+
+			return 1;
+		}
+		case D_Promo_Edit_Exp:
+		{
+			if(!response)
+			{
+				ShowPromoEdit(playerid, bool:GetPVarInt(playerid, "IsNewPromo"));
+				return 1;
+			}
+
+			if(!strlen(inputtext))
+			{
+				if(GetPVarInt(playerid, "IsNewPromo")) ShowDialog(playerid, D_Promo_Edit_Exp, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Создание промокода", Color_White"Введите количество Exp которое будет выдаваться при активации\n\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Назад");
+				else ShowDialog(playerid, D_Promo_Edit_Exp, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Редактирование промокода", Color_White"Введите количество Exp которое будет выдаваться при активации\n\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Назад");
+				return 1;
+			}
+
+			new exp = strval(inputtext);
+
+			if(exp < 0)
+			{
+				if(GetPVarInt(playerid, "IsNewPromo")) ShowDialog(playerid, D_Promo_Edit_Exp, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Создание промокода", Color_White"Введите количество Exp которое будет выдаваться при активации\n\n"Color_Red"Exp не может быть меньше 0", Color_White"Далее", Color_White"Назад");
+				else ShowDialog(playerid, D_Promo_Edit_Exp, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Редактирование промокода", Color_White"Введите количество Exp которое будет выдаваться при активации\n\n"Color_Red"Exp не может быть меньше 0", Color_White"Далее", Color_White"Назад");
+				return 1;
+			}
+
+			SetPVarInt(playerid, "PromoExp", exp);
+
+			ShowPromoEdit(playerid, bool:GetPVarInt(playerid, "IsNewPromo"));
+
+			return 1;
+		}
+		case D_Promo_Edit_PromoLevel:
+		{
+			if(!response)
+			{
+				ShowPromoEdit(playerid, bool:GetPVarInt(playerid, "IsNewPromo"));
+				return 1;
+			}
+
+			if(!strlen(inputtext))
+			{
+				if(GetPVarInt(playerid, "IsNewPromo")) ShowDialog(playerid, D_Promo_Edit_PromoLevel, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Создание промокода", Color_White"Введите минимальный уровень который будет требоваться для активации\n\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Назад");
+				else ShowDialog(playerid, D_Promo_Edit_PromoLevel, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Редактирование промокода", Color_White"Введите минимальный уровень который будет требоваться для активации\n\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Назад");
+				return 1;
+			}
+
+			new NeedLevel = strval(inputtext);
+
+			if(NeedLevel < 0)
+			{
+				if(GetPVarInt(playerid, "IsNewPromo")) ShowDialog(playerid, D_Promo_Edit_PromoLevel, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Создание промокода", Color_White"Введите минимальный уровень который будет требоваться для активации\n\n"Color_Red"Минимальный уровень не может быть меньше 0", Color_White"Далее", Color_White"Назад");
+				else ShowDialog(playerid, D_Promo_Edit_PromoLevel, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Редактирование промокода", Color_White"Введите минимальный уровень который будет требоваться для активации\n\n"Color_Red"Минимальный уровень не может быть меньше 0", Color_White"Далее", Color_White"Назад");
+				return 1;
+			}
+
+			SetPVarInt(playerid, "PromoNeedLevel", NeedLevel);
+
+			ShowPromoEdit(playerid, bool:GetPVarInt(playerid, "IsNewPromo"));
+
+			return 1;
+		}
+		case D_Promo_Edit_PromoActivation:
+		{
+			if(!response)
+			{
+				ShowPromoEdit(playerid, bool:GetPVarInt(playerid, "IsNewPromo"));
+				return 1;
+			}
+
+			if(!strlen(inputtext))
+			{
+				SetPVarInt(playerid, "PromoCount", -1);
+			}
+			else
+			{
+
+				new ActivationCount = strval(inputtext);
+
+				if(ActivationCount < 0)
+				{
+					if(GetPVarInt(playerid, "IsNewPromo")) ShowDialog(playerid, D_Promo_Edit_PromoActivation, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Создание промокода", Color_White"Введите количество активаций\nОставьте поле пустым если нет необходимости в ограничении\n\n"Color_Red"Количество активаций не может быть меньше 0", Color_White"Далее", Color_White"Назад");
+					else ShowDialog(playerid, D_Promo_Edit_PromoActivation, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Редактирование промокода", Color_White"Введите количество активаций\nОставьте поле пустым если нет необходимости в ограничении\n\n"Color_Red"Количество активаций не может быть меньше 0", Color_White"Далее", Color_White"Назад");
+					return 1;
+				}
+
+				SetPVarInt(playerid, "PromoCount", ActivationCount);
+			}
+
+			ShowPromoEdit(playerid, bool:GetPVarInt(playerid, "IsNewPromo"));
+
+			return 1;
+		}
+		case D_Promo_Edit_PromoTime:
+		{
+			if(!response)
+			{
+				ShowPromoEdit(playerid, bool:GetPVarInt(playerid, "IsNewPromo"));
+				return 1;
+			}
+
+			if(!strlen(inputtext))
+			{
+				SetPVarInt(playerid, "PromoTime", -1);
+			}
+			else
+			{
+
+				new ActivationTime = strval(inputtext);
+
+				if(ActivationTime < 0)
+				{
+					if(GetPVarInt(playerid, "IsNewPromo")) ShowDialog(playerid, D_Promo_Edit_PromoTime, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Создание промокода", Color_White"Введите количество дней которые будет существовать промокод\nОставьте поле пустым если нет необходимости в ограничении\n\n"Color_Red"Количество дней не может быть меньше 0", Color_White"Далее", Color_White"Назад");
+					else ShowDialog(playerid, D_Promo_Edit_PromoTime, DIALOG_STYLE_INPUT, Main_Color"Админ панель || "Color_White"Редактирование промокода", Color_White"Введите количество дней которые будет существовать промокод\nОставьте поле пустым если нет необходимости в ограничении\n\n"Color_Red"Количество дней не может быть меньше 0", Color_White"Далее", Color_White"Назад");
+					return 1;
+				}
+
+				SetPVarInt(playerid, "PromoTime", gettime()+(ActivationTime*86400));
+			}
+
+			ShowPromoEdit(playerid, bool:GetPVarInt(playerid, "IsNewPromo"));
+
+			return 1;
+		}
 		case D_GPS_Settings:
 		{
 			if(!response) return pc_cmd_apanel(playerid);
@@ -14053,6 +14475,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 						format(str, sizeof(str), "%s"Color_White"/adminfo - Информация о администраторе\n", str);
 						format(str, sizeof(str), "%s"Color_White"/offadmins - Список администрации\n", str);
 						format(str, sizeof(str), "%s"Color_White"/setinfluence - Изменить уровень влияния у мафий\n", str);
+						format(str, sizeof(str), "%s"Color_White"/promosettings - Настройки промокодов\n", str);
 						format(SubStr, sizeof(SubStr), Main_Color"Админ панель ||"Color_White" Команды %s", AdminNames[4]);
 						ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, SubStr, str, Color_White"Закрыть", "");
 					}
@@ -17083,8 +17506,142 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			SendClientMessage(playerid, BitColor_Yellow, "Улучшение приобретено");
 			return 1;
 		}
+		case D_Activate_Promo:
+		{
+			if(!response) return 1;
+
+			if(!strlen(inputtext)) return ShowDialog(playerid, D_Activate_Promo, DIALOG_STYLE_INPUT, Main_Color"Активация промокода", Color_White"Введите промокод в поле ниже\n\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Закрыть");
+
+			new query[200];
+			mysql_format(DB, query, sizeof(query), "SELECT * FROM `promocode` WHERE `Code` = '%s'", inputtext);
+			mysql_tquery(DB, query, "LoadPromoInfo", "dd", playerid, 3);
+
+			return 1;
+		}
+		case D_Activate_Promo_Submit:
+		{
+			if(!response)
+			{
+				DeletePVar(playerid, "BlockActivate");
+				DeletePVar(playerid, "PromoID");
+				return ClearPromoInfo(playerid);
+			}
+
+			if(!GetPVarInt(playerid, "BlockActivate"))
+			{
+				if(pInfo[playerid][pLevel] < GetPVarInt(playerid, "PromoNeedLevel"))
+				{
+					new str[100];
+					format(str, sizeof(str), Color_Red"[Ошибка] "Color_Grey"Для активации данного промокода необходимо иметь %d уровень", GetPVarInt(playerid, "PromoNeedLevel"));
+					SendClientMessage(playerid, -1, str);
+					
+					DeletePVar(playerid, "BlockActivate");
+					DeletePVar(playerid, "PromoID");
+					ClearPromoInfo(playerid);
+					return 1;
+				}
+
+				if(GetPVarInt(playerid, "PromoMoney")) GivePlayerMoneyEx(playerid, GetPVarInt(playerid, "PromoMoney"));
+
+				if(GetPVarInt(playerid, "PromoLevel"))
+				{
+					pInfo[playerid][pLevel] += GetPVarInt(playerid, "PromoLevel");
+					SavePlayerInt(playerid, "Level", pInfo[playerid][pLevel]);
+				
+					PlayerLevelUpdate(playerid);
+				}
+
+				if(GetPVarInt(playerid, "PromoDonate"))
+				{
+					pInfo[playerid][pDonateMoney] += GetPVarInt(playerid, "PromoDonate");
+					SavePlayerInt(playerid, "DonateMoney", pInfo[playerid][pDonateMoney]);
+				}
+
+				if(GetPVarInt(playerid, "PromoExp"))
+				{
+					pInfo[playerid][pExp] += GetPVarInt(playerid, "PromoExp");
+					SavePlayerInt(playerid, "Exp", pInfo[playerid][pExp]);
+
+					PlayerLevelUpdate(playerid);
+				}
+
+				new query[200];
+				mysql_format(DB, query, sizeof(query), "INSERT INTO `promo_activation` (`PromoID`, `PlayerID`) VALUES ('%d', '%d')", GetPVarInt(playerid, "PromoID"), pInfo[playerid][pID]);
+				mysql_tquery(DB, query);
+
+				mysql_format(DB, query, sizeof(query), "SELECT * FROM `promocode` WHERE `ID` = '%d'", GetPVarInt(playerid, "PromoID"));
+				mysql_tquery(DB, query, "UpdatePromoActivation");
+			}
+
+			DeletePVar(playerid, "BlockActivate");
+			DeletePVar(playerid, "PromoID");
+			ClearPromoInfo(playerid);
+			return 1;
+		}
 	}
 	///////////////////////////////End Dialog Response///////////////////////////////////////
+	return 1;
+}
+
+forward UpdatePromoActivation();
+public UpdatePromoActivation()
+{
+	if(cache_num_rows())
+	{
+		new PromoActivation;
+		cache_get_value_name_int(0, "PromoActivation", PromoActivation);
+
+		if(PromoActivation != -1)
+		{
+			new query[100];
+
+			new ID;
+			cache_get_value_name_int(0, "ID", ID);
+
+			PromoActivation--;
+			if(PromoActivation <= 0)
+			{
+				mysql_format(DB, query, sizeof(query), "DELETE FROM `promocode` WHERE `ID` = '%d'", ID);
+				mysql_tquery(DB, query);
+			}
+			else
+			{
+				mysql_format(DB, query, sizeof(query), "UPDATE `promocode` SET `PromoActivation` = '%d' WHERE `ID` = '%d'", PromoActivation, ID);
+				mysql_tquery(DB, query);
+			}
+		}
+	}
+	return 1;
+}
+
+forward CheckPlayerPromo(playerid);
+public CheckPlayerPromo(playerid)
+{
+	DeletePVar(playerid, "BlockActivate");
+
+	new str[600];
+	GetPVarString(playerid, "PromoName", str, sizeof(str));
+
+	format(str, sizeof(str), Color_White"Промокод: "Color_Gold"%s\n\n", str);
+
+	if(GetPVarInt(playerid, "PromoMoney")) format(str, sizeof(str), "%s"Color_White"Деньги: "Color_Green"%d$\n", str, GetPVarInt(playerid, "PromoMoney"));
+
+	if(GetPVarInt(playerid, "PromoLevel")) format(str, sizeof(str), "%s"Color_White"Уровень: "Color_Gold"%d\n", str, GetPVarInt(playerid, "PromoLevel"));
+
+	if(GetPVarInt(playerid, "PromoDonate")) format(str, sizeof(str), "%s"Color_White"Донат: "Color_Gold"%d\n", str, GetPVarInt(playerid, "PromoDonate"));
+
+	if(GetPVarInt(playerid, "PromoExp")) format(str, sizeof(str), "%s"Color_White"Exp: "Color_Gold"%d\n", str, GetPVarInt(playerid, "PromoExp"));
+
+	if(GetPVarInt(playerid, "PromoNeedLevel")) format(str, sizeof(str), "%s"Color_White"Уровень для активации промокода: "Color_Gold"%d\n", str, GetPVarInt(playerid, "PromoNeedLevel"));
+
+	if(cache_num_rows())
+	{
+		SetPVarInt(playerid, "BlockActivate", 1);
+		strcat(str, "\n\n"Color_Red"Вы уже активировали данный промокод");
+
+		ShowDialog(playerid, D_Activate_Promo_Submit, DIALOG_STYLE_MSGBOX, Main_Color"Активация промокода", str, Color_White"Закрыть", "");
+	}
+	else ShowDialog(playerid, D_Activate_Promo_Submit, DIALOG_STYLE_MSGBOX, Main_Color"Активация промокода", str, Color_White"Активировать", Color_White"Закрыть");
 	return 1;
 }
 
@@ -17652,6 +18209,12 @@ CMD:main(playerid)
 	return 1;
 }
 alias:main("mm", "menu");
+
+CMD:promo(playerid)
+{
+	ShowDialog(playerid, D_Activate_Promo, DIALOG_STYLE_INPUT, Main_Color"Активация промокода", Color_White"Введите промокод в поле ниже", Color_White"Далее", Color_White"Закрыть");
+	return 1;
+}
 
 CMD:help(playerid)
 {
@@ -22626,7 +23189,8 @@ CMD:apanel(playerid)
 		"Main_Color"- "Color_White"Настройки иконок\n\
 		"Main_Color"- "Color_White"Логи\n\
 		"Main_Color"- "Color_White"Настройки ботов\n\
-		"Main_Color"- "Color_White"Настройки влияния мафий", Color_White"Далее", Color_White"Отмена");
+		"Main_Color"- "Color_White"Настройки влияния мафий\n\
+		"Main_Color"- "Color_White"Настройки промокодов", Color_White"Далее", Color_White"Отмена");
 	}
 	else
 	{
@@ -23585,6 +24149,249 @@ CMD:gpssettings(playerid)
 	"Main_Color"- "Color_White"Удалить заголовок\n\
 	"Main_Color"- "Color_White"Добавить пункт\n\
 	"Main_Color"- "Color_White"Удалить пункт", Color_White"Далее", Color_White"Отмена");
+	return 1;
+}
+
+CMD:promosettings(playerid)
+{
+	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
+
+	ShowDialog(playerid, D_Promo_Settings, DIALOG_STYLE_LIST, Main_Color"Админ панель || "Color_White"Настройки промокодов", Main_Color"- "Color_White"Создать новый промокод\n\
+	"Main_Color"- "Color_White"Редактировать промокод\n\
+	"Main_Color"- "Color_White"Удалить промокод", Color_White"Далее", Color_White"Отмена");
+
+	return 1;
+}
+
+stock ClearPromoInfo(playerid)
+{
+	DeletePVar(playerid, "PromoListNext");
+	DeletePVar(playerid, "PromoListPrev");
+	DeletePVar(playerid, "DeletePromoID");
+	DeletePVar(playerid, "EditPromoID");
+	DeletePVar(playerid, "PromoList");
+	DeletePVar(playerid, "PromoDelete");
+	DeletePVar(playerid, "IsNewPromo");
+	DeletePVar(playerid, "PromoName");
+	DeletePVar(playerid, "PromoMoney");
+	DeletePVar(playerid, "PromoLevel");
+	DeletePVar(playerid, "PromoDonate");
+	DeletePVar(playerid, "PromoExp");
+	DeletePVar(playerid, "PromoNeedLevel");
+	DeletePVar(playerid, "PromoCount");
+	DeletePVar(playerid, "PromoTime");
+	return 1;
+}
+
+stock ShowPromoEdit(playerid, bool:IsCreate)
+{
+	new PromoActivation[50];
+	new time = GetPVarInt(playerid, "PromoTime");
+
+	new str[600];
+	GetPVarString(playerid, "PromoName", str, sizeof(str));
+
+	if(GetPVarInt(playerid, "PromoCount") != -1) format(PromoActivation, sizeof(PromoActivation), "%d", GetPVarInt(playerid, "PromoCount"));
+	else strcat(PromoActivation, "Безгранично");
+
+	format(str, sizeof(str), Color_White"Имя: "Color_Gold"%s\n\
+	"Color_White"Деньги: "Color_Green"%d$\n\
+	"Color_White"Уровень: "Color_Gold"%d\n\
+	"Color_White"Донат: "Color_Gold"%d\n\
+	"Color_White"Exp: "Color_Gold"%d\n\
+	"Color_White"Уровень для активации промокода: "Color_Gold"%d\n\
+	"Color_White"Количество активаций промокода: "Color_Gold"%s\n\
+	"Color_White"Дата удаления промокода: "Color_Gold"%s\n\
+	"Color_White"%s",
+	str, GetPVarInt(playerid, "PromoMoney"), GetPVarInt(playerid, "PromoLevel"), GetPVarInt(playerid, "PromoDonate"), GetPVarInt(playerid, "PromoExp"), GetPVarInt(playerid, "PromoNeedLevel"),
+	PromoActivation, (time != -1) ? (date(time, 3, "%dd.%mm.%yyyy %hh:%ii")) : ("Безгранично"),
+	(IsCreate) ? ("Создать промокод"):("Сохранить промокод"));
+
+	if(GetPVarInt(playerid, "IsNewPromo")) ShowDialog(playerid, D_Promo_Edit, DIALOG_STYLE_LIST, Main_Color"Админ панель || "Color_White"Создание промокода", str, Color_White"Далее", Color_White"Назад");
+	else ShowDialog(playerid, D_Promo_Edit, DIALOG_STYLE_LIST, Main_Color"Админ панель || "Color_White"Редактирование промокода", str, Color_White"Далее", Color_White"Назад");
+	return 1;
+}
+
+forward LoadPromoInfo(playerid, type); //type == 1 - Редактирование || type == 2 - Удаление || type == 3 - Активация промокода
+public LoadPromoInfo(playerid, type)
+{
+	if(cache_num_rows())
+	{
+		new str[200];
+		cache_get_value_name(0, "Code", str);
+		SetPVarString(playerid, "PromoName", str);
+
+		new tmpvar;
+		cache_get_value_name_int(0, "Money", tmpvar);
+		SetPVarInt(playerid, "PromoMoney", tmpvar);
+
+		cache_get_value_name_int(0, "Level", tmpvar);
+		SetPVarInt(playerid, "PromoLevel", tmpvar);
+
+		cache_get_value_name_int(0, "DonateMoney", tmpvar);
+		SetPVarInt(playerid, "PromoDonate", tmpvar);
+
+		cache_get_value_name_int(0, "Exp", tmpvar);
+		SetPVarInt(playerid, "PromoExp", tmpvar);
+
+		cache_get_value_name_int(0, "PromoLevel", tmpvar);
+		SetPVarInt(playerid, "PromoNeedLevel", tmpvar);
+
+		cache_get_value_name_int(0, "PromoActivation", tmpvar);
+		SetPVarInt(playerid, "PromoCount", tmpvar);
+
+		cache_get_value_name_int(0, "PromoTime", tmpvar);
+		SetPVarInt(playerid, "PromoTime", tmpvar);
+
+		if(type == 1) ShowPromoEdit(playerid, false);
+		else if(type == 2)
+		{
+			format(str, sizeof(str), Color_White"Вы уверены что хотите удалить промокод %s?", str);
+			ShowDialog(playerid, D_Promo_Delete, DIALOG_STYLE_MSGBOX, Main_Color"Админ панель || "Color_White"Удаление промокода", str, Color_White"Да", Color_White"Нет");
+		}
+		else if(type == 3)
+		{
+			cache_get_value_name_int(0, "ID", tmpvar);
+			SetPVarInt(playerid, "PromoID", tmpvar);
+
+			mysql_format(DB, str, sizeof(str), "SELECT * FROM `promo_activation` WHERE `PromoID` = '%d' AND `PlayerID` = '%d'", tmpvar, pInfo[playerid][pID]);
+			mysql_tquery(DB, str, "CheckPlayerPromo", "d", playerid);
+		}
+	}
+	else
+	{
+		if(type == 3) ShowDialog(playerid, D_Activate_Promo, DIALOG_STYLE_INPUT, Main_Color"Активация промокода", Color_White"Введите промокод в поле ниже\n\n"Color_Red"Промокод не найден", Color_White"Далее", Color_White"Закрыть");
+	}
+	return 1;
+}
+
+forward CheckPromocodeName(playerid, bool:IsEdit);
+public CheckPromocodeName(playerid, bool:IsEdit)
+{
+	if(cache_num_rows())
+	{
+		if(!IsEdit)
+		{
+			ClearPromoInfo(playerid);
+			SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Такой промокод уже существует");
+			return 1;
+		}
+		else
+		{
+			new ID;
+			cache_get_value_name_int(0, "ID", ID);
+			if(ID != GetPVarInt(playerid, "EditPromoID"))
+			{
+				ClearPromoInfo(playerid);
+				SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Такой промокод уже существует");
+				return 1;
+			}
+
+		}
+	}
+
+	new query[300];
+	GetPVarString(playerid, "PromoName", query, sizeof(query));
+
+	if(!IsEdit)
+	{
+		mysql_format(DB, query, sizeof(query), "INSERT INTO `promocode`(`Code`, `Money`, `Level`, `DonateMoney`, `Exp`, `PromoLevel`, `PromoActivation`, `PromoTime`) VALUES ('%s', '%d', '%d', '%d', '%d', '%d', '%d', '%d')",
+		query, GetPVarInt(playerid, "PromoMoney"),
+		GetPVarInt(playerid, "PromoLevel"),
+		GetPVarInt(playerid, "PromoDonate"),
+		GetPVarInt(playerid, "PromoExp"),
+		GetPVarInt(playerid, "PromoNeedLevel"),
+		GetPVarInt(playerid, "PromoCount"),
+		GetPVarInt(playerid, "PromoTime"));
+	}
+	else
+	{
+		mysql_format(DB, query, sizeof(query), "UPDATE `promocode` SET `Code` = '%s', `Money` = '%d', `Level` = '%d', `DonateMoney` = '%d', `Exp` = '%d', `PromoLevel` = '%d',\
+		`PromoActivation` = '%d', `PromoTime` = '%d' WHERE `ID` = '%d'",
+		query, GetPVarInt(playerid, "PromoMoney"),
+		GetPVarInt(playerid, "PromoLevel"),
+		GetPVarInt(playerid, "PromoDonate"),
+		GetPVarInt(playerid, "PromoExp"),
+		GetPVarInt(playerid, "PromoNeedLevel"),
+		GetPVarInt(playerid, "PromoCount"),
+		GetPVarInt(playerid, "PromoTime"),
+		GetPVarInt(playerid, "EditPromoID"));
+	}
+
+	mysql_tquery(DB, query);
+
+	query[0] = EOS;
+	GetPVarString(playerid, "PromoName", query, sizeof(query));
+	if(!IsEdit) format(query, sizeof(query), Color_Gold"Промокод %s успешно создан", query);
+	else format(query, sizeof(query), Color_Gold"Промокод %s успешно отредактирован", query);
+	SendClientMessage(playerid, -1, query);
+
+	ClearPromoInfo(playerid);
+	return 1;
+}
+
+stock ClearPromoList(playerid)
+{
+	if(GetPVarInt(playerid, "PromoListCount"))
+	{
+		for(new i = 0; i < GetPVarInt(playerid, "PromoListCount"); i++)
+		{
+			new str[100];
+			format(str, sizeof(str), "PromoList_%d", i);
+			DeletePVar(playerid, str);
+		}
+	}
+	return 1;
+}
+
+forward ShowPromoList(playerid, bool:IsDelete, List);
+public ShowPromoList(playerid, bool:IsDelete, List)
+{
+	ClearPromoList(playerid);
+	new row = cache_num_rows();
+	if(row)
+	{
+		SetPVarInt(playerid, "PromoListNext", -1);
+		SetPVarInt(playerid, "PromoListPrev", -1);
+
+		SetPVarInt(playerid, "PromoListCount", row);
+		new str[600];
+		new count = 0;
+		for(new i = (List*10)-10; i < List*10; i++)
+		{
+			if(i >= row) break;
+			new Code[100];
+			cache_get_value_name(i, "Code", Code);
+			format(str, sizeof(str), "%s%s\n", str, Code);
+
+			new ID;
+			cache_get_value_name_int(i, "ID", ID);
+			format(Code, sizeof(Code), "PromoList_%d", count);
+			SetPVarInt(playerid, Code, ID);
+			count++;
+		}
+		format(str, sizeof(str), Color_Gold"%s", str);
+
+		if(List*10 < row)
+		{
+			format(str, sizeof(str), "%s"Color_White"Следующая страница\n", str);
+			SetPVarInt(playerid, "PromoListNext", count);
+			count++;
+		}
+		if(List > 1)
+		{
+
+			format(str, sizeof(str), "%s"Color_White"Предыдущая страница\n", str);
+			SetPVarInt(playerid, "PromoListPrev", count);
+		}
+
+		SetPVarInt(playerid, "PromoList", List);
+		
+		if(IsDelete) ShowDialog(playerid, D_Promo_List, DIALOG_STYLE_LIST, Main_Color"Админ панель || "Color_White"Удаление промокодов", str, Color_White"Далее", Color_White"Закрыть");
+		else ShowDialog(playerid, D_Promo_List, DIALOG_STYLE_LIST, Main_Color"Админ панель || "Color_White"Редактирование промокодов", str, Color_White"Далее", Color_White"Закрыть");
+
+	}
+	else ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color"Админ панель || "Color_White"Настройки промокодов", Color_White"Промокоды отсутствуют", Color_White"Закрыть", "");
 	return 1;
 }
 
@@ -26557,7 +27364,7 @@ public LoadAccount(playerid)
 
 	if(pInfo[playerid][pMembers] != Fraction_None && pInfo[playerid][pRank] >= FractionMaxRank) FillLeaderBoard();
 
-	SendClientMessage(playerid, -1, Color_White"Приветствуем на "Main_Color Project_Name Color_White". Приятной игры!");
+	HelloMSG(playerid);
 
 	if(pInfo[playerid][pAdmin]) SendClientMessage(playerid, -1, Color_Yellow"Вы являетесь администратором. Используйте /alogin чтобы авторизироваться в админ панели");
 
@@ -26632,6 +27439,28 @@ public LoadOfflineMessage(playerid)
 		mysql_tquery(DB, Message);
  	}
  	return 1;
+}
+
+forward CheckAccountUpdateDonate(playerid);
+public CheckAccountUpdateDonate(playerid)
+{
+	new row = cache_num_rows();
+	if(row)
+	{
+		new DonateUpdate = 0;
+		cache_get_value_name_int(0, "DonateUpdate", DonateUpdate);
+		
+		pInfo[playerid][pDonateMoney] += DonateUpdate;
+		SavePlayerInt(playerid, "DonateMoney", pInfo[playerid][pDonateMoney]);
+		SavePlayerInt(playerid, "DonateUpdate", 0);
+
+		new str[200];
+		format(str, sizeof(str), "***"Color_White"Внимание! Ваш счёт пополнен на "Color_Gold"%d руб."Color_White" Для выбора услуг пропишите - /donate!"Main_Color"***", DonateUpdate);
+		SendClientMessage(playerid, BitColor_Main, str);
+
+		PlayerPlaySound(playerid, 4201, 0.0, 0.0, 0.0);
+	}
+	return 1;
 }
 
 forward CheckAccountBusiness(playerid);
@@ -26953,6 +27782,9 @@ stock PayDay()
 	{
 		new query[100];
 		mysql_format(DB, query, sizeof(query), "DELETE FROM `log` WHERE `Time` < '%d'", gettime()-(86400*30));
+		mysql_tquery(DB, query);
+
+		mysql_format(DB, query, sizeof(query), "DELETE FROM `promocode` WHERE `PromoTime` < '%d' AND `PromoTime` != '-1'", gettime());
 		mysql_tquery(DB, query);
 	}
 
@@ -27546,9 +28378,8 @@ public SecondTimer()
 						{
 							if(pInfo[j][pAuth] && GetPVarInt(j, "OnWar"))
 							{
-								PlayerPlaySound(j, 17802, 0.0, 0.0, 0.0);
-								SetPlayerTeam(j, NO_TEAM);
-								PlayerTextDrawSetString(j, WarPTD[j][0], "FIGHT");
+								TogglePlayerControllable(j, false);
+								SetPVarInt(j, "WarStartTimer", 5);
 							}
 						}
 					}
@@ -27824,6 +28655,12 @@ public SecondTimer()
 			}
 		}
 
+		{
+			new str[200];
+			mysql_format(DB, str, sizeof(str), "SELECT `ID`, `DonateUpdate` FROM `account` WHERE `ID` = '%d' AND `DonateUpdate` > 0", pInfo[i][pID]);
+			mysql_tquery(DB, str, "CheckAccountUpdateDonate", "d", i);
+		}
+
 		if(GetPVarInt(i, "PostDrugEffect") && GetPVarInt(i, "PostDrugEffect") < gettime())
 		{
 			SetPlayerDrunkLevel(i, 0);
@@ -27851,13 +28688,33 @@ public SecondTimer()
 			}*/
         }
 
+		if(GetPVarInt(i, "WarStartTimer"))
+		{
+			new WarStartTimer = GetPVarInt(i, "WarStartTimer");
+
+			new str[100];
+			format(str, sizeof(str), "~w~%d", WarStartTimer);
+			GameTextForPlayer(i, str, 1000, 3);
+			PlayerPlaySound(i, 17802, 0.0, 0.0, 0.0);
+
+			WarStartTimer--;
+			if(WarStartTimer <= 0)
+			{
+				SetPlayerTeam(i, NO_TEAM);
+				PlayerTextDrawSetString(i, WarPTD[i][0], "FIGHT");
+				TogglePlayerControllable(i, true);
+				DeletePVar(i, "WarStartTimer");
+			}
+			else SetPVarInt(i, "WarStartTimer", WarStartTimer);
+		}
+
 		if(GetPVarInt(i, "BloodDonorTime"))
 		{
 			new BloodTime = GetPVarInt(i, "BloodDonorTime");
 			BloodTime--;
 			SetPVarInt(i, "BloodDonorTime", BloodTime);
 
-			new str[200];
+			new str[100];
 			format(str, sizeof(str), "~w~%d", BloodTime);
 			GameTextForPlayer(i, str, 1000, 3);
 
