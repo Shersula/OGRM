@@ -27624,6 +27624,15 @@ public LoadAccount(playerid)
 	cache_get_value_name(0, "Upgrade", str);
 	if(strlen(str)) sscanf(str, "p<,>a<i>[*]", sizeof(Upgrade), pInfo[playerid][pUpgrade]);
 
+	for(new i = 0; i < sizeof(Upgrade); i++)
+	{
+		if(pInfo[playerid][pUpgrade][UpgradeType:i] > Upgrade[UpgradeType:i][Upg_Max_Points])
+		{
+			pInfo[playerid][pUpgrade][UpgradeType:i] = Upgrade[UpgradeType:i][Upg_Max_Points];
+			SavePlayerUpgrade(playerid);
+		}
+	}
+
 	str[0] = EOS;
 	cache_get_value_name(0, "Weapon", str);
 	if(strlen(str)) sscanf(str, "p<,>a<i>[13]", pInfo[playerid][pWeapon]);
