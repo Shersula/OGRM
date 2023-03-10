@@ -2402,7 +2402,7 @@ enum UpgradeConfig
 
 new Upgrade[UpgradeType][UpgradeConfig] = {
 	{50.0, 5.0, 10},
-	{15.0, 0.5, 30},
+	{12.5, 0.5, 25},
 	{100.0, 3.0, 20},
 	{100.0, 10.0, 6}
 };
@@ -27817,6 +27817,8 @@ public CheckAccountUpdateDonate(playerid)
 
 		PlayerPlaySound(playerid, 4201, 0.0, 0.0, 0.0);
 	}
+
+	DeletePVar(playerid, "CheckDonate");
 	return 1;
 }
 
@@ -29014,7 +29016,9 @@ public SecondTimer()
 			}
 		}
 
+		if(!GetPVarInt(i, "CheckDonate"))
 		{
+			SetPVarInt(i, "CheckDonate", 1);
 			new str[200];
 			mysql_format(DB, str, sizeof(str), "SELECT `ID`, `DonateUpdate` FROM `account` WHERE `ID` = '%d' AND `DonateUpdate` > 0", pInfo[i][pID]);
 			mysql_tquery(DB, str, "CheckAccountUpdateDonate", "d", i);
