@@ -32,7 +32,7 @@
 //////////////////////COLOR////////////////////////////////////////////////////
 #define Main_Color 		"{29CDDF}"//"{D8816E}"
 #define Color_Blue		"{29CDDF}"
-#define Color_Scarlet	"{FF2400}"
+#define Color_Scarlet	"{CC1B00}"
 #define Color_Red 		"{FF0000}"
 #define Color_Red2 		"{E66761}"
 #define Color_Grey 		"{AFAFAF}"
@@ -54,6 +54,7 @@
 
 #define BitColor_Main	0x29CDDFFF//0xD8816EFF
 #define BitColor_Green	0x2ED13EFF
+#define BitColor_Lime	0x00FF00FF
 #define BitColor_Yellow	0xFFFF00FF
 #define BitColor_Grey	0xAFAFAFFF
 #define BitColor_Me		0xC2A2DAFF
@@ -125,6 +126,7 @@ new Text:FisherTD[22];
 new Text:GarageTD;
 new Text:CarUpgradeTD;
 new Text:SkinSelectTD[3];
+new Text:AnimationTD;
 
 new CheaterPanelID[10] = {-1, ...};
 
@@ -1174,9 +1176,6 @@ enum BusinessInfo
     bThiefTimer,
     bThiefCount,
 	bThiefPlayer,
-	bThiefPickup,
-	bThiefArea,
-	Text3D:bThiefText,
 	bThiefZoneArea,
 	bRob
 };
@@ -1253,17 +1252,8 @@ stock ClearBusiness(BusinessID)
     bInfo[BusinessID][bThiefCount] = 0;
 	bInfo[BusinessID][bThiefPlayer] = INVALID_PLAYER_ID;
 
-	if(bInfo[BusinessID][bThiefArea] && IsValidDynamicArea(bInfo[BusinessID][bThiefArea])) DestroyDynamicArea(bInfo[BusinessID][bThiefArea]);
-	bInfo[BusinessID][bThiefArea] = 0;
-
 	if(bInfo[BusinessID][bThiefZoneArea] && IsValidDynamicArea(bInfo[BusinessID][bThiefZoneArea])) DestroyDynamicArea(bInfo[BusinessID][bThiefZoneArea]);
 	bInfo[BusinessID][bThiefZoneArea] = 0;
-
-	if(bInfo[BusinessID][bThiefText] && IsValidDynamic3DTextLabel(bInfo[BusinessID][bThiefText])) DestroyDynamic3DTextLabel(bInfo[BusinessID][bThiefText]);
-	bInfo[BusinessID][bThiefText] = Text3D:0;
-
-	if(bInfo[BusinessID][bThiefPickup] && IsValidDynamicPickup(bInfo[BusinessID][bThiefPickup])) DestroyDynamicPickup(bInfo[BusinessID][bThiefPickup]);
-	bInfo[BusinessID][bThiefPickup] = 0;
 	return 1;
 }
 //////////House/////////////////
@@ -1797,7 +1787,10 @@ new Gate[MAX_GATE][GateInfo];
 #define ChurchPick				133
 #define DrugDenEnter			134
 #define DrugDenExit				135
-#define MAX_PICK 				136
+#define TowerEnter				136
+#define TowerExit				137
+#define TowerParaschute			138
+#define MAX_PICK 				139
 
 enum PickupInfo
 {
@@ -1828,6 +1821,8 @@ enum
 	D_Donate_Buy_Level,
 	D_Donate_Buy_UnWarn,
 	D_Donate_Buy_Money,
+	D_Donate_Buy_Materials,
+	D_Donate_Buy_Drugs,
 	D_AC_Settings,
 	D_AC_Settings_NOP,
 	D_AC_Settings_Set,
@@ -1918,7 +1913,6 @@ enum
 	D_KFC_Sell_Menu,
 	D_Ammo_Sell_Menu,
 	D_Rent_Car,
-	D_Fuel_Menu_Value,
 	D_AHelp,
 	D_Bank_Menu,
 	D_Bank_Input,
@@ -2174,11 +2168,6 @@ enum
 	ItemRoller,
 	ItemChainsaw,
 	ItemKatana,
-	ItemNuggets,
-	ItemWing,
-	ItemFrenchFries,
-	ItemBurger,
-	ItemBigBurger,
 	ItemCasinoCoin,
 	ItemDesertEagle,
 	ItemMP5,
@@ -2190,7 +2179,8 @@ enum
 	ItemDildo1,
 	ItemDildo2,
 	ItemVibrator1,
-	ItemVibrator2
+	ItemVibrator2,
+	ItemRPG
 }
 
 enum ItemsInfo
@@ -2223,11 +2213,6 @@ new Items[][ItemsInfo] =
 	{0, -1, "Ролики", 0, 0},
 	{341, -1, "Бензопила", 9, 1},
 	{339, -1, "Катана", 8, 1},
-	{19568, -1, "Наггетсы", 0, 0},
-	{19567, -1, "Крылышки", 0, 0},
-	{19567, -1, "Картофель фри", 0, 0},
-	{2768, -1, "Бургер", 0, 0},
-	{2768, -1, "Большой бургер", 0, 0},
 	{1881, -1, "Фишки из казино", 0, 0},
 	{348, -1, "Desert Eagle", 24, 50},
 	{353, -1, "MP5", 29, 150},
@@ -2239,7 +2224,8 @@ new Items[][ItemsInfo] =
 	{322, -1, "Односторонний фаллоимитатор", 11, 1},
 	{321, -1, "Двусторонний фаллоимитатор", 10, 1},
 	{324, -1, "Вибратор", 13, 1},
-	{323, -1, "Вибратор увеличенного диаметра", 12, 1}
+	{323, -1, "Вибратор увеличенного диаметра", 12, 1},
+	{359, -1, "RPG", 35, 1}
 };
 
 #define Max_Slots 	35
@@ -2283,7 +2269,8 @@ new GunInfo[][GiveGunInfo] =
 	{400, ItemShotgun},
 	{500, ItemMP5},
 	{600, ItemAK47},
-	{700, ItemM4}
+	{700, ItemM4},
+	{10000, ItemRPG}
 };
 
 new GunNames[48][] = {
@@ -2859,6 +2846,7 @@ public OnGameModeInit()
 	SetNameTagDrawDistance(MESSAGE_DIST);
 	MapAndreas_Init(MAP_ANDREAS_MODE_FULL);
 	Streamer_SetVisibleItems(STREAMER_TYPE_OBJECT, MAX_OBJECTS);
+	UsePlayerPedAnims();
 
 	Iter_Init(FractionMembers);
 
@@ -3076,6 +3064,13 @@ public OnPlayerConnect(playerid)
 public OnPlayerDisconnect(playerid, reason)
 {
 	if(Iter_Contains(Bots, playerid)) return ClearAccount(playerid);
+
+	if(GetPVarInt(playerid, "LoginCameraTimer"))
+	{
+		KillTimer(GetPVarInt(playerid, "LoginCameraTimer"));
+		DeletePVar(playerid, "LoginCameraTimer");
+	}
+	if(GetPVarInt(playerid, "LoginCamera")) DeletePVar(playerid, "LoginCamera");
 
 	ChangePlayerJob(playerid, pInfo[playerid][pJob]);
 	ChangePlayerUnOfficialJob(playerid, Job_None);
@@ -4871,7 +4866,7 @@ stock UpdateBusiness(BusinessID)
 	}
 	else
 	{
-		new str[300];
+		new str[400];
 		if(bInfo[BusinessID][bPickup] && IsValidDynamicPickup(bInfo[BusinessID][bPickup])) DestroyDynamicPickup(bInfo[BusinessID][bPickup]);
 		bInfo[BusinessID][bPickup] = 0;
 
@@ -4917,21 +4912,16 @@ stock UpdateBusiness(BusinessID)
 		if(bInfo[BusinessID][bCarX] && bInfo[BusinessID][bCarY] && bInfo[BusinessID][bCarZ])
 		{
 			new model = 0;
-			new Float:Z = 0.0;
 			if(bInfo[BusinessID][bType] == BusinessKFC) model = 1582;
-			else if(bInfo[BusinessID][bType] == BusinessGasStation)
-			{
-				model = 1650;
-				Z = 0.5;
-			}
-			if(model) bInfo[BusinessID][bCarPickup] = CreateDynamicPickup(model, 1, bInfo[BusinessID][bCarX], bInfo[BusinessID][bCarY], bInfo[BusinessID][bCarZ]+Z, 0, 0);
+			if(model) bInfo[BusinessID][bCarPickup] = CreateDynamicPickup(model, 1, bInfo[BusinessID][bCarX], bInfo[BusinessID][bCarY], bInfo[BusinessID][bCarZ], 0, 0);
 			bInfo[BusinessID][bCarText] = CreateDynamic3DTextLabel(Main_Color"Пункт обслуживания транспорта\nПосигнальте чтобы воспользоваться услугами", -1, bInfo[BusinessID][bCarX], bInfo[BusinessID][bCarY], bInfo[BusinessID][bCarZ], 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 			bInfo[BusinessID][bCarArea] = CreateDynamicSphere(bInfo[BusinessID][bCarX], bInfo[BusinessID][bCarY], bInfo[BusinessID][bCarZ], 5.0, 0, 0);
 			Streamer_SetIntData(STREAMER_TYPE_AREA, bInfo[BusinessID][bCarArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Business);
 			Streamer_SetIntData(STREAMER_TYPE_AREA, bInfo[BusinessID][bCarArea],  E_STREAMER_INDX, BusinessID);
 		}
 
-		bInfo[BusinessID][bArea] = CreateDynamicSphere(bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 2.0, 0, 0);
+		if(bInfo[BusinessID][bType] == BusinessGasStation) bInfo[BusinessID][bArea] = CreateDynamicSphere(bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 5.0, 0, 0);
+		else bInfo[BusinessID][bArea] = CreateDynamicSphere(bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 2.0, 0, 0);
 		Streamer_SetIntData(STREAMER_TYPE_AREA, bInfo[BusinessID][bArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Business);
 		Streamer_SetIntData(STREAMER_TYPE_AREA, bInfo[BusinessID][bArea],  E_STREAMER_INDX, BusinessID);
 
@@ -4942,7 +4932,8 @@ stock UpdateBusiness(BusinessID)
 		GetBusinessName(BusinessID, str);
 		if(!BusinessType[bInfo[BusinessID][bType]][IsCompany])
 		{
-			format(str, sizeof(str), Main_Color"%s\n"Main_Color"Бизнес №"Color_White"%d", str, bInfo[BusinessID][bID]);
+			if(bInfo[BusinessID][bType] == BusinessGasStation) format(str, sizeof(str), Main_Color"%s\n"Main_Color"Бизнес №"Color_White"%d\n\n"Main_Color"Посигнальте чтобы воспользоваться услугами", str, bInfo[BusinessID][bID]);
+			else format(str, sizeof(str), Main_Color"%s\n"Main_Color"Бизнес №"Color_White"%d", str, bInfo[BusinessID][bID]);
 		}
 		else
 		{
@@ -4976,6 +4967,8 @@ stock UpdateBusiness(BusinessID)
 			}
 		}
 
+		if(bInfo[BusinessID][bThiefStatus] == Thief_Status_Looting) format(str, sizeof(str), "%s\n"Main_Color"Мешки с деньгами\nОсталось"Color_White": %d", str, bInfo[BusinessID][bThiefCount]);
+
 		if(BusinessType[bInfo[BusinessID][bType]][bInt])
 		{
 			bInfo[BusinessID][bPickup] = CreateDynamicPickup(19132, 1, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 0, 0);
@@ -4986,7 +4979,11 @@ stock UpdateBusiness(BusinessID)
 			bInfo[BusinessID][bExitPickup] = CreateDynamicPickup(19132, 1, BusinessType[bInfo[BusinessID][bType]][bIntX], BusinessType[bInfo[BusinessID][bType]][bIntY], BusinessType[bInfo[BusinessID][bType]][bIntZ], Business_World+bInfo[BusinessID][bID], BusinessType[bInfo[BusinessID][bType]][bInt]);
 			bInfo[BusinessID][bExitText] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, BusinessType[bInfo[BusinessID][bType]][bIntX], BusinessType[bInfo[BusinessID][bType]][bIntY], BusinessType[bInfo[BusinessID][bType]][bIntZ], 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, Business_World+bInfo[BusinessID][bID], BusinessType[bInfo[BusinessID][bType]][bInt]);
 		}
-		else bInfo[BusinessID][bPickup] = CreateDynamicPickup(1239, 1, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 0, 0);
+		else
+		{
+			if(bInfo[BusinessID][bType] == BusinessGasStation) bInfo[BusinessID][bPickup] = CreateDynamicPickup(1650, 1, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ]+0.5, 0, 0);
+			else bInfo[BusinessID][bPickup] = CreateDynamicPickup(1239, 1, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 0, 0);
+		}
 
 		bInfo[BusinessID][bText] = CreateDynamic3DTextLabel(str, -1, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 
@@ -5049,21 +5046,16 @@ public GetBusinesOwnerName(BusinessID)
 		if(bInfo[BusinessID][bCarX] && bInfo[BusinessID][bCarY] && bInfo[BusinessID][bCarZ])
 		{
 			new model = 0;
-			new Float:Z = 0.0;
 			if(bInfo[BusinessID][bType] == BusinessKFC) model = 1582;
-			else if(bInfo[BusinessID][bType] == BusinessGasStation)
-			{
-				model = 1650;
-				Z = 0.5;
-			}
-			if(model) bInfo[BusinessID][bCarPickup] = CreateDynamicPickup(model, 1, bInfo[BusinessID][bCarX], bInfo[BusinessID][bCarY], bInfo[BusinessID][bCarZ]+Z, 0, 0);
+			if(model) bInfo[BusinessID][bCarPickup] = CreateDynamicPickup(model, 1, bInfo[BusinessID][bCarX], bInfo[BusinessID][bCarY], bInfo[BusinessID][bCarZ], 0, 0);
 			bInfo[BusinessID][bCarText] = CreateDynamic3DTextLabel(Main_Color"Пункт обслуживания транспорта\nПосигнальте чтобы воспользоваться услугами", -1, bInfo[BusinessID][bCarX], bInfo[BusinessID][bCarY], bInfo[BusinessID][bCarZ], 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 			bInfo[BusinessID][bCarArea] = CreateDynamicSphere(bInfo[BusinessID][bCarX], bInfo[BusinessID][bCarY], bInfo[BusinessID][bCarZ], 5.0, 0, 0);
 			Streamer_SetIntData(STREAMER_TYPE_AREA, bInfo[BusinessID][bCarArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Business);
 			Streamer_SetIntData(STREAMER_TYPE_AREA, bInfo[BusinessID][bCarArea],  E_STREAMER_INDX, BusinessID);
 		}
 
-		bInfo[BusinessID][bArea] = CreateDynamicSphere(bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 2.0, 0, 0);
+		if(bInfo[BusinessID][bType] == BusinessGasStation) bInfo[BusinessID][bArea] = CreateDynamicSphere(bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 5.0, 0, 0);
+		else bInfo[BusinessID][bArea] = CreateDynamicSphere(bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 2.0, 0, 0);
 		Streamer_SetIntData(STREAMER_TYPE_AREA, bInfo[BusinessID][bArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Business);
 		Streamer_SetIntData(STREAMER_TYPE_AREA, bInfo[BusinessID][bArea],  E_STREAMER_INDX, BusinessID);
 
@@ -5074,7 +5066,8 @@ public GetBusinesOwnerName(BusinessID)
 		GetBusinessName(BusinessID, str);
 		if(!BusinessType[bInfo[BusinessID][bType]][IsCompany])
 		{
-			format(str, sizeof(str), Main_Color"%s\n"Main_Color"Бизнес №"Color_White"%d", str, bInfo[BusinessID][bID]);
+			if(bInfo[BusinessID][bType] == BusinessGasStation) format(str, sizeof(str), Main_Color"%s\n"Main_Color"Бизнес №"Color_White"%d\n\n"Main_Color"Посигнальте чтобы воспользоваться услугами", str, bInfo[BusinessID][bID]);
+			else format(str, sizeof(str), Main_Color"%s\n"Main_Color"Бизнес №"Color_White"%d", str, bInfo[BusinessID][bID]);
 		}
 		else
 		{
@@ -5100,6 +5093,8 @@ public GetBusinesOwnerName(BusinessID)
 			}
 		}
 
+		if(bInfo[BusinessID][bThiefStatus] == Thief_Status_Looting) format(str, sizeof(str), "%s\n"Main_Color"Мешки с деньгами\nОсталось"Color_White": %d", str, bInfo[BusinessID][bThiefCount]);
+
 		if(BusinessType[bInfo[BusinessID][bType]][bInt])
 		{
 			bInfo[BusinessID][bPickup] = CreateDynamicPickup(19132, 1, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 0, 0);
@@ -5110,7 +5105,11 @@ public GetBusinesOwnerName(BusinessID)
 			bInfo[BusinessID][bExitPickup] = CreateDynamicPickup(19132, 1, BusinessType[bInfo[BusinessID][bType]][bIntX], BusinessType[bInfo[BusinessID][bType]][bIntY], BusinessType[bInfo[BusinessID][bType]][bIntZ], Business_World+bInfo[BusinessID][bID], BusinessType[bInfo[BusinessID][bType]][bInt]);
 			bInfo[BusinessID][bExitText] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, BusinessType[bInfo[BusinessID][bType]][bIntX], BusinessType[bInfo[BusinessID][bType]][bIntY], BusinessType[bInfo[BusinessID][bType]][bIntZ], 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, Business_World+bInfo[BusinessID][bID], BusinessType[bInfo[BusinessID][bType]][bInt]);
 		}
-		else bInfo[BusinessID][bPickup] = CreateDynamicPickup(1239, 1, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 0, 0);
+		else
+		{
+			if(bInfo[BusinessID][bType] == BusinessGasStation) bInfo[BusinessID][bPickup] = CreateDynamicPickup(1650, 1, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ]+0.5, 0, 0);
+			else bInfo[BusinessID][bPickup] = CreateDynamicPickup(1239, 1, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 0, 0);
+		}
 
 		bInfo[BusinessID][bText] = CreateDynamic3DTextLabel(str, -1, bInfo[BusinessID][bX], bInfo[BusinessID][bY], bInfo[BusinessID][bZ], 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 
@@ -6302,6 +6301,33 @@ public LoadVehicle(playerid)
 				cache_get_value_name_bool(i, "Lock", vInfo[indx][vLock]);
 				SetVehicleParamsEx(vInfo[indx][vServerID], false, false, false, vInfo[indx][vLock], false, false, false);
 			}
+			else if(vInfo[indx][vType] == VehicleTypeFraction)
+			{
+				new PlateNumber[10];
+				switch(vInfo[indx][vOwner])
+				{
+					case Fraction_Police: strcat(PlateNumber, "LSPD");
+					case Fraction_Army: strcat(PlateNumber, "NG");
+					case Fraction_FBI: strcat(PlateNumber, "FBI");
+					case Fraction_Hospital: strcat(PlateNumber, "EMT");
+					case Fraction_Taxi: strcat(PlateNumber, "TAXI");
+					case Fraction_SanNews: strcat(PlateNumber, "NEWS");
+					case Fraction_Vagos: strcat(PlateNumber, "LSV");
+					case Fraction_Ballas: strcat(PlateNumber, "ESB");
+					case Fraction_Aztecas: strcat(PlateNumber, "VLA");
+					case Fraction_Grove: strcat(PlateNumber, "GSF");
+					case Fraction_Rifa: strcat(PlateNumber, "SFR");
+					case Fraction_StreetRacers: strcat(PlateNumber, "STR");
+					case Fraction_Bikers: strcat(PlateNumber, "BKS");
+					case Fraction_FarmOfTruth: strcat(PlateNumber, "TRUTH");
+					case Fraction_RussiaMafia: strcat(PlateNumber, "RM");
+					case Fraction_LaCosaNostra: strcat(PlateNumber, "LCN");
+					case Fraction_Yakuza: strcat(PlateNumber, "YKZ");
+				}
+
+				SetVehicleNumberPlate(vInfo[indx][vServerID], PlateNumber);
+				SetVehicleParamsEx(vInfo[indx][vServerID], false, false, false, false, false, false, false);
+			}
 			else SetVehicleParamsEx(vInfo[indx][vServerID], false, false, false, false, false, false, false);
 
 			UpdateVehicle(indx, playerid);
@@ -7062,7 +7088,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 							else if(bInfo[indx][bType] == BusinessCasinoCaligula && pInfo[playerid][pLevel] < 10) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Войти в это казино можно только с 10 уровня");
 							else if(bInfo[indx][bType] == BusinessCasinoFourDragons && pInfo[playerid][pLevel] < 15) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Войти в это казино можно только с 15 уровня");
 
-		                    if(bInfo[indx][bThiefStatus] == Thief_Status_Capture || (bInfo[indx][bThiefStatus] == Thief_Status_Looting && pInfo[playerid][pMembers] != pInfo[bInfo[indx][bThiefPlayer]][pMembers])) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"На данный момент этот бизнес грабят. Двери закрыты");
+		                    if(bInfo[indx][bThiefStatus] != Thief_Status_None) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"На данный момент этот бизнес грабят. Двери закрыты");
 
 							if(bInfo[indx][bEnterPrice])
 							{
@@ -7490,7 +7516,15 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 				SetPVarInt(playerid, "DrunkCD", gettime()+2);
 			}
 		}
-
+		else if(GetPVarInt(playerid, "AnimUse") && newkeys & KEY_SPRINT)
+		{
+			DeletePVar(playerid, "AnimUse");
+			DeletePVar(playerid, "DisableTextAnim");
+			TextDrawHideForPlayer(playerid, AnimationTD);
+			
+			if(GetPlayerSpecialAction(playerid) == SPECIAL_ACTION_HANDSUP) SetPlayerSpecialAction(playerid, SPECIAL_ACTION_NONE);
+			ClearAnimations(playerid, true);
+		}
 
 	}
 	else if(newstate == PLAYER_STATE_DRIVER)
@@ -7545,7 +7579,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 					{
 						new indx = Streamer_GetIntData(STREAMER_TYPE_AREA, areaid[0], E_STREAMER_INDX);
 						if(!bInfo[indx][bID]) return 1;
-						if(bInfo[indx][bCarArea] == areaid[0])
+						if(bInfo[indx][bArea] == areaid[0])
 						{
 							if(bInfo[indx][bType] == BusinessGasStation)
 							{
@@ -7556,19 +7590,28 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 
 								if(engine) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Перед заправкой заглушите двигатель");
 
-								ShowDialog(playerid, D_Fuel_Menu_Value, DIALOG_STYLE_INPUT, Main_Color"АЗС", Color_White"Введите количество бензина на которое хотите заправиться\n\
-								"Color_White"Если вы хоите заправить полный бак оставьте поле пустым\n\
-								"Color_White"Стоимость 1% - "Color_Green"10$", Color_White"Далее", Color_White"Закрыть");
+								if(vInfo[vehicleid][vFuel] >= 100.0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас уже полный бак");
+
+								new Float:Fuel = 100.0-vInfo[vehicleid][vFuel];
+								
+								if(pInfo[playerid][pMoney] < floatround(Fuel)*10) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно средств для заправки");
+
+								GivePlayerMoneyEx(playerid, -floatround(Fuel)*10);
+								GiveCompanyMoney(playerid, BusinessOilDepot, floatround(Fuel)*10);
+
+								TogglePlayerControllable(playerid, false);
+								SetPVarInt(playerid, "FueledTime", 5);
+
+								vInfo[vehicleid][vFuel] += Fuel;
+								SaveCarFloat(vehicleid, "Fuel", vInfo[vehicleid][vFuel]);
+
+								SendClientMessage(playerid, -1, Color_White"Транспорт заправлен");
+								return 1;
 							}
-							else if(bInfo[indx][bType] == BusinessKFC)
-							{
-								ShowDialog(playerid, D_KFC_Sell_Menu, DIALOG_STYLE_TABLIST_HEADERS, Main_Color"KFC", Main_Color"Название\t"Main_Color"Цена\n\
-								"Main_Color"Картофель фри\t"Color_Green"300$\n\
-								"Main_Color"Наггетсы\t"Color_Green"500$\n\
-								"Main_Color"Крылышки\t"Color_Green"500$\n\
-								"Main_Color"Бургер\t"Color_Green"800$\n\
-								"Main_Color"Большой бургер\t"Color_Green"900$", Color_White"Купить", Color_White"Закрыть");
-							}
+						}
+						else if(bInfo[indx][bCarArea] == areaid[0])
+						{
+							if(bInfo[indx][bType] == BusinessKFC) ShowKFCSellMenu(playerid);
 							else if(bInfo[indx][bType] == BusinessGeneralStore1 || bInfo[indx][bType] == BusinessGeneralStore2 || bInfo[indx][bType] == BusinessGeneralStore3)
 							{
 								ShowDialog(playerid, D_GeneralStore_Sell_Menu, DIALOG_STYLE_TABLIST_HEADERS, Main_Color"General Store", Main_Color"Название\t"Main_Color"Цена\n\
@@ -7730,7 +7773,8 @@ stock UpdateTruckerQueueText()
 forward WalkAnim(playerid);
 public  WalkAnim(playerid)
 {
-	if(GetPVarInt(playerid, "BlockSprunk")) return 1;
+	if(GetPVarInt(playerid, "BlockSprunk") || pInfo[playerid][pKnockoutStatus] != Player_No_Knockout) return 1;
+
     new keys, updown, leftright;
     GetPlayerKeys(playerid,keys,updown,leftright);
     if (pInfo[playerid][pWalkStyle] == 1)
@@ -8410,7 +8454,27 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 				case Array_Type_Business:
 				{
 					new indx = Streamer_GetIntData(STREAMER_TYPE_AREA, areaid, E_STREAMER_INDX);
-					if(areaid == bInfo[indx][bArea] && !bInfo[indx][bOwnerID] && BusinessType[bInfo[indx][bType]][IsCompany])
+					if(bInfo[indx][bThiefStatus] == Thief_Status_Looting && areaid == bInfo[indx][bArea] && GetPVarInt(playerid, "MoneyBoxCD") < gettime())
+					{
+						if(pInfo[playerid][pMembers] != pInfo[bInfo[indx][bThiefPlayer]][pMembers]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этот бизнес ограбили не вы");
+						if(GetPVarInt(playerid, "MoneyBox")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас уже есть мешок в руке");
+
+						bInfo[indx][bThiefCount]--;
+						if(bInfo[indx][bThiefCount]) UpdateBusiness(indx);
+						else
+						{
+							SendRMessage(bInfo[indx][bThiefPlayer], "Ваша банда вынесла все мешки из бизнеса. Ограбление завершено.");
+							StopBusinessThief(indx);
+						}
+						SetPVarInt(playerid, "MoneyBoxCD", gettime()+2);
+						SendClientMessage(playerid, -1, Color_Yellow"Вы взяли мешок с деньгами. Отнесите его в машину.");
+						ClearAnimations(playerid, true);
+						SetPlayerAttachedObject(playerid, AttachSlotJob, 1550, 14, 0.4449, -0.0609, 0.0309, -78.5000, -123.1999, 59.1999, 0.7209, 0.5439, 0.6930, 0, 0);
+						if(bInfo[indx][bType] == BusinessGeneralStore1 || bInfo[indx][bType] == BusinessGeneralStore2 || bInfo[indx][bType] == BusinessGeneralStore3) SetPVarInt(playerid, "MoneyBox", 5000);
+						else if(bInfo[indx][bType] == BusinessBankFillial) SetPVarInt(playerid, "MoneyBox", 10000);
+						return 1;
+					}
+					else if(areaid == bInfo[indx][bArea] && !bInfo[indx][bOwnerID] && BusinessType[bInfo[indx][bType]][IsCompany])
 					{
 						new str[300], SubStr[100];
 						GetBusinessName(indx, str);
@@ -8429,30 +8493,6 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 
 						format(SubStr, sizeof(SubStr), Main_Color"Бизнес №"Color_White"%d", bInfo[indx][bID]);
 						ShowDialog(playerid, D_Business_Buy, DIALOG_STYLE_MSGBOX, SubStr, str, Color_White"Купить", Color_White"Закрыть");
-					}
-					else if(areaid == bInfo[indx][bThiefArea] && GetPVarInt(playerid, "InBusiness") == bInfo[indx][bID])
-					{
-						if(pInfo[playerid][pMembers] != pInfo[bInfo[indx][bThiefPlayer]][pMembers]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этот бизнес ограбили не вы");
-						if(GetPVarInt(playerid, "MoneyBox")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас уже есть мешок в руке");
-
-						bInfo[indx][bThiefCount]--;
-						if(bInfo[indx][bThiefCount])
-						{
-							new str[100];
-							format(str, sizeof(str), Main_Color"Мешки с деньгами\nОсталось"Color_White": %d", bInfo[indx][bThiefCount]);
-							UpdateDynamic3DTextLabelText(bInfo[indx][bThiefText], -1, str);
-						}
-						else
-						{
-							SendRMessage(bInfo[indx][bThiefPlayer], "Ваша банда вынесла все мешки из бизнеса. Ограбление завершено.");
-							StopBusinessThief(indx);
-						}
-						SendClientMessage(playerid, -1, Color_Yellow"Вы взяли мешок с деньгами. Отнесите его в машину.");
-						ClearAnimations(playerid, true);
-						SetPlayerAttachedObject(playerid, AttachSlotJob, 1550, 14, 0.4449, -0.0609, 0.0309, -78.5000, -123.1999, 59.1999, 0.7209, 0.5439, 0.6930, 0, 0);
-						if(bInfo[indx][bType] == BusinessGeneralStore1 || bInfo[indx][bType] == BusinessGeneralStore2 || bInfo[indx][bType] == BusinessGeneralStore3) SetPVarInt(playerid, "MoneyBox", 5000);
-						else if(bInfo[indx][bType] == BusinessBankFillial) SetPVarInt(playerid, "MoneyBox", 10000);
-						return 1;
 					}
 					else if((areaid == bInfo[indx][bSellArea][0] || areaid == bInfo[indx][bSellArea][1] || areaid == bInfo[indx][bSellArea][2] || areaid == bInfo[indx][bSellArea][3]) && GetPVarInt(playerid, "InBusiness") == bInfo[indx][bID])
 					{
@@ -8473,15 +8513,7 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 							"Main_Color"Закрутка\t"Color_Green"800$\n\
 							"Main_Color"Пустая бочка\t"Color_Green"1000$", Color_White"Купить", Color_White"Закрыть");
 						}
-						else if(bInfo[indx][bType] == BusinessKFC)
-						{
-							ShowDialog(playerid, D_KFC_Sell_Menu, DIALOG_STYLE_TABLIST_HEADERS, Main_Color"KFC", Main_Color"Название\t"Main_Color"Цена\n\
-							"Main_Color"Картофель фри\t"Color_Green"300$\n\
-							"Main_Color"Наггетсы\t"Color_Green"500$\n\
-							"Main_Color"Крылышки\t"Color_Green"500$\n\
-							"Main_Color"Бургер\t"Color_Green"800$\n\
-							"Main_Color"Большой бургер\t"Color_Green"900$", Color_White"Купить", Color_White"Закрыть");
-						}
+						else if(bInfo[indx][bType] == BusinessKFC) ShowKFCSellMenu(playerid);
 						else if(bInfo[indx][bType] == BusinessAmmo)
 						{
 							ShowDialog(playerid, D_Ammo_Sell_Menu, DIALOG_STYLE_TABLIST_HEADERS, Main_Color"Амуниция", Main_Color"Название\t"Main_Color"Цена\n\
@@ -9027,6 +9059,7 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 		{
 			ShowDialog(playerid, D_Church, DIALOG_STYLE_LIST, Main_Color"Церковь", Color_White"Регистрация новго брака\nРазвод", Color_White"Далее", Color_White"Закрыть");
 		}
+		else if(areaid == Pickups[TowerParaschute][PickAreaID] && AntiCheatGetWeaponInSlot(playerid, 11) != 46) GivePlayerGun(playerid, 46, 1);
 		else if(pInfo[playerid][pJob] == Job_TrashCollector && GetPVarInt(playerid, "JobArea") == areaid)
 		{
 			if(GetPVarInt(playerid, "TrashBagCount")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас уже есть мешок в руках");
@@ -10752,12 +10785,20 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				case 4:
 				{
-					ShowDialog(playerid, D_Donate_Buy_Money, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Покупка виртов", Color_White"Введите количество донат рублей которое хотите обменять на вирты\n\n"Color_Green"50.000$ "Color_White"- 1р", Color_White"Далее", Color_White"Отмена");
+					ShowDialog(playerid, D_Donate_Buy_Money, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Покупка виртов", Color_White"Введите количество донат рублей которое хотите обменять на вирты\n\n"Color_Green"5.000$ "Color_White"- 1р", Color_White"Далее", Color_White"Отмена");
 				}
 				case 5:
 				{
 					if(!pInfo[playerid][pHouseID]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас нет дома");
 					ShowCarUpgrade(playerid, 2);
+				}
+				case 6:
+				{
+					ShowDialog(playerid, D_Donate_Buy_Materials, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Покупка материалов", Color_White"Вы уверены что хотите обменять донат рубли на материалы?\n\n"Color_Green"10.000шт. "Color_White"- 500р", Color_White"Да", Color_White"Нет");
+				}
+				case 7:
+				{
+					ShowDialog(playerid, D_Donate_Buy_Drugs, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Покупка наркотиков", Color_White"Вы уверены что хотите обменять донат рубли на наркотики?\n\n"Color_Green"1000гр. "Color_White"- 300р", Color_White"Да", Color_White"Нет");
 				}
 			}
 			return 1;
@@ -10846,6 +10887,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			str[0] = EOS;
 			format(str, sizeof(str), "(IP: %s | RegIP: %s) потратил 100 доната на смену пола", pInfo[playerid][pIP], pInfo[playerid][pRegIp]);
 			AddLog(LogTypeDonate, pInfo[playerid][pID], str);
+
 			return 1;
 		}
 		case D_Donate_Buy_Level:
@@ -10879,6 +10921,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			str[0] = EOS;
 			format(str, sizeof(str), "(IP: %s | RegIP: %s) потратил %d доната на покупку уровня", pInfo[playerid][pIP], pInfo[playerid][pRegIp], lvl*100);
 			AddLog(LogTypeDonate, pInfo[playerid][pID], str);
+
 			return 1;
 		}
 		case D_Donate_Buy_UnWarn:
@@ -10902,12 +10945,14 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			str[0] = EOS;
 			format(str, sizeof(str), "(IP: %s | RegIP: %s) потратил 150 доната на снятие варна", pInfo[playerid][pIP], pInfo[playerid][pRegIp]);
 			AddLog(LogTypeDonate, pInfo[playerid][pID], str);
+
+			return 1;
 		}
 		case D_Donate_Buy_Money:
 		{
 			if(!response) return 1;
-			if(!strlen(inputtext)) return ShowDialog(playerid, D_Donate_Buy_Money, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Покупка виртов", Color_White"Введите количество донат рублей которое хотите обменять на вирты\n\n"Color_Green"50.000$ "Color_White"- 1р\n\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Отмена");
-			if(strval(inputtext) <= 0) return ShowDialog(playerid, D_Donate_Buy_Money, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Покупка виртов", Color_White"Введите количество донат рублей которое хотите обменять на вирты\n\n"Color_Green"50.000$ "Color_White"- 1р\n\n"Color_Red"Неверное количество донат рублей", Color_White"Далее", Color_White"Отмена");
+			if(!strlen(inputtext)) return ShowDialog(playerid, D_Donate_Buy_Money, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Покупка виртов", Color_White"Введите количество донат рублей которое хотите обменять на вирты\n\n"Color_Green"5.000$ "Color_White"- 1р\n\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Отмена");
+			if(strval(inputtext) <= 0) return ShowDialog(playerid, D_Donate_Buy_Money, DIALOG_STYLE_INPUT, Main_Color Project_Name " || "Color_White"Покупка виртов", Color_White"Введите количество донат рублей которое хотите обменять на вирты\n\n"Color_Green"5.000$ "Color_White"- 1р\n\n"Color_Red"Неверное количество донат рублей", Color_White"Далее", Color_White"Отмена");
 
 			new donatemoney = strval(inputtext);
 			if(pInfo[playerid][pDonateMoney] < donatemoney) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно донат рублей");
@@ -10915,19 +10960,58 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			pInfo[playerid][pDonateMoney] -= donatemoney;
 			SavePlayerInt(playerid, "DonateMoney", pInfo[playerid][pDonateMoney]);
 
-			GivePlayerMoneyEx(playerid, donatemoney*50000);
+			GivePlayerMoneyEx(playerid, donatemoney*5000);
 
 			new str[300];
-			format(str, sizeof(str), Color_Yellow"Вы купили %d виртов", donatemoney*50000);
+			format(str, sizeof(str), Color_Yellow"Вы купили %d виртов", donatemoney*5000);
 			SendClientMessage(playerid, -1, str);
 
 			str[0] = EOS;
-			format(str, sizeof(str), "(IP: %s | RegIP: %s) купил %d виртов за донат", pInfo[playerid][pIP], pInfo[playerid][pRegIp], donatemoney*50000);
+			format(str, sizeof(str), "(IP: %s | RegIP: %s) купил %d виртов за донат", pInfo[playerid][pIP], pInfo[playerid][pRegIp], donatemoney*5000);
 			AddLog(LogTypeMoney, pInfo[playerid][pID], str);
 
 			str[0] = EOS;
 			format(str, sizeof(str), "(IP: %s | RegIP: %s) потратил %d доната на покупку виртов", pInfo[playerid][pIP], pInfo[playerid][pRegIp], donatemoney);
 			AddLog(LogTypeDonate, pInfo[playerid][pID], str);
+
+			return 1;
+		}
+		case D_Donate_Buy_Materials:
+		{
+			if(!response) return 1;
+
+			if(pInfo[playerid][pDonateMoney] < 500) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно донат рублей");
+
+			if(!AddPlayerInventory(playerid, ItemMaterial, 10000)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+
+			pInfo[playerid][pDonateMoney] -= 500;
+			SavePlayerInt(playerid, "DonateMoney", pInfo[playerid][pDonateMoney]);
+
+			SendClientMessage(playerid, -1, Color_Yellow"Вы купили 10.000 материалов");
+
+			new str[300];
+			format(str, sizeof(str), "(IP: %s | RegIP: %s) потратил 500 доната на покупку материалов", pInfo[playerid][pIP], pInfo[playerid][pRegIp]);
+			AddLog(LogTypeDonate, pInfo[playerid][pID], str);
+
+			return 1;
+		}
+		case D_Donate_Buy_Drugs:
+		{
+			if(!response) return 1;
+			if(pInfo[playerid][pDonateMoney] < 300) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно донат рублей");
+
+			if(!AddPlayerInventory(playerid, ItemDrugs, 1000)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+
+			pInfo[playerid][pDonateMoney] -= 300;
+			SavePlayerInt(playerid, "DonateMoney", pInfo[playerid][pDonateMoney]);
+
+			SendClientMessage(playerid, -1, Color_Yellow"Вы купили 1000гр наркотиков");
+
+			new str[300];
+			format(str, sizeof(str), "(IP: %s | RegIP: %s) потратил 300 доната на покупку наркотиков", pInfo[playerid][pIP], pInfo[playerid][pRegIp]);
+			AddLog(LogTypeDonate, pInfo[playerid][pID], str);
+
+			return 1;
 		}
 		case D_AC_Settings:
 		{
@@ -11293,6 +11377,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				case 0:
 				{
 					ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, Main_Color Project_Name " || "Color_White"Основные команды", Main_Color"/main(/mm, /menu) "Color_White"- Меню сервера\n\
+					"Main_Color"/inv(/i) "Color_White"- Инвентарь\n\
 					"Main_Color"/quest "Color_White"- Список заданий\n\
 					"Main_Color"/promo "Color_White"- Активировать промокод\n\
 					"Main_Color"/showstats [ID] "Color_White"- Показать свою статистику другому игроку\n\
@@ -11316,7 +11401,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					"Main_Color"/gps off "Color_White"- Убирает активный маркер/метку с радара\n\
 					"Main_Color"/upgrade "Color_White"- Меню улучшений персонажа\n\
 					"Main_Color"/givegun [ID] "Color_White" - Собрать оружие из материалов\n\
-					"Main_Color"/sellgun [ID] [Стоимость] "Color_White" - Продать оружие из материалов", Color_White"Закрыть", "");
+					"Main_Color"/sellgun [ID] [Стоимость] "Color_White" - Продать оружие из материалов\n\
+					"Main_Color"/dice "Color_White" - Бросить кости", Color_White"Закрыть", "");
 				}
 				case 1:
 				{
@@ -11343,7 +11429,15 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					"Main_Color"/slapass "Color_White"- шлепнуть по попе\n\
 					"Main_Color"/walk [1-14] "Color_White"- изменить стиль походки персонажа\n\
 					"Main_Color"/dance [1-15] "Color_White"- Танцевать\n\
-					"Main_Color"/hi [ID] "Color_White"- дружеское приветствие", Color_White"Закрыть", "");
+					"Main_Color"/hi [ID] "Color_White"- дружеское приветствие\n\
+					"Main_Color"/gro "Color_White"- Сидеть оперевшись на руку\n\
+					"Main_Color"/gro2 "Color_White"- Сидеть боком оперевшись на руку\n\
+					"Main_Color"/gro2 "Color_White"- Сидеть оперевшись на обе руки\n\
+					"Main_Color"/lay "Color_White"- Лежать оперевшись на локти\n\
+					"Main_Color"/smoke "Color_White"- Курить\n\
+					"Main_Color"/handsup "Color_White"- Поднять руки вверх\n\
+					"Main_Color"/taichi "Color_White"- Восточное единоборство\n\
+					"Main_Color"/crack "Color_White"- Лежать (плохое самочувствие)", Color_White"Закрыть", "");
 				}
 				case 3:
 				{
@@ -14078,79 +14172,91 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 		case D_KFC_Sell_Menu:
 		{
 			if(!response) return 1;
+			
+			if(pInfo[playerid][pHealth] >= 100.0)
+			{
+				SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы здоровы");
+				return ShowKFCSellMenu(playerid);
+			}
+			
 			switch(listitem)
 			{
 				case 0:
 				{
-					if(pInfo[playerid][pMoney] < 300) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
-					if(!AddPlayerInventory(playerid, ItemFrenchFries)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					if(pInfo[playerid][pMoney] < 300)
+					{
+						SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+						return ShowKFCSellMenu(playerid);
+					}
+
+					Eat(playerid, 5.0, "Картофель фри");
 
 					GivePlayerMoneyEx(playerid, -300);
 					GiveCompanyMoney(playerid, BusinessKFCCompany, 300);
-
-					new str[100];
-					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemFrenchFries][ItemName]);
-					SendClientMessage(playerid, -1, str);
 
 					new BusinessID = GetPVarInt(playerid, "InBusiness");
 					ActivateBusinessActors(playerid, BusinessID);
 				}
 				case 1:
 				{
-					if(pInfo[playerid][pMoney] < 500) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
-					if(!AddPlayerInventory(playerid, ItemNuggets)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					if(pInfo[playerid][pMoney] < 500)
+					{
+						SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+						return ShowKFCSellMenu(playerid);
+					}
+					
+					Eat(playerid, 15.0, "Наггетсы");
 
 					GivePlayerMoneyEx(playerid, -500);
 					GiveCompanyMoney(playerid, BusinessKFCCompany, 500);
-
-					new str[100];
-					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemNuggets][ItemName]);
-					SendClientMessage(playerid, -1, str);
 
 					new BusinessID = GetPVarInt(playerid, "InBusiness");
 					ActivateBusinessActors(playerid, BusinessID);
 				}
 				case 2:
 				{
-					if(pInfo[playerid][pMoney] < 500) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
-					if(!AddPlayerInventory(playerid, ItemWing)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					if(pInfo[playerid][pMoney] < 500)
+					{
+						SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+						return ShowKFCSellMenu(playerid);
+					}
+					
+					Eat(playerid, 15.0, "Крылышки");
 
 					GivePlayerMoneyEx(playerid, -500);
 					GiveCompanyMoney(playerid, BusinessKFCCompany, 500);
-
-					new str[100];
-					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemWing][ItemName]);
-					SendClientMessage(playerid, -1, str);
 
 					new BusinessID = GetPVarInt(playerid, "InBusiness");
 					ActivateBusinessActors(playerid, BusinessID);
 				}
 				case 3:
 				{
-					if(pInfo[playerid][pMoney] < 800) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
-					if(!AddPlayerInventory(playerid, ItemBurger)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					if(pInfo[playerid][pMoney] < 800)
+					{
+						SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+						return ShowKFCSellMenu(playerid);
+					}
+					
+					Eat(playerid, 35.0, "Бургер");
 
 					GivePlayerMoneyEx(playerid, -800);
 					GiveCompanyMoney(playerid, BusinessKFCCompany, 800);
-
-					new str[100];
-					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemBurger][ItemName]);
-					SendClientMessage(playerid, -1, str);
 
 					new BusinessID = GetPVarInt(playerid, "InBusiness");
 					ActivateBusinessActors(playerid, BusinessID);
 				}
 				case 4:
 				{
-					if(pInfo[playerid][pMoney] < 900) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
-					if(!AddPlayerInventory(playerid, ItemBigBurger)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					if(pInfo[playerid][pMoney] < 900)
+					{
+						SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+						return ShowKFCSellMenu(playerid);
+					}
+					
+					Eat(playerid, 50.0, "Большой бургер");
 
 					GivePlayerMoneyEx(playerid, -900);
 					GiveCompanyMoney(playerid, BusinessKFCCompany, 900);
-
-					new str[100];
-					format(str, sizeof(str), Color_White"Предмет "Main_Color"%s "Color_White"добавлен в ваш инвентарь", Items[ItemBigBurger][ItemName]);
-					SendClientMessage(playerid, -1, str);
 
 					new BusinessID = GetPVarInt(playerid, "InBusiness");
 					ActivateBusinessActors(playerid, BusinessID);
@@ -14362,42 +14468,6 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			}
 			return 1;
 		}
-		case D_Fuel_Menu_Value:
-		{
-			if(!response) return 1;
-			new vehicleid = GetPlayerVehicleID(playerid);
-			if(!vehicleid) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть на транспорте");
-			if(IsABike(vInfo[vehicleid][vModel]) || IsAPlane(vInfo[vehicleid][vModel]) || IsABoat(vInfo[vehicleid][vModel])) return 1;
-			new bool:Full = false;
-			if(!strlen(inputtext)) Full = true;
-			if(!Full && strval(inputtext) <= 0)
-			{
-				return ShowDialog(playerid, D_Fuel_Menu_Value, DIALOG_STYLE_INPUT, Main_Color"АЗС", Color_White"Введите количество бензина на которое хотите заправиться\n\
-				"Color_White"Если вы хоите заправить полный бак оставьте поле пустым\n\
-				"Color_White"Стоимость 1% - "Color_Green"10$\n\
-				"Color_Red"Неверное количество бензина", Color_White"Далее", Color_White"Закрыть");
-			}
-
-			new bool:engine, bool:lights, bool:alarm, bool:doors, bool:bonnet, bool:boot, bool:objective;
-			GetVehicleParamsEx(vInfo[vehicleid][vServerID], engine, lights, alarm, doors, bonnet, boot, objective);
-
-			if(engine) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Перед заправкой заглушите двигатель");
-
-			if(vInfo[vehicleid][vFuel] >= 100.0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас уже полный бак");
-
-			new Float:Fuel = 0.0;
-			if(Full) Fuel = 100.0-vInfo[vehicleid][vFuel];
-			else Fuel = float(strval(inputtext));
-			if(Fuel+vInfo[vehicleid][vFuel] > 100.0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Заправить транспорт можно только до 100%");
-			GivePlayerMoneyEx(playerid, -strval(inputtext)*10);
-			vInfo[vehicleid][vFuel] += Fuel;
-			SaveCarFloat(vehicleid, "Fuel", vInfo[vehicleid][vFuel]);
-
-			GiveCompanyMoney(playerid, BusinessOilDepot, floatround(Fuel)*10);
-
-			SendClientMessage(playerid, -1, Color_White"Транспорт заправлен");
-			return 1;
-		}
 		case D_AHelp:
 		{
 			if(!response) return 1;
@@ -14407,7 +14477,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				{
 					if(pInfo[playerid][pAdmin] >= 1)
 					{
-						new str[800], SubStr[100];
+						new str[1300], SubStr[100];
 						format(str, sizeof(str), "%s"Color_White"/alogin - Авторизация в админ панели\n", str);
 						format(str, sizeof(str), "%s"Color_White"/tp - Телепорт меню\n", str);
 						format(str, sizeof(str), "%s"Color_White"/tppos - Телепорт по координатам\n", str);
@@ -14423,6 +14493,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 						format(str, sizeof(str), "%s"Color_White"/gm - Проверить игрока на GM\n", str);
 						format(str, sizeof(str), "%s"Color_White"/motd - Сообщение всем игрокам\n", str);
 						format(str, sizeof(str), "%s"Color_White"/checkstat - Посмотреть статистику игрока\n", str);
+						format(str, sizeof(str), "%s"Color_White"/setcarhp - Установить уровень здоровья машине в которой сидит игрок\n", str);
+						format(str, sizeof(str), "%s"Color_White"/setcarfuel - Установить уровень топлива машине в которой сидит игрок\n", str);
 						format(SubStr, sizeof(SubStr), Main_Color"Админ панель ||"Color_White" Команды %s", AdminNames[1]);
 						ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, SubStr, str, Color_White"Закрыть", "");
 					}
@@ -14458,13 +14530,14 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				{
 					if(pInfo[playerid][pAdmin] >= 3)
 					{
-						new str[500], SubStr[100];
+						new str[600], SubStr[100];
 						format(str, sizeof(str), "%s"Color_White"/givelic - Выдать игроку все лицензии\n", str);
 						format(str, sizeof(str), "%s"Color_White"/makeleader - Назначить игрока лидером\n", str);
 						format(str, sizeof(str), "%s"Color_White"/spall - Зареспавнить весь не занятый транспорт\n", str);
 						format(str, sizeof(str), "%s"Color_White"/cc - Очистить чат\n", str);
 						format(str, sizeof(str), "%s"Color_White"/togtp - Открыть/закрыть телепорт к себе через /pm\n", str);
 						format(str, sizeof(str), "%s"Color_White"/giveweap - Выдать оружие всем игрокам в определенном радиусе\n", str);
+						format(str, sizeof(str), "%s"Color_White"/agivegun - Выдать оружие игроку\n", str);
 						format(str, sizeof(str), "%s"Color_White"/giveconsum - Выдать расходные материалы игроку\n", str);
 						format(SubStr, sizeof(SubStr), Main_Color"Админ панель ||"Color_White" Команды %s", AdminNames[3]);
 						ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, SubStr, str, Color_White"Закрыть", "");
@@ -18249,6 +18322,13 @@ CMD:main(playerid)
 }
 alias:main("mm", "menu");
 
+CMD:inv(playerid)
+{
+	ShowPlayerInventory(playerid);
+	return 1;
+}
+alias:inv("i");
+
 CMD:promo(playerid)
 {
 	ShowDialog(playerid, D_Activate_Promo, DIALOG_STYLE_INPUT, Main_Color"Активация промокода", Color_White"Введите промокод в поле ниже", Color_White"Далее", Color_White"Закрыть");
@@ -18661,7 +18741,7 @@ stock StartLoad(playerid, vehicleid, Type)
 	return 1;
 }
 
-CMD:usedrugs(playerid, const params[])
+CMD:usedrugs(playerid)
 {
 	if(GetPVarInt(playerid, "DrugCD") > gettime()) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы недавно уже принимали наркотики");
 
@@ -18677,39 +18757,24 @@ CMD:usedrugs(playerid, const params[])
 
 	ProxDetector(playerid, MESSAGE_DIST, BitColor_Me, "достал(а) пакетик, насыпал(а) белого порошка, свернул(а) стодолларовую купюру в трубочку и начал(а) нюхать");
 
-	SetPVarInt(playerid, "DisableTextAnim", 1);
-	TogglePlayerControllable(playerid, false);
-	if(GetPlayerState(playerid) == PLAYER_STATE_ONFOOT) ApplyAnimation(playerid, "SMOKING", "M_SMK_IN", 6.0, true, false, false, false, 0, true);
 
-	SetTimerEx("StopUseDrugs", 2000, false, "dd", playerid, 2);
-	return 1;
-}
-alias:usedrugs("ud");
-
-forward StopUseDrugs(playerid, count);
-public StopUseDrugs(playerid, count)
-{
 	AntiCheatGetHealth(playerid, pInfo[playerid][pHealth]);
-
-	new str[100];
 
 	new Float:Value = Upgrade[Upg_UseDrugs][Upg_Conf_Standart]+(Upgrade[Upg_UseDrugs][Upg_Conf_Value]*pInfo[playerid][pUpgrade][Upg_UseDrugs]);
 	if(Value > (Upgrade[Upg_UseDrugs][Upg_Max_Points]*Upgrade[Upg_UseDrugs][Upg_Conf_Value])+Upgrade[Upg_UseDrugs][Upg_Conf_Standart]) Value = (Upgrade[Upg_UseDrugs][Upg_Max_Points]*Upgrade[Upg_UseDrugs][Upg_Conf_Value])+Upgrade[Upg_UseDrugs][Upg_Conf_Standart];
 
-	pInfo[playerid][pHealth] += Value*float(count);
+	pInfo[playerid][pHealth] += Value*float(2);
 	if(pInfo[playerid][pHealth] > 160.0) pInfo[playerid][pHealth] = 160.0;
-
 	SetPlayerHealth(playerid, pInfo[playerid][pHealth]);
+
+	new str[100];
 	format(str, sizeof(str), "Здоровье пополнено до %.1f", pInfo[playerid][pHealth]);
 	SendClientMessage(playerid, BitColor_Main, str);
-
-	TogglePlayerControllable(playerid, true);
-	ClearAnimations(playerid, true);
-	DeletePVar(playerid, "DisableTextAnim");
 
 	if(pInfo[playerid][pKnockoutStatus] != Player_No_Knockout) NockPlayer(playerid);
 	return 1;
 }
+alias:usedrugs("ud");
 
 CMD:givedrugs(playerid, params[])
 {
@@ -20282,8 +20347,7 @@ CMD:news(playerid, params[])
 {
 	if(pInfo[playerid][pMembers] != Fraction_SanNews) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только сотрудникам San News");
 	new vehicleid = GetPlayerVehicleID(playerid);
-	if(GetPVarInt(playerid, "InPickup")-1 != SanNewsEnter
-	&& (!vehicleid || vInfo[vehicleid][vType] != VehicleTypeFraction || vInfo[vehicleid][vOwner] != pInfo[playerid][pMembers] || (vInfo[vehicleid][vModel] != 582 && vInfo[vehicleid][vModel] != 488))) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только в офисе San News либо в фургоне/вертолете");
+	if(!vehicleid || vInfo[vehicleid][vType] != VehicleTypeFraction || vInfo[vehicleid][vOwner] != pInfo[playerid][pMembers] || (vInfo[vehicleid][vModel] != 582 && vInfo[vehicleid][vModel] != 488)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Доступно только в фургоне/вертолете");
 
 	if(IsMuted(playerid)) return 1;
 	new message[145];
@@ -20877,8 +20941,8 @@ CMD:mfill(playerid, params[])
 	if(!GetPVarInt(playerid, "MechanicFare")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть на дежурстве");
 	if(vInfo[vehicleid][vType] == VehicleTypeJob && vInfo[vehicleid][vOwner] == Job_Mechanic && vInfo[vehicleid][vRenter] == playerid)
 	{
-		new id, money, percent;
-		if(sscanf(params, "ddd", id, money, percent)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/mfill [ID] [Сумма за 1%] [Количество %]");
+		new id, money;
+		if(sscanf(params, "dd", id, money)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/mfill [ID] [Стоимость заправки]");
 		if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
 		if(!IsPlayerConnected(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не подключен");
 		if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
@@ -20886,76 +20950,33 @@ CMD:mfill(playerid, params[])
 		if(GetPVarInt(id, "AcceptOfferID")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этому игроку уже что-то предложили");
 		if(GetPVarInt(playerid, "ProposeOfferID")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы уже что-то кому-то предложили");
 		if(!IsPlayerInAnyVehicle(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок которому вы хотите предложить заправиться не находится в машине");
-		if(money <= 0 || money > 10000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Сумма починки от 1$ до 10.000$");
-		if(percent <= 0 || percent > 200) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Количество процентов от 1% до 200%");
+		if(money <= 0 || money > 10000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Сумма заправки от 1$ до 10.000$");
 
 		new PlayerVehicleid = GetPlayerVehicleID(id);
-
+		new percent;
 		switch(pInfo[playerid][pSkill][Job_Mechanic])
 		{
-			case 1:
-			{
-				if(float(percent)+vInfo[PlayerVehicleid][vFuel] > 50.0)
-				{
-					new str[200];
-					format(str, sizeof(str), Color_White"Сейчас в машине %s "Main_Color"%.1f"Color_White"%% топлива", pInfo[id][pName], vInfo[PlayerVehicleid][vFuel]);
-					SendClientMessage(playerid, -1, str);
-					return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"На вашем уровне механика вы не можете заправить машину более чем на 50 процентов");
-				}
-			}
-			case 2:
-			{
-				if(float(percent)+vInfo[PlayerVehicleid][vFuel] > 70.0)
-				{
-					new str[200];
-					format(str, sizeof(str), Color_White"Сейчас в машине %s "Main_Color"%.1f"Color_White"%% топлива", pInfo[id][pName], vInfo[PlayerVehicleid][vFuel]);
-					SendClientMessage(playerid, -1, str);
-					return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"На вашем уровне механика вы не можете заправить машину более чем на 70 процентов");
-				}
-			}
-			case 3:
-			{
-				if(float(percent)+vInfo[PlayerVehicleid][vFuel] > 100.0)
-				{
-					new str[200];
-					format(str, sizeof(str), Color_White"Сейчас в машине %s "Main_Color"%.1f"Color_White"%% топлива", pInfo[id][pName], vInfo[PlayerVehicleid][vFuel]);
-					SendClientMessage(playerid, -1, str);
-					return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"На вашем уровне механика вы не можете заправить машину более чем на 100 процентов");
-				}
-			}
-			case 4:
-			{
-				if(float(percent)+vInfo[PlayerVehicleid][vFuel] > 150.0)
-				{
-					new str[200];
-					format(str, sizeof(str), Color_White"Сейчас в машине %s "Main_Color"%.1f"Color_White"%% топлива", pInfo[id][pName], vInfo[PlayerVehicleid][vFuel]);
-					SendClientMessage(playerid, -1, str);
-					return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"На вашем уровне механика вы не можете заправить машину более чем на 150 процентов");
-				}
-			}
-			case 5:
-			{
-				if(float(percent)+vInfo[PlayerVehicleid][vFuel] > 200.0)
-				{
-					new str[200];
-					format(str, sizeof(str), Color_White"Сейчас в машине %s "Main_Color"%.1f"Color_White"%% топлива", pInfo[id][pName], vInfo[PlayerVehicleid][vFuel]);
-					SendClientMessage(playerid, -1, str);
-					return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"На вашем уровне механика вы не можете заправить машину более чем на 200 процентов");
-				}
-			}
+			case 1: percent = 50;
+			case 2: percent = 70;
+			case 3: percent = 100;
+			case 4: percent = 150;
+			case 5: percent = 200;
+			default: percent = 50;
 		}
+
+		if(vInfo[PlayerVehicleid][vFuel] > float(percent)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У игрока в баке уже находится больше топлива чем вы можете предложить");
 
 		new Float:X, Float:Y, Float:Z;
 		GetVehiclePos(PlayerVehicleid, X, Y, Z);
 		if(!IsPlayerInRangeOfPoint(playerid, 10.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от машины которую хотите заправить");
 
 		new str[300];
-		format(str, sizeof(str), Color_White"Вы предложили "Main_Color"%s"Color_White" заправиться на %d%% за "Color_Green"%d$ "Color_White"за 1%%", pInfo[id][pName], percent, money);
+		format(str, sizeof(str), Color_White"Вы предложили "Main_Color"%s"Color_White" заправиться на %d%% за "Color_Green"%d$", pInfo[id][pName], percent, money);
 		SendClientMessage(playerid, -1, str);
 		SendClientMessage(playerid, -1, "Используйте /undo mfill чтобы отменить свое предложение");
 
 		str[0] = EOS;
-		format(str, sizeof(str), Main_Color"%s"Color_White" предложил вам заправиться на %d%% за "Color_Green"%d$ за 1%%", pInfo[playerid][pName], percent, money);
+		format(str, sizeof(str), Main_Color"%s"Color_White" предложил вам заправиться на %d%% за "Color_Green"%d$", pInfo[playerid][pName], percent, money);
 		SendClientMessage(id, -1, str);
 		SendClientMessage(id, -1, "Используйте /accept mfill принять предложение или /cancel mfill чтобы отменить предложение");
 
@@ -21304,49 +21325,26 @@ stock PlayerAccept(playerid)
 				if(vInfo[vehicleid][vType] == VehicleTypeJob && vInfo[vehicleid][vOwner] == Job_Mechanic && vInfo[vehicleid][vRenter] == ProposePlayer)
 				{
 
-					if(pInfo[playerid][pMoney] < money*count) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для заправки");
+					if(pInfo[playerid][pMoney] < money) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для заправки");
 					if(!IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть в машине чтобы принять предложение о заправке");
 
 					new PlayerVehicleid = GetPlayerVehicleID(playerid);
 					new Float:X, Float:Y, Float:Z;
 					GetVehiclePos(PlayerVehicleid, X, Y, Z);
 					if(!IsPlayerInRangeOfPoint(playerid, 10.0, X, Y, Z) || !IsPlayerStreamedIn(playerid, ProposePlayer)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы слишком далеко от машины механика");
+					if(vInfo[PlayerVehicleid][vFuel] > float(count)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас в баке уже находится больше топлива чем вам предложили");
 
-					switch(pInfo[ProposePlayer][pSkill][Job_Mechanic])
-					{
-						case 1:
-						{
-							if(float(count)+vInfo[PlayerVehicleid][vFuel] > 50.0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У механика 1 уровень он не может заправить машину более чем на 50 процентов");
-						}
-						case 2:
-						{
-							if(float(count)+vInfo[PlayerVehicleid][vFuel] > 70.0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У механика 2 уровень он не может заправить машину более чем на 70 процентов");
-						}
-						case 3:
-						{
-							if(float(count)+vInfo[PlayerVehicleid][vFuel] > 100.0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У механика 3 уровень он не может заправить машину более чем на 100 процентов");
-						}
-						case 4:
-						{
-							if(float(count)+vInfo[PlayerVehicleid][vFuel] > 150.0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У механика 4 уровень он не может заправить машину более чем на 150 процентов");
-						}
-						case 5:
-						{
-							if(float(count)+vInfo[PlayerVehicleid][vFuel] > 200.0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У механика 5 уровень он не может заправить машину более чем на 200 процентов");
-						}
-					}
-
-					GivePlayerMoneyEx(playerid, -money*count);
-					vInfo[PlayerVehicleid][vFuel] += float(count);
+					GivePlayerMoneyEx(playerid, -money);
+					vInfo[PlayerVehicleid][vFuel] = float(count);
 					SaveCarFloat(PlayerVehicleid, "Fuel", vInfo[PlayerVehicleid][vFuel]);
 
 					UpdatePlayerSkill(ProposePlayer);
 
 					new str[200];
-					format(str, sizeof(str), Color_White"Вы заправили машину игрока %s на %d%% к вашей зарплате добавлено"Color_Green" %d$", pInfo[playerid][pName], count, money*count);
+					format(str, sizeof(str), Color_White"Вы заправили машину игрока %s на %d%% к вашей зарплате добавлено"Color_Green" %d$", pInfo[playerid][pName], count, money);
 					SendClientMessage(ProposePlayer, -1, str);
 
-					GivePlayerMoneyInPayDay(ProposePlayer, money*count);
+					GivePlayerMoneyInPayDay(ProposePlayer, money);
 
 				}
 				else return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Механик должен быть в рабочем транспорте");
@@ -22144,6 +22142,7 @@ CMD:gps(playerid, const params[])
 
 CMD:iznas(playerid, params[])
 {
+	if(pInfo[playerid][pKnockoutStatus] != Player_No_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ранены");
 	if(GetPVarInt(playerid, "IznasCD") > gettime()) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Не так быстро");
 	if(IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Нельзя использовать в машине");
 	new id;
@@ -22153,6 +22152,7 @@ CMD:iznas(playerid, params[])
 	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
 	if(playerid == id) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ввели свой ID");
 	if(IsPlayerInAnyVehicle(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок которого вы хотите изнасиловать находится в машине");
+	if(pInfo[id][pKnockoutStatus] != Player_No_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок которого вы хотите изнасиловать ранен");
 
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
@@ -22181,6 +22181,7 @@ CMD:iznas(playerid, params[])
 
 CMD:kiss(playerid, params[])
 {
+	if(pInfo[playerid][pKnockoutStatus] != Player_No_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ранены");
 	if(IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Нельзя использовать в машине");
 	new id;
 	if(sscanf(params, "d", id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/kiss [ID]");
@@ -22191,6 +22192,7 @@ CMD:kiss(playerid, params[])
 	if(GetPVarInt(id, "AcceptOfferID")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этому игроку уже что-то предложили");
 	if(GetPVarInt(playerid, "ProposeOfferID")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы уже что-то кому-то предложили");
 	if(IsPlayerInAnyVehicle(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок которому вы хотите предложить поцеловаться находится в машине");
+	if(pInfo[id][pKnockoutStatus] != Player_No_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок которому вы хотите предложить поцеловаться ранен");
 
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
@@ -22213,6 +22215,7 @@ CMD:kiss(playerid, params[])
 
 CMD:hi(playerid, params[])
 {
+	if(pInfo[playerid][pKnockoutStatus] != Player_No_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ранены");
 	if(IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Нельзя использовать в машине");
 	new id;
 	if(sscanf(params, "d", id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/hi [ID]");
@@ -22221,6 +22224,8 @@ CMD:hi(playerid, params[])
 	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
 	if(playerid == id) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ввели свой ID");
 	if(IsPlayerInAnyVehicle(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с которым вы хотите поздороваться находится в машине");
+	if(pInfo[id][pKnockoutStatus] != Player_No_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с которым вы хотите поздороваться ранен");
+
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(id, X, Y, Z);
 
@@ -22245,6 +22250,7 @@ CMD:hi(playerid, params[])
 
 CMD:piss(playerid)
 {
+	if(pInfo[playerid][pKnockoutStatus] != Player_No_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ранены");
 	if(IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Нельзя использовать в машине");
 	SetPlayerSpecialAction(playerid, SPECIAL_ACTION_PISSING);
 	SendClientMessage(playerid, -1, Color_Yellow"Чтобы прекратить писать нажмите Enter");
@@ -22253,6 +22259,7 @@ CMD:piss(playerid)
 
 CMD:wank(playerid)
 {
+	if(pInfo[playerid][pKnockoutStatus] != Player_No_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ранены");
 	if(IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Нельзя использовать в машине");
 	ApplyAnimation(playerid,"PAULNMAC", "wank_loop", 1.800001, true, false, false, false, 0, true);
 	SendClientMessage(playerid, -1, Color_Yellow"Чтобы прекратить дрочить нажмите Enter");
@@ -22261,13 +22268,120 @@ CMD:wank(playerid)
 
 CMD:slapass(playerid)
 {
+	if(pInfo[playerid][pKnockoutStatus] != Player_No_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ранены");
 	if(IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Нельзя использовать в машине");
 	ApplyAnimation(playerid,"SWEET", "SWEET_ASS_SLAP", 4.0, false, false, false, false, 0, true);
 	return 1;
 }
 
+CMD:gro(playerid)
+{
+	if(pInfo[playerid][pKnockoutStatus] != Player_No_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ранены");
+	if(IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Нельзя использовать в машине");
+	ApplyAnimation(playerid, "BEACH", "PARKSIT_M_LOOP", 4.1, true, false, false, false, 0, true);
+
+	SetPVarInt(playerid, "AnimUse", 1);
+	SetPVarInt(playerid, "DisableTextAnim", 1);
+	TextDrawShowForPlayer(playerid, AnimationTD);
+	return 1;
+}
+
+CMD:gro2(playerid)
+{
+	if(pInfo[playerid][pKnockoutStatus] != Player_No_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ранены");
+	if(IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Нельзя использовать в машине");
+	ApplyAnimation(playerid, "BEACH", "PARKSIT_W_LOOP", 4.1, true, false, false, false, 0, true);
+
+	SetPVarInt(playerid, "AnimUse", 1);
+	SetPVarInt(playerid, "DisableTextAnim", 1);
+	TextDrawShowForPlayer(playerid, AnimationTD);
+	return 1;
+}
+
+CMD:gro3(playerid)
+{
+	if(pInfo[playerid][pKnockoutStatus] != Player_No_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ранены");
+	if(IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Нельзя использовать в машине");
+	ApplyAnimation(playerid, "BEACH", "SITNWAIT_LOOP_W", 4.1, true, false, false, false, 0, true);
+
+	SetPVarInt(playerid, "AnimUse", 1);
+	SetPVarInt(playerid, "DisableTextAnim", 1);
+	TextDrawShowForPlayer(playerid, AnimationTD);
+	return 1;
+}
+
+CMD:lay(playerid)
+{
+	if(pInfo[playerid][pKnockoutStatus] != Player_No_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ранены");
+	if(IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Нельзя использовать в машине");
+	ApplyAnimation(playerid, "BEACH", "LAY_BAC_LOOP", 4.1, true, false, false, false, 0, true);
+
+	SetPVarInt(playerid, "AnimUse", 1);
+	SetPVarInt(playerid, "DisableTextAnim", 1);
+	TextDrawShowForPlayer(playerid, AnimationTD);
+	return 1;
+}
+
+CMD:smoke(playerid)
+{
+	if(pInfo[playerid][pKnockoutStatus] != Player_No_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ранены");
+	if(IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Нельзя использовать в машине");
+	ApplyAnimation(playerid, "BD_FIRE", "M_SMKLEAN_LOOP", 4.1, true, false, false, false, 0, true);
+
+	SetPVarInt(playerid, "AnimUse", 1);
+	SetPVarInt(playerid, "DisableTextAnim", 1);
+	TextDrawShowForPlayer(playerid, AnimationTD);
+	return 1;
+}
+
+CMD:handsup(playerid)
+{
+	if(pInfo[playerid][pKnockoutStatus] != Player_No_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ранены");
+	if(IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Нельзя использовать в машине");
+	SetPlayerSpecialAction(playerid, SPECIAL_ACTION_HANDSUP);
+
+	SetPVarInt(playerid, "AnimUse", 1);
+	SetPVarInt(playerid, "DisableTextAnim", 1);
+	TextDrawShowForPlayer(playerid, AnimationTD);
+	return 1;
+}
+
+CMD:taichi(playerid)
+{
+	if(pInfo[playerid][pKnockoutStatus] != Player_No_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ранены");
+	if(IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Нельзя использовать в машине");
+	ApplyAnimation(playerid, "PARK", "TAI_CHI_LOOP", 4.1, true, false, false, false, 0, true);
+
+	SetPVarInt(playerid, "AnimUse", 1);
+	SetPVarInt(playerid, "DisableTextAnim", 1);
+	TextDrawShowForPlayer(playerid, AnimationTD);
+	return 1;
+}
+
+CMD:crack(playerid)
+{
+	if(pInfo[playerid][pKnockoutStatus] != Player_No_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ранены");
+	if(IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Нельзя использовать в машине");
+	ApplyAnimation(playerid, "CRACK", "crckdeth2", 4.1, true, false, false, false, 0, true);
+
+	SetPVarInt(playerid, "AnimUse", 1);
+	SetPVarInt(playerid, "DisableTextAnim", 1);
+	TextDrawShowForPlayer(playerid, AnimationTD);
+	return 1;
+}
+
+CMD:dice(playerid)
+{
+	new str[100];
+	format(str, sizeof(str), "** %s бросил игральные кости | Выпало: %d. **", pInfo[playerid][pName], 1+random(6));
+	ProxDetector(playerid, MESSAGE_DIST, BitColor_Lime, str, false);
+	return 1;
+}
+
 CMD:dance(playerid, params[])
 {
+	if(pInfo[playerid][pKnockoutStatus] != Player_No_Knockout) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ранены");
+	if(IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Нельзя использовать в машине");
 	new id;
 	if(sscanf(params, "d", id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/dance [1-15]");
 	if(id < 1 || id > 15) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Номер танцев от 1 до 15");
@@ -23071,6 +23185,7 @@ CMD:engine(playerid)
 	if(GetPVarInt(playerid, "EngineCD") > gettime()) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Не так быстро!");
 	new vehicleid = GetPlayerVehicleID(playerid);
 	if(!vehicleid) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы должны быть в машине");
+	if(GetPVarInt(playerid, "FueledTime")) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Транспорт заправляется");
 	if(IsABike(vInfo[vehicleid][vModel]) || IsAPlane(vInfo[vehicleid][vModel]) || IsABoat(vInfo[vehicleid][vModel])) return 1;
 	EngineVehicle(vehicleid, playerid);
 	SetPVarInt(playerid, "EngineCD", gettime()+5);
@@ -23151,7 +23266,9 @@ public LoadDonatePlayer(playerid)
 	"Main_Color"- "Color_White"Повысить уровень\n\
 	"Main_Color"- "Color_White"Снять предупреждение\n\
 	"Main_Color"- "Color_White"Купить вирты\n\
-	"Main_Color"- "Color_White"Сменить домашний авто", Color_White"Далее", Color_White"Отмена");
+	"Main_Color"- "Color_White"Сменить домашний авто\n\
+	"Main_Color"- "Color_White"Купить материалы\n\
+	"Main_Color"- "Color_White"Купить наркотики", Color_White"Далее", Color_White"Отмена");
 	return 1;
 }
 
@@ -23678,6 +23795,57 @@ CMD:specoff(playerid)
 	return 1;
 }
 
+CMD:setcarhp(playerid, params[])
+{
+	if(pInfo[playerid][pAdmin] < 1 || !Iter_Contains(Admins, playerid)) return 1;
+	new id, hp;
+	if(sscanf(params, "dd", id, hp)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/setcarhp [ID игрока] [HP]");
+
+	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
+	if(!IsPlayerConnected(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не подключен");
+	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
+
+	new VehID = GetPlayerVehicleID(id);
+	if(!VehID) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этот игрок не сидит в транспорте");
+	if(hp < 0 || hp > 1000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Уровень здоровья машины должен быть от 0 до 1000");
+
+	SetVehicleHealth(VehID, float(hp));
+
+	new str[200];
+	format(str, sizeof(str), Main_Color"%s %s[%d] установил уровень здоровья транспорта в которым вы сидите на %d", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], playerid, hp);
+	SendClientMessage(id, -1, str);
+
+	format(str, sizeof(str), Main_Color"Вы установили уровень здоровья транспорта в которым сидит %s[%d] на %d", pInfo[id][pName], id, hp);
+	SendClientMessage(playerid, -1, str);
+	return 1;
+}
+
+CMD:setcarfuel(playerid, params[])
+{
+	if(pInfo[playerid][pAdmin] < 1 || !Iter_Contains(Admins, playerid)) return 1;
+	new id, fuel;
+	if(sscanf(params, "dd", id, fuel)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/setcarfuel [ID игрока] [Уровень топлива]");
+
+	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
+	if(!IsPlayerConnected(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не подключен");
+	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
+
+	new VehID = GetPlayerVehicleID(id);
+	if(!VehID) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Этот игрок не сидит в транспорте");
+	if(fuel < 0 || fuel > 100) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Уровень топлива должен быть от 0 до 100");
+
+	vInfo[VehID][vFuel] = float(fuel);
+	SaveCarFloat(VehID, "Fuel", vInfo[VehID][vFuel]);
+
+	new str[200];
+	format(str, sizeof(str), Main_Color"%s %s[%d] установил уровень топлива транспорта в которым вы сидите на %d", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], playerid, fuel);
+	SendClientMessage(id, -1, str);
+
+	format(str, sizeof(str), Main_Color"Вы установили уровень топлива транспорта в которым сидит %s[%d] на %d", pInfo[id][pName], id, fuel);
+	SendClientMessage(playerid, -1, str);
+	return 1;
+}
+
 CMD:checkstat(playerid, params[])
 {
 	if(pInfo[playerid][pAdmin] < 1 || !Iter_Contains(Admins, playerid)) return 1;
@@ -23901,7 +24069,7 @@ CMD:motd(playerid, params[])
 	if(sscanf(params, "s[130]", message)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/motd [Сообщение]");
 
 	new str[200];
-	format(str, sizeof(str), Color_Scarlet"%s %s[%d]: %s", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], playerid, message);
+	format(str, sizeof(str), Color_Scarlet"(( %s %s[%d]: %s ))", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], playerid, message);
 	SendAllMessage(str);
 	return 1;
 }
@@ -24244,6 +24412,35 @@ CMD:togtp(playerid)
 	return 1;
 }
 
+stock IsValidGiveGun(weapid)
+{
+	if(weapid <= 0 || weapid > 46 || weapid == 19 || weapid == 20 || weapid == 21 || weapid == 44 || weapid == 45) return false;
+	return true;
+}
+
+CMD:agivegun(playerid, params[])
+{
+	if(pInfo[playerid][pAdmin] < 3 || !Iter_Contains(Admins, playerid)) return 1;
+	new id, weapid, ammo;
+	if(sscanf(params, "ddd", id, weapid, ammo)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/agivegun [ID игрока] [ID оружия] [Количество патрон]");
+
+	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
+	if(!IsPlayerConnected(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не подключен");
+	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
+
+	if(ammo <= 0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Не верное количество патрон");
+	if(!IsValidGiveGun(weapid)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Не верное ID оружия");
+
+	new str[200];
+	format(str, sizeof(str), Main_Color"%s %s[%d] выдал вам %s с %dпт.", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], playerid, GunNames[weapid], ammo);
+	GivePlayerGun(id, weapid, ammo);
+	SendClientMessage(id, -1, str);
+
+	format(str, sizeof(str), Main_Color"Вы выдали игроку %s[%d] оружие %s с %dпт", pInfo[id][pName], id, GunNames[weapid], ammo);
+	SendClientMessage(playerid, -1, str);
+	return 1;
+}
+
 CMD:giveweap(playerid, params[])
 {
 	if(pInfo[playerid][pAdmin] < 3 || !Iter_Contains(Admins, playerid)) return 1;
@@ -24251,14 +24448,14 @@ CMD:giveweap(playerid, params[])
 	if(sscanf(params, "ddd", radius, weapid, ammo)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/giveweap [Радиус] [ID оружия] [Количество патрон]");
 
 	if(ammo <= 0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Не верное количество патрон");
-	if(weapid <= 0 || weapid > 46 || weapid == 19 || weapid == 20 || weapid == 21 || weapid == 44 || weapid == 45) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Не верное ID оружия");
+	if(!IsValidGiveGun(weapid)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Не верное ID оружия");
 
 	new Float:X, Float:Y, Float:Z;
 	GetPlayerPos(playerid, X, Y, Z);
 	new VW = GetPlayerVirtualWorld(playerid);
 	new Int = GetPlayerInterior(playerid);
 
-	new str[100];
+	new str[200];
 	format(str, sizeof(str), Main_Color"%s %s[%d] выдал вам %s с %dпт.", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], playerid, GunNames[weapid], ammo);
 	foreach(new i: Player)
 	{
@@ -25356,7 +25553,7 @@ CMD:editbusiness(playerid, params[])
 		"Main_Color"- "Color_White"Валюта\n\
 		"Main_Color"- "Color_White"Цена\n\
 		"Main_Color"- "Color_White"Минимальный уровень для покупки\n\
-		"Main_Color"- "Color_White"Место обслуживания на машине(Заправки/KFC)\n\
+		"Main_Color"- "Color_White"Место обслуживания на машине(KFC/Тюнинг)\n\
 		"Main_Color"- "Color_White"Удалить место обслуживания на машине\n\
 		"Main_Color"- "Color_White"Изменить название\n\
 		"Main_Color"- "Color_White"Изменить иконку", Color_White"Далее", Color_White"Закрыть");
@@ -25368,7 +25565,7 @@ CMD:editbusiness(playerid, params[])
 		"Main_Color"- "Color_White"Валюта\n\
 		"Main_Color"- "Color_White"Цена\n\
 		"Main_Color"- "Color_White"Минимальный уровень для покупки\n\
-		"Main_Color"- "Color_White"Место обслуживания на машине(Заправки/KFC)\n\
+		"Main_Color"- "Color_White"Место обслуживания на машине(KFC/Тюнинг)\n\
 		"Main_Color"- "Color_White"Удалить место обслуживания на машине", Color_White"Далее", Color_White"Закрыть");
 	}
 	return 1;
@@ -25770,18 +25967,10 @@ stock StopBusinessThief(BusinessID)
     bInfo[BusinessID][bThiefCount] = 0;
 	bInfo[BusinessID][bThiefPlayer] = INVALID_PLAYER_ID;
 
-	if(bInfo[BusinessID][bThiefArea] && IsValidDynamicArea(bInfo[BusinessID][bThiefArea])) DestroyDynamicArea(bInfo[BusinessID][bThiefArea]);
-	bInfo[BusinessID][bThiefArea] = 0;
-
 	if(bInfo[BusinessID][bThiefZoneArea] && IsValidDynamicArea(bInfo[BusinessID][bThiefZoneArea])) DestroyDynamicArea(bInfo[BusinessID][bThiefZoneArea]);
 	bInfo[BusinessID][bThiefZoneArea] = 0;
 
-	if(bInfo[BusinessID][bThiefText] && IsValidDynamic3DTextLabel(bInfo[BusinessID][bThiefText])) DestroyDynamic3DTextLabel(bInfo[BusinessID][bThiefText]);
-	bInfo[BusinessID][bThiefText] = Text3D:0;
-
-	if(bInfo[BusinessID][bThiefPickup] && IsValidDynamicPickup(bInfo[BusinessID][bThiefPickup])) DestroyDynamicPickup(bInfo[BusinessID][bThiefPickup]);
-	bInfo[BusinessID][bThiefPickup] = 0;
-
+	UpdateBusiness(BusinessID);
 	return 1;
 }
 
@@ -26566,14 +26755,17 @@ stock ShowPlayerStat(playerid, ShowID = -1)
 	SubStr[0] = EOS;
 	format(SubStr, sizeof(SubStr), Main_Color"Статистика персонажа "Color_White"%s", pInfo[playerid][pName]);
 
-	if(pInfo[ShowID][pAdmin] && Iter_Contains(Admins, ShowID))
-	{
-		format(str, sizeof(str), "%s"Main_Color"Текущий IP"Color_White": %s\n", str, pInfo[playerid][pIP]);
-		format(str, sizeof(str), "%s"Main_Color"RegIP"Color_White": %s\n", str, pInfo[playerid][pRegIp]);
-	}
-
 	if(ShowID == -1) ShowDialog(playerid, D_None, DIALOG_STYLE_MSGBOX, SubStr, str, Color_White"Закрыть", "");
-	else ShowDialog(ShowID, D_None, DIALOG_STYLE_MSGBOX, SubStr, str, Color_White"Закрыть", "");
+	else
+	{
+		if(pInfo[ShowID][pAdmin] && Iter_Contains(Admins, ShowID))
+		{
+			format(str, sizeof(str), "%s"Main_Color"Текущий IP"Color_White": %s\n", str, pInfo[playerid][pIP]);
+			format(str, sizeof(str), "%s"Main_Color"RegIP"Color_White": %s\n", str, pInfo[playerid][pRegIp]);
+		}
+
+		ShowDialog(ShowID, D_None, DIALOG_STYLE_MSGBOX, SubStr, str, Color_White"Закрыть", "");
+	}
 	return 1;
 }
 
@@ -27318,11 +27510,13 @@ public Drink(playerid, Float:Heal, const ItemsName[], DrunkGive)
 	return 1;
 }
 
-forward Eat(playerid, Float:Heal, const ItemsName[]);
-public Eat(playerid, Float:Heal, const ItemsName[])
+stock Eat(playerid, Float:Heal, const ItemsName[], bool:Anim = false)
 {
-	ApplyAnimation(playerid, "VENDING", "VEND_EAT1_P", 4.1, false, false, false, false, 0, true);
-	SetTimerEx("ClearAnim", 1400, false, "d", playerid);
+	if(Anim)
+	{
+		ApplyAnimation(playerid, "VENDING", "VEND_EAT1_P", 4.1, false, false, false, false, 0, true);
+		SetTimerEx("ClearAnim", 1400, false, "d", playerid);
+	}
 
 	AntiCheatGetHealth(playerid, pInfo[playerid][pHealth]);
 	pInfo[playerid][pHealth] += Heal;
@@ -28243,7 +28437,7 @@ stock PayDay()
 
 		if(pInfo[i][pCard])
 		{
-			new Float:BankMoneyPercent = pInfo[i][pBankMoney]*0.05;
+			new Float:BankMoneyPercent = pInfo[i][pBankMoney]*0.02;
 			pInfo[i][pBankMoney] += floatround(BankMoneyPercent);
 			SavePlayerInt(i, "BankMoney", pInfo[i][pBankMoney]);
 
@@ -28252,7 +28446,7 @@ stock PayDay()
 			SendClientMessage(i, -1, string);
 
 			string[0] = EOS;
-			format(string, sizeof(string), Color_White"Капитализация по счету (5%%): "Color_Green"%d$", floatround(BankMoneyPercent));
+			format(string, sizeof(string), Color_White"Капитализация по счету (2%%): "Color_Green"%d$", floatround(BankMoneyPercent));
 			SendClientMessage(i, -1, string);
 		}
 
@@ -28606,53 +28800,15 @@ public SecondTimer()
 					bInfo[i][bThiefStatus] = Thief_Status_Looting;
 					bInfo[i][bThiefTimer] = 180;
 
-					new Float:X, Float:Y, Float:Z;
 					switch (bInfo[i][bType])
 					{
-						case BusinessGeneralStore1:
-						{
-							X = -28.0344;
-							Y = -186.8355;
-							Z = 1003.5469;
-							bInfo[i][bThiefCount] = 50;
-						}
-						case BusinessGeneralStore2:
-						{
-							X = 3.2139;
-							Y = -30.7006;
-							Z = 1003.5494;
-							bInfo[i][bThiefCount] = 50;
-						}
-						case BusinessGeneralStore3:
-						{
-							X = -26.9847;
-							Y = -91.6205;
-							Z = 1003.5469;
-							bInfo[i][bThiefCount] = 50;
-						}
-						case BusinessBankFillial:
-						{
-							X = 821.0110;
-							Y = 9.1997;
-							Z = 1004.1956;
-							bInfo[i][bThiefCount] = 100;
-						}
+						case BusinessGeneralStore1, BusinessGeneralStore2, BusinessGeneralStore3: bInfo[i][bThiefCount] = 50;
+						case BusinessBankFillial: bInfo[i][bThiefCount] = 100;
 					}
 
 					SendRMessage(bInfo[i][bThiefPlayer], "Касса бизнеса взломана, у вас есть 3 минуты чтобы забрать деньги.");
 
-					if(bInfo[i][bThiefArea] && IsValidDynamicArea(bInfo[i][bThiefArea])) DestroyDynamicArea(bInfo[i][bThiefArea]);
-					bInfo[i][bThiefArea] = CreateDynamicSphere(X, Y, Z, 1.0, Business_World+bInfo[i][bID], BusinessType[bInfo[i][bType]][bInt]);
-					Streamer_SetIntData(STREAMER_TYPE_AREA, bInfo[i][bThiefArea],  E_STREAMER_ARRAY_TYPE, Array_Type_Business);
-					Streamer_SetIntData(STREAMER_TYPE_AREA, bInfo[i][bThiefArea],  E_STREAMER_INDX, i);
-
-					if(bInfo[i][bThiefText] && IsValidDynamic3DTextLabel(bInfo[i][bThiefText])) DestroyDynamic3DTextLabel(bInfo[i][bThiefText]);
-					new str[100];
-					format(str, sizeof(str), Main_Color"Мешки с деньгами\nОсталось"Color_White": %d", bInfo[i][bThiefCount]);
-					bInfo[i][bThiefText] = CreateDynamic3DTextLabel(str, -1, X, Y, Z, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, Business_World+bInfo[i][bID], BusinessType[bInfo[i][bType]][bInt]);
-
-					if(bInfo[i][bThiefPickup] && IsValidDynamicPickup(bInfo[i][bThiefPickup])) DestroyDynamicPickup(bInfo[i][bThiefPickup]);
-					bInfo[i][bThiefPickup] = CreateDynamicPickup(1550, 1, X, Y, Z, Business_World+bInfo[i][bID], BusinessType[bInfo[i][bType]][bInt]);
+					UpdateBusiness(i);
 				}
 				else if(bInfo[i][bThiefStatus] == Thief_Status_Looting)
 				{
@@ -29059,6 +29215,23 @@ public SecondTimer()
 				}
 			}*/
         }
+
+		if(GetPVarInt(i, "FueledTime"))
+		{
+			new FueledTime = GetPVarInt(i, "FueledTime");
+
+			new str[100];
+			format(str, sizeof(str), "~w~%d", FueledTime);
+			GameTextForPlayer(i, str, 1000, 3);
+
+			FueledTime--;
+			if(FueledTime <= 0)
+			{
+				TogglePlayerControllable(i, true);
+				DeletePVar(i, "FueledTime");
+			}
+			else SetPVarInt(i, "FueledTime", FueledTime);
+		}
 
 		if(GetPVarInt(i, "WarStartTimer"))
 		{
@@ -30774,31 +30947,7 @@ stock UsePlayerInventory(playerid, ItemsID, Count = 1)
 	{
 		case ItemWatch: pc_cmd_time(playerid);
 		case ItemRoller: pc_cmd_roll(playerid);
-		case ItemFrenchFries:
-		{
-			if(pInfo[playerid][pHealth] >= 100.0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы здоровы");
-			Eat(playerid, 5.0, Items[ItemsID][ItemName]);
-			RemovePlayerInventory(playerid, ItemsID);
-		}
-		case ItemNuggets, ItemWing:
-		{
-			if(pInfo[playerid][pHealth] >= 100.0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы здоровы");
-			Eat(playerid, 15.0, Items[ItemsID][ItemName]);
-			RemovePlayerInventory(playerid, ItemsID);
-		}
-		case ItemBurger:
-		{
-			if(pInfo[playerid][pHealth] >= 100.0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы здоровы");
-			Eat(playerid, 35.0, Items[ItemsID][ItemName]);
-			RemovePlayerInventory(playerid, ItemsID);
-		}
-		case ItemBigBurger:
-		{
-			if(pInfo[playerid][pHealth] >= 100.0) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы здоровы");
-			Eat(playerid, 50.0, Items[ItemsID][ItemName]);
-			RemovePlayerInventory(playerid, ItemsID);
-		}
-		case ItemDrugs: pc_cmd_usedrugs(playerid, "1");
+		case ItemDrugs: pc_cmd_usedrugs(playerid);
 		case ItemDress:
 		{
 			if(!pInfo[playerid][pStealSkin]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Ваша одежда не украдена");
@@ -31085,6 +31234,17 @@ stock GiveBusinessMoney(BusinessID, money)
 	return 1;
 }
 
+stock ShowKFCSellMenu(playerid)
+{
+	ShowDialog(playerid, D_KFC_Sell_Menu, DIALOG_STYLE_TABLIST_HEADERS, Main_Color"KFC", Main_Color"Название\t"Main_Color"Цена\n\
+	"Main_Color"Картофель фри\t"Color_Green"300$\n\
+	"Main_Color"Наггетсы\t"Color_Green"500$\n\
+	"Main_Color"Крылышки\t"Color_Green"500$\n\
+	"Main_Color"Бургер\t"Color_Green"800$\n\
+	"Main_Color"Большой бургер\t"Color_Green"900$", Color_White"Купить", Color_White"Закрыть");
+	return 1;
+}
+
 stock GiveCompanyMoney(playerid, BusinessTypes, money)
 {
 	new Float:dist, BusinessID = 0;
@@ -31165,6 +31325,7 @@ stock DestroyServerTextDraw()
 	TextDrawDestroy(GarageTD);
 	TextDrawDestroy(CarUpgradeTD);
 	for(new i = 0; i < sizeof(SkinSelectTD); i++) TextDrawDestroy(SkinSelectTD[i]);
+	TextDrawDestroy(AnimationTD);
 }
 
 stock CreateServerTextDraw()
@@ -31716,6 +31877,15 @@ stock CreateServerTextDraw()
 	TextDrawSetProportional(SkinSelectTD[2], 1);
 	TextDrawSetShadow(SkinSelectTD[2], 0);
 	TextDrawSetSelectable(SkinSelectTD[2], true);
+
+	//Анимации
+	AnimationTD = TextDrawCreate(396.00, 419.00, "~w~PRESS ~r~SPACE ~w~TO STOP THE ANIMATION");
+	TextDrawBackgroundColor(AnimationTD, 0x000000FF);
+	TextDrawFont(AnimationTD, 2);
+	TextDrawSetOutline(AnimationTD, 1);
+	TextDrawLetterSize(AnimationTD, 0.300000, 1.250000);
+	TextDrawColor(AnimationTD, 0xFFFF00FF);
+	TextDrawSetProportional(AnimationTD, 1);
 	return 1;
 }
 
@@ -34409,9 +34579,9 @@ stock CreatePickups()
 
 	Pickups[DrugsTransfer][PickJob] = Job_None;
 	Pickups[DrugsTransfer][PickFraction] = Fraction_None;
-	Pickups[DrugsTransfer][PickID] = CreateDynamicPickup(1575, 1, 230.2057,1109.5620,1080.9922, Other_World+DrugDenExit, 5);
-	Pickups[DrugsTransfer][PickAreaID] = CreateDynamicSphere(230.2057,1109.5620,1080.9922, 2.0, Other_World+DrugDenExit, 5);
-	Pickups[DrugsTransfer][PickTextID] = CreateDynamic3DTextLabel(Main_Color"Обмен на наркотики", -1, 230.2057,1109.5620,1080.9922+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, Other_World+DrugDenExit, 5);
+	Pickups[DrugsTransfer][PickID] = CreateDynamicPickup(1575, 1, 317.8828,1124.3843,1083.8828, Other_World+DrugDenExit, 5);
+	Pickups[DrugsTransfer][PickAreaID] = CreateDynamicSphere(317.8828,1124.3843,1083.8828, 2.0, Other_World+DrugDenExit, 5);
+	Pickups[DrugsTransfer][PickTextID] = CreateDynamic3DTextLabel(Main_Color"Обмен на наркотики", -1, 317.8828,1124.3843,1083.8828+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, Other_World+DrugDenExit, 5);
 	Pickups[DrugsTransfer][IsPickTP] = false;
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[DrugsTransfer][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[DrugsTransfer][PickAreaID],  E_STREAMER_INDX, DrugsTransfer);
@@ -34786,9 +34956,9 @@ stock CreatePickups()
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GunDeallerHelp][PickAreaID],  E_STREAMER_INDX, GunDeallerHelp);
 
 	Pickups[DrugDeallerHelp][PickJob] = Job_None;
-	Pickups[DrugDeallerHelp][PickID] = CreateDynamicPickup(1239, 1, 230.6724,1111.2435,1080.9922, Other_World+DrugDenExit, 5);
-	Pickups[DrugDeallerHelp][PickAreaID] = CreateDynamicSphere(230.6724,1111.2435,1080.9922, 1.0, Other_World+DrugDenExit, 5);
-	Pickups[DrugDeallerHelp][PickTextID] = CreateDynamic3DTextLabel(Main_Color"Инструкция", -1, 230.6724,1111.2435,1080.9922+0.5, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, Other_World+DrugDenExit, 5);
+	Pickups[DrugDeallerHelp][PickID] = CreateDynamicPickup(1239, 1, 322.1145,1124.3984,1083.8828, Other_World+DrugDenExit, 5);
+	Pickups[DrugDeallerHelp][PickAreaID] = CreateDynamicSphere(322.1145,1124.3984,1083.8828, 1.0, Other_World+DrugDenExit, 5);
+	Pickups[DrugDeallerHelp][PickTextID] = CreateDynamic3DTextLabel(Main_Color"Инструкция", -1, 322.1145,1124.3984,1083.8828+0.5, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, Other_World+DrugDenExit, 5);
 	Pickups[DrugDeallerHelp][IsPickTP] = false;
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[DrugDeallerHelp][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[DrugDeallerHelp][PickAreaID],  E_STREAMER_INDX, DrugDeallerHelp);
@@ -34826,10 +34996,10 @@ stock CreatePickups()
 
 	Pickups[GumSFExit][PickJob] = Job_None;
 	Pickups[GumSFExit][PickFraction] = Fraction_None;
-	Pickups[GumSFExit][PickID] = CreateDynamicPickup(19132, 1, 767.6771,-46.7463,1000.5859, 100, 6);
-	Pickups[GumSFExit][PickAreaID] = CreateDynamicSphere(767.6771,-46.7463,1000.5859, 2.0, 100, 6);
-	Pickups[GumSFExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 767.6771,-46.7463,1000.5859+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 100, 6);
-	Pickups[GumSFExit][PickAngle] = 5.1503;
+	Pickups[GumSFExit][PickID] = CreateDynamicPickup(19132, 1, 774.2121,-50.4081,1000.5859, 100, 6);
+	Pickups[GumSFExit][PickAreaID] = CreateDynamicSphere(774.2121,-50.4081,1000.5859, 2.0, 100, 6);
+	Pickups[GumSFExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 774.2121,-50.4081,1000.5859+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 100, 6);
+	Pickups[GumSFExit][PickAngle] = 2.3529;
 	Pickups[GumSFExit][IsPickTP] = true;
 	Pickups[GumSFExit][PickTpPickID] = GumSFEnter;
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GumSFExit][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
@@ -34848,9 +35018,9 @@ stock CreatePickups()
 
 	Pickups[GumSFPick][PickJob] = Job_None;
 	Pickups[GumSFPick][PickFraction] = Fraction_None;
-	Pickups[GumSFPick][PickID] = CreateDynamicPickup(1239, 1, 768.2805,-37.1735,1000.6865, 100, 6);
-	Pickups[GumSFPick][PickAreaID] = CreateDynamicSphere(768.2805,-37.1735,1000.6865, 2.0, 100, 6);
-	Pickups[GumSFPick][PickTextID] = CreateDynamic3DTextLabel(Color_White"Изучение стиля боя "Main_Color"\""Color_White"Кунг-фу"Main_Color"\"", -1, 768.2805,-37.1735,1000.6865+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 100, 6);
+	Pickups[GumSFPick][PickID] = CreateDynamicPickup(1239, 1, 767.6771,-46.7463,1000.5859, 100, 6);
+	Pickups[GumSFPick][PickAreaID] = CreateDynamicSphere(767.6771,-46.7463,1000.5859, 2.0, 100, 6);
+	Pickups[GumSFPick][PickTextID] = CreateDynamic3DTextLabel(Color_White"Изучение стиля боя "Main_Color"\""Color_White"Кунг-фу"Main_Color"\"", -1, 767.6771,-46.7463,1000.5859+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 100, 6);
 	Pickups[GumSFPick][IsPickTP] = false;
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GumSFPick][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[GumSFPick][PickAreaID],  E_STREAMER_INDX, GumSFPick);
@@ -34919,10 +35089,10 @@ stock CreatePickups()
 
 	Pickups[DrugDenExit][PickJob] = Job_None;
 	Pickups[DrugDenExit][PickFraction] = Fraction_None;
-	Pickups[DrugDenExit][PickID] = CreateDynamicPickup(19132, 1, 226.2973,1114.2736,1080.9929, Other_World+DrugDenExit, 5);
-	Pickups[DrugDenExit][PickAreaID] = CreateDynamicSphere(226.2973,1114.2736,1080.9929, 2.0, Other_World+DrugDenExit, 5);
-	Pickups[DrugDenExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 226.2973,1114.2736,1080.9929+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, Other_World+DrugDenExit, 5);
-	Pickups[DrugDenExit][PickAngle] = 266.2987;
+	Pickups[DrugDenExit][PickID] = CreateDynamicPickup(19132, 1, 318.6192,1114.4817,1083.8828, Other_World+DrugDenExit, 5);
+	Pickups[DrugDenExit][PickAreaID] = CreateDynamicSphere(318.6192,1114.4817,1083.8828, 2.0, Other_World+DrugDenExit, 5);
+	Pickups[DrugDenExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 318.6192,1114.4817,1083.8828+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, Other_World+DrugDenExit, 5);
+	Pickups[DrugDenExit][PickAngle] = 4.6171;
 	Pickups[DrugDenExit][IsPickTP] = true;
 	Pickups[DrugDenExit][PickTpPickID] = DrugDenEnter;
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[DrugDenExit][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
@@ -34938,6 +35108,37 @@ stock CreatePickups()
 	Pickups[DrugDenEnter][PickTpPickID] = DrugDenExit;
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[DrugDenEnter][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
 	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[DrugDenEnter][PickAreaID],  E_STREAMER_INDX, DrugDenEnter);
+
+	Pickups[TowerExit][PickJob] = Job_None;
+	Pickups[TowerExit][PickFraction] = Fraction_None;
+	Pickups[TowerExit][PickID] = CreateDynamicPickup(19198, 1, 1548.6854,-1363.8055,326.2183, 0, 0);
+	Pickups[TowerExit][PickAreaID] = CreateDynamicSphere(1548.6854,-1363.8055,326.2183, 2.0, 0, 0);
+	Pickups[TowerExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 1548.6854,-1363.8055,326.2183+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[TowerExit][PickAngle] = 174.2014;
+	Pickups[TowerExit][IsPickTP] = true;
+	Pickups[TowerExit][PickTpPickID] = TowerEnter;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[TowerExit][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[TowerExit][PickAreaID],  E_STREAMER_INDX, TowerExit);
+
+	Pickups[TowerEnter][PickJob] = Job_None;
+	Pickups[TowerEnter][PickFraction] = Fraction_None;
+	Pickups[TowerEnter][PickID] = CreateDynamicPickup(19198, 1, 1572.1282,-1338.0529,16.4844, 0, 0);
+	Pickups[TowerEnter][PickAreaID] = CreateDynamicSphere(1572.1282,-1338.0529,16.4844, 2.0, 0, 0);
+	Pickups[TowerEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 1572.1282,-1338.0529,16.4844+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[TowerEnter][PickAngle] = 333.3762;
+	Pickups[TowerEnter][IsPickTP] = true;
+	Pickups[TowerEnter][PickTpPickID] = TowerExit;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[TowerEnter][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[TowerEnter][PickAreaID],  E_STREAMER_INDX, TowerEnter);
+
+	Pickups[TowerParaschute][PickJob] = Job_None;
+	Pickups[TowerParaschute][PickFraction] = Fraction_None;
+	Pickups[TowerParaschute][PickID] = CreateDynamicPickup(371, 1, 1544.1777,-1353.0400,329.4748, 0, 0);
+	Pickups[TowerParaschute][PickAreaID] = CreateDynamicSphere(1544.1777,-1353.0400,329.4748, 2.0, 0, 0);
+	Pickups[TowerParaschute][PickAngle] = 333.3762;
+	Pickups[TowerParaschute][IsPickTP] = false;
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[TowerParaschute][PickAreaID],  E_STREAMER_ARRAY_TYPE, Array_Type_Pickups);
+	Streamer_SetIntData(STREAMER_TYPE_AREA, Pickups[TowerParaschute][PickAreaID],  E_STREAMER_INDX, TowerParaschute);
 	return 1;
 }
 
