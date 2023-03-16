@@ -2411,6 +2411,7 @@ enum PlayerInfo
 	pMail[321],
 	Float:pHealth,
 	Float:pArmor,
+	Float:pHungry,
 	pMoney,
 	pBankMoney,
 	pWanted,
@@ -2439,6 +2440,7 @@ enum PlayerInfo
 	pRank,
 	pAFK,
 	Text3D:pAFKText,
+	Text3D:pMuteText,
 	bool:pTogglePM,
 	bool:pToggleOOC,
 	bool:pToggleAD,
@@ -2458,6 +2460,7 @@ enum PlayerInfo
 	pSkill[Max_Job],
 	pPlayedTime,
 	pHouseID,
+	pHouseMapIcon,
 	pVehicleID,
 	pBusinessID,
 	pSpawnChange,
@@ -2539,6 +2542,43 @@ stock ClearAdminInfo(playerid)
 	return 1;
 }
 
+stock bool:IsMuted(playerid, bool:WithText = true)
+{
+	if(pInfo[playerid][pMute])
+	{
+		if(WithText)
+		{
+			new str[145];
+			new time = pInfo[playerid][pMute]/60;
+
+			SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете писать в чат так как вам дали мут.");
+			if(time >= 5) format(str, sizeof(str), Color_Grey"До конца мута осталось "Main_Color"%d "Color_Grey"минут", time);
+			else if(time < 5 && time > 1) format(str, sizeof(str), Color_Grey"До конца мута осталось "Main_Color"%d "Color_Grey"минуты", time);
+			else if(time == 1) format(str, sizeof(str), Color_Grey"До конца мута осталось "Main_Color"%d "Color_Grey"минута", time);
+			else format(str, sizeof(str), Color_Grey"До конца мута осталось "Main_Color"меньше "Color_Grey"минуты");
+			SendClientMessage(playerid, -1, str);
+
+			SetPlayerChatBubble(playerid, "Что-то промычал", BitColor_Grey, MESSAGE_DIST, 5000);
+		}
+		return true;
+	}
+	else return false;
+}
+
+stock UpdateMuteText(playerid)
+{
+	if(IsMuted(playerid, false) && (!pInfo[playerid][pMuteText] || !IsValidDynamic3DTextLabel(pInfo[playerid][pMuteText])))
+	{
+		pInfo[playerid][pMuteText] = CreateDynamic3DTextLabel(Color_Red"Мут", -1, 0.0, 0.0, 0.3, 10.0, playerid);
+	}
+	else if(!IsMuted(playerid, false))
+	{
+		if(pInfo[playerid][pMuteText] && IsValidDynamic3DTextLabel(pInfo[playerid][pMuteText])) DestroyDynamic3DTextLabel(pInfo[playerid][pMuteText]);
+		pInfo[playerid][pMuteText] = Text3D:0;
+	}
+	return 1;
+}
+
 stock ClearAFKText(playerid)
 {
 	if(pInfo[playerid][pAFKText] && IsValidDynamic3DTextLabel(pInfo[playerid][pAFKText]))
@@ -2561,6 +2601,7 @@ stock ClearAccount(playerid)
 	pInfo[playerid][pExp] = 0;
 	pInfo[playerid][pHealth] = 100.0;
 	pInfo[playerid][pArmor] = 0.0;
+	pInfo[playerid][pHungry] = 100.0;
 	pInfo[playerid][pWanted] = 0;
 	pInfo[playerid][pPassword][0] = EOS;
 	pInfo[playerid][pPinCode] = 0;
@@ -2576,6 +2617,7 @@ stock ClearAccount(playerid)
 	pInfo[playerid][pAdminPass][0] = EOS;
 	pInfo[playerid][pAdmin] = 0;
 	pInfo[playerid][pMute] = 0;
+	UpdateMuteText(playerid);
 	pInfo[playerid][pDemorgan] = 0;
 	pInfo[playerid][pJail] = 0;
 	pInfo[playerid][pJailNoFree] = false;
@@ -2615,6 +2657,7 @@ stock ClearAccount(playerid)
 	}
 	pInfo[playerid][pPlayedTime] = 0;
 	pInfo[playerid][pHouseID] = 0;
+	UpdateMapIconHouse(playerid);
 	pInfo[playerid][pBusinessID] = 0;
 	pInfo[playerid][pSpawnChange] = SpawnChange_Standart;
 	for(new i = 0; i < sizeof(pInventory[]); i++)
@@ -2744,6 +2787,8 @@ stock SaveAccount(playerid)
 	AntiCheatGetHealth(playerid, pInfo[playerid][pHealth]);
 	SavePlayerFloat(playerid, "Health", pInfo[playerid][pHealth]);
 
+	SavePlayerFloat(playerid, "Hungry", pInfo[playerid][pHungry]);
+
 	AntiCheatGetArmour(playerid, pInfo[playerid][pArmor]);
 	SavePlayerFloat(playerid, "Armor", pInfo[playerid][pArmor]);
 
@@ -2814,6 +2859,7 @@ stock ClearTent(TentsID)
 
 main()
 {
+	DisableCrashDetectLongCall();
 	print("\n----------------------------------");
 	print("------------"Short_Project_Name" v"Project_Version"-------------\n");
 	print("----------------------------------\n");
@@ -2821,7 +2867,6 @@ main()
 
 public OnGameModeInit()
 {
-	DisableCrashDetectLongCall();
 	SetGameModeText(Short_Project_Name);
 	AddPlayerClass(0, 1958.3783, 1343.1572, 15.3746, 269.1425, 0, 0, 0, 0, 0, 0);
 
@@ -2996,6 +3041,7 @@ public OnGameModeInit()
 
 	mysql_tquery(DB, "SELECT * FROM `account` WHERE `Admin` > 0 ORDER BY `Admin` DESC", "FillAdminBoard");
 	mysql_tquery(DB, "SELECT * FROM `account` ORDER BY `Money` DESC, `Level` DESC LIMIT 5", "FillPlayerBoard");
+	mysql_tquery(DB, "SELECT * FROM `account` WHERE `MaxDonation` > 0 ORDER BY `MaxDonation` DESC LIMIT 5", "FillDonateBoard");
 
 	CreateBusStop();
 	CreateServerTextDraw();
@@ -3877,7 +3923,7 @@ public OnPlayerDeath(playerid, killerid, reason)
 
 	TextDrawShowForPlayer(playerid, Background);
 	TogglePlayerSpectating(playerid, true);
-	SetTimerEx("SpawnTime", 300, false, "d", playerid);
+	SetTimerEx("SpawnTime", 300+(GetPlayerPing(playerid)*20), false, "d", playerid);
 	return 1;
 }
 
@@ -4085,26 +4131,6 @@ public OnPlayerEditDynamicObject(playerid, STREAMER_TAG_OBJECT:objectid, respons
 public OnVehicleDeath(vehicleid, killerid)
 {
 	return 1;
-}
-
-stock bool:IsMuted(playerid)
-{
-	if(pInfo[playerid][pMute])
-	{
-		new str[145];
-		new time = pInfo[playerid][pMute]/60;
-
-		SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете писать в чат так как вам дали мут.");
-		if(time >= 5) format(str, sizeof(str), Color_Grey"До конца мута осталось "Main_Color"%d "Color_Grey"минут", time);
-		else if(time < 5 && time > 1) format(str, sizeof(str), Color_Grey"До конца мута осталось "Main_Color"%d "Color_Grey"минуты", time);
-		else if(time == 1) format(str, sizeof(str), Color_Grey"До конца мута осталось "Main_Color"%d "Color_Grey"минута", time);
-		else format(str, sizeof(str), Color_Grey"До конца мута осталось "Main_Color"меньше "Color_Grey"минуты");
-		SendClientMessage(playerid, -1, str);
-
-		SetPlayerChatBubble(playerid, "Что-то промычал", BitColor_Grey, MESSAGE_DIST, 5000);
-		return true;
-	}
-	else return false;
 }
 
 public OnPlayerText(playerid, text[])
@@ -7612,23 +7638,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 						else if(bInfo[indx][bCarArea] == areaid[0])
 						{
 							if(bInfo[indx][bType] == BusinessKFC) ShowKFCSellMenu(playerid);
-							else if(bInfo[indx][bType] == BusinessGeneralStore1 || bInfo[indx][bType] == BusinessGeneralStore2 || bInfo[indx][bType] == BusinessGeneralStore3)
-							{
-								ShowDialog(playerid, D_GeneralStore_Sell_Menu, DIALOG_STYLE_TABLIST_HEADERS, Main_Color"General Store", Main_Color"Название\t"Main_Color"Цена\n\
-								"Main_Color"Часы\t"Color_Green"1500$\n\
-								"Main_Color"Фотоаппарат\t"Color_Green"1200$\n\
-								"Main_Color"Цветы\t"Color_Green"1000$\n\
-								"Main_Color"Клюшка для гольфа\t"Color_Green"1000$\n\
-								"Main_Color"Бейсбольная бита\t"Color_Green"1500$\n\
-								"Main_Color"Лопата\t"Color_Green"1000$\n\
-								"Main_Color"Кий\t"Color_Green"1000$\n\
-								"Main_Color"Трость\t"Color_Green"800$\n\
-								"Main_Color"Ролики\t"Color_Green"3000$\n\
-								"Main_Color"Бензопила\t"Color_Green"3000$\n\
-								"Main_Color"Катана\t"Color_Green"3000$\n\
-								"Main_Color"Закрутка\t"Color_Green"800$\n\
-								"Main_Color"Пустая бочка\t"Color_Green"1000$", Color_White"Купить", Color_White"Закрыть");
-							}
+							else if(bInfo[indx][bType] == BusinessGeneralStore1 || bInfo[indx][bType] == BusinessGeneralStore2 || bInfo[indx][bType] == BusinessGeneralStore3) ShowGeneralStoreSellMenu(playerid);
 							else if(bInfo[indx][bType] == BusinessBankFillial) ShowPlayerBankMenu(playerid);
 							else if(bInfo[indx][bType] == BusinessTuning)
 							{
@@ -8496,33 +8506,9 @@ public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
 					}
 					else if((areaid == bInfo[indx][bSellArea][0] || areaid == bInfo[indx][bSellArea][1] || areaid == bInfo[indx][bSellArea][2] || areaid == bInfo[indx][bSellArea][3]) && GetPVarInt(playerid, "InBusiness") == bInfo[indx][bID])
 					{
-						if(bInfo[indx][bType] == BusinessGeneralStore1 || bInfo[indx][bType] == BusinessGeneralStore2 || bInfo[indx][bType] == BusinessGeneralStore3)
-						{
-							ShowDialog(playerid, D_GeneralStore_Sell_Menu, DIALOG_STYLE_TABLIST_HEADERS, Main_Color"General Store", Main_Color"Название\t"Main_Color"Цена\n\
-							"Main_Color"Часы\t"Color_Green"1500$\n\
-							"Main_Color"Фотоаппарат\t"Color_Green"1200$\n\
-							"Main_Color"Цветы\t"Color_Green"1000$\n\
-							"Main_Color"Клюшка для гольфа\t"Color_Green"1000$\n\
-							"Main_Color"Бейсбольная бита\t"Color_Green"1500$\n\
-							"Main_Color"Лопата\t"Color_Green"1000$\n\
-							"Main_Color"Кий\t"Color_Green"1000$\n\
-							"Main_Color"Трость\t"Color_Green"800$\n\
-							"Main_Color"Ролики\t"Color_Green"3000$\n\
-							"Main_Color"Бензопила\t"Color_Green"3000$\n\
-							"Main_Color"Катана\t"Color_Green"3000$\n\
-							"Main_Color"Закрутка\t"Color_Green"800$\n\
-							"Main_Color"Пустая бочка\t"Color_Green"1000$", Color_White"Купить", Color_White"Закрыть");
-						}
+						if(bInfo[indx][bType] == BusinessGeneralStore1 || bInfo[indx][bType] == BusinessGeneralStore2 || bInfo[indx][bType] == BusinessGeneralStore3) ShowGeneralStoreSellMenu(playerid);
 						else if(bInfo[indx][bType] == BusinessKFC) ShowKFCSellMenu(playerid);
-						else if(bInfo[indx][bType] == BusinessAmmo)
-						{
-							ShowDialog(playerid, D_Ammo_Sell_Menu, DIALOG_STYLE_TABLIST_HEADERS, Main_Color"Амуниция", Main_Color"Название\t"Main_Color"Цена\n\
-							"Main_Color"Desert Eagle(50пт.)\t"Color_Green"2300$\n\
-							"Main_Color"MP5(150пт.)\t"Color_Green"3500$\n\
-							"Main_Color"Shotgun(100пт.)\t"Color_Green"3100$\n\
-							"Main_Color"AK-47(100пт.)\t"Color_Green"5100$\n\
-							"Main_Color"M4(100пт.)\t"Color_Green"5600$", Color_White"Купить", Color_White"Закрыть");
-						}
+						else if(bInfo[indx][bType] == BusinessAmmo) ShowAmmoSellMenu(playerid);
 						else if(bInfo[indx][bType] == BusinessCasinoBeginner || bInfo[indx][bType] == BusinessCasinoCaligula || bInfo[indx][bType] == BusinessCasinoFourDragons) ShowDialog(playerid, D_Casino_Menu, DIALOG_STYLE_LIST, Main_Color"CASINO", Color_White"Купить фишки\nПродать фишки", Color_White"Далее", Color_White"Закрыть");
 						else if(bInfo[indx][bType] == BusinessBankFillial) ShowPlayerBankMenu(playerid);
 						else if(bInfo[indx][bType] == BusinessDressShop)
@@ -12210,6 +12196,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 			ClearHouseVehicle(pInfo[playerid][pID], playerid);
 			pInfo[playerid][pHouseID] = 0;
+			UpdateMapIconHouse(playerid);
 			if(pInfo[playerid][pSpawnChange] == SpawnChange_House)
 			{
 				pInfo[playerid][pSpawnChange] = SpawnChange_Standart;
@@ -12322,10 +12309,12 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			SendClientMessage(playerid, -1, str);
 			SendClientMessage(playerid, -1, Color_White"Не забудьте оплатить его в ближайшем отделении банка");
 			SendClientMessage(playerid, -1, Main_Color"В случае если налог на доме закончится, система автоматически оплатит налог на 1 день при наличии денег на банковском счету");
+			SendClientMessage(playerid, -1, Main_Color"Для смены места респавна, введите команду - /spawnchange");
 
 			pInfo[playerid][pSpawnChange] = SpawnChange_House;
 			SavePlayerInt(playerid, "SpawnChange", pInfo[playerid][pSpawnChange]);
 
+			UpdateMapIconHouse(playerid);
 			AddHouseVehicle(playerid, 492, 1);
 			return 1;
 		}
@@ -14093,8 +14082,16 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			{
 				case 0:
 				{
-					if(pInfo[playerid][pMoney] < 2300) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
-					if(!AddPlayerInventory(playerid, ItemDesertEagle)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					if(pInfo[playerid][pMoney] < 2300)
+					{
+						ShowAmmoSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+					}
+					if(!AddPlayerInventory(playerid, ItemDesertEagle))
+					{
+						ShowAmmoSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					}
 
 					GivePlayerMoneyEx(playerid, -2300);
 
@@ -14108,8 +14105,16 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				case 1:
 				{
-					if(pInfo[playerid][pMoney] < 3500) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
-					if(!AddPlayerInventory(playerid, ItemMP5)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					if(pInfo[playerid][pMoney] < 3500)
+					{
+						ShowAmmoSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+					}
+					if(!AddPlayerInventory(playerid, ItemMP5))
+					{
+						ShowAmmoSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					}
 
 					GivePlayerMoneyEx(playerid, -3500);
 
@@ -14123,8 +14128,16 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				case 2:
 				{
-					if(pInfo[playerid][pMoney] < 3100) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
-					if(!AddPlayerInventory(playerid, ItemShotgun)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					if(pInfo[playerid][pMoney] < 3100)
+					{
+						ShowAmmoSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+					}
+					if(!AddPlayerInventory(playerid, ItemShotgun))
+					{
+						ShowAmmoSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					}
 
 					GivePlayerMoneyEx(playerid, -3100);
 
@@ -14138,8 +14151,16 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				case 3:
 				{
-					if(pInfo[playerid][pMoney] < 5100) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
-					if(!AddPlayerInventory(playerid, ItemAK47)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					if(pInfo[playerid][pMoney] < 5100)
+					{
+						ShowAmmoSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+					}
+					if(!AddPlayerInventory(playerid, ItemAK47))
+					{
+						ShowAmmoSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					}
 
 					GivePlayerMoneyEx(playerid, -5100);
 
@@ -14153,8 +14174,16 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				case 4:
 				{
-					if(pInfo[playerid][pMoney] < 5600) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
-					if(!AddPlayerInventory(playerid, ItemM4)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					if(pInfo[playerid][pMoney] < 5600)
+					{
+						ShowAmmoSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+					}
+					if(!AddPlayerInventory(playerid, ItemM4))
+					{
+						ShowAmmoSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					}
 
 					GivePlayerMoneyEx(playerid, -5600);
 
@@ -14167,6 +14196,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					GiveBusinessMoney(BusinessID, 5600);
 				}
 			}
+			ShowAmmoSellMenu(playerid);
 			return 1;
 		}
 		case D_KFC_Sell_Menu:
@@ -14189,7 +14219,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 						return ShowKFCSellMenu(playerid);
 					}
 
-					Eat(playerid, 5.0, "Картофель фри");
+					Eat(playerid, 5.0, "Картофель фри", 10.0);
 
 					GivePlayerMoneyEx(playerid, -300);
 					GiveCompanyMoney(playerid, BusinessKFCCompany, 300);
@@ -14205,7 +14235,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 						return ShowKFCSellMenu(playerid);
 					}
 					
-					Eat(playerid, 15.0, "Наггетсы");
+					Eat(playerid, 15.0, "Наггетсы", 15.0);
 
 					GivePlayerMoneyEx(playerid, -500);
 					GiveCompanyMoney(playerid, BusinessKFCCompany, 500);
@@ -14221,7 +14251,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 						return ShowKFCSellMenu(playerid);
 					}
 					
-					Eat(playerid, 15.0, "Крылышки");
+					Eat(playerid, 15.0, "Крылышки", 15.0);
 
 					GivePlayerMoneyEx(playerid, -500);
 					GiveCompanyMoney(playerid, BusinessKFCCompany, 500);
@@ -14237,7 +14267,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 						return ShowKFCSellMenu(playerid);
 					}
 					
-					Eat(playerid, 35.0, "Бургер");
+					Eat(playerid, 35.0, "Бургер", 35.0);
 
 					GivePlayerMoneyEx(playerid, -800);
 					GiveCompanyMoney(playerid, BusinessKFCCompany, 800);
@@ -14253,7 +14283,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 						return ShowKFCSellMenu(playerid);
 					}
 					
-					Eat(playerid, 50.0, "Большой бургер");
+					Eat(playerid, 50.0, "Большой бургер", 50.0);
 
 					GivePlayerMoneyEx(playerid, -900);
 					GiveCompanyMoney(playerid, BusinessKFCCompany, 900);
@@ -14262,6 +14292,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					ActivateBusinessActors(playerid, BusinessID);
 				}
 			}
+			ShowKFCSellMenu(playerid);
 			return 1;
 		}
 		case D_GeneralStore_Sell_Menu:
@@ -14271,9 +14302,21 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			{
 				case 0:
 				{
-					if(pInfo[playerid][pMoney] < 1500) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
-					if(GetItemCountInInventory(playerid, ItemWatch)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас уже есть часы");
-					if(!AddPlayerInventory(playerid, ItemWatch)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					if(pInfo[playerid][pMoney] < 1500)
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+					}
+					if(GetItemCountInInventory(playerid, ItemWatch))
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас уже есть часы");
+					}
+					if(!AddPlayerInventory(playerid, ItemWatch))
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					}
 
 					GivePlayerMoneyEx(playerid, -1500);
 					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 1500);
@@ -14287,8 +14330,16 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				case 1:
 				{
-					if(pInfo[playerid][pMoney] < 1200) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
-					if(!AddPlayerInventory(playerid, ItemPhotos)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					if(pInfo[playerid][pMoney] < 1200)
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+					}
+					if(!AddPlayerInventory(playerid, ItemPhotos))
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					}
 
 					GivePlayerMoneyEx(playerid, -1200);
 					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 1200);
@@ -14302,8 +14353,16 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				case 2:
 				{
-					if(pInfo[playerid][pMoney] < 1000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
-					if(!AddPlayerInventory(playerid, ItemFlowers)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					if(pInfo[playerid][pMoney] < 1000)
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+					}
+					if(!AddPlayerInventory(playerid, ItemFlowers))
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					}
 
 					GivePlayerMoneyEx(playerid, -1000);
 					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 1000);
@@ -14317,8 +14376,16 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				case 3:
 				{
-					if(pInfo[playerid][pMoney] < 1000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
-					if(!AddPlayerInventory(playerid, ItemsGolfClub)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					if(pInfo[playerid][pMoney] < 1000)
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+					}
+					if(!AddPlayerInventory(playerid, ItemsGolfClub))
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					}
 
 					GivePlayerMoneyEx(playerid, -1000);
 					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 1000);
@@ -14332,8 +14399,16 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				case 4:
 				{
-					if(pInfo[playerid][pMoney] < 1500) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
-					if(!AddPlayerInventory(playerid, ItemBaseballBat)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					if(pInfo[playerid][pMoney] < 1500)
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+					}
+					if(!AddPlayerInventory(playerid, ItemBaseballBat))
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					}
 
 					GivePlayerMoneyEx(playerid, -1500);
 					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 1500);
@@ -14347,8 +14422,16 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				case 5:
 				{
-					if(pInfo[playerid][pMoney] < 1000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
-					if(!AddPlayerInventory(playerid, ItemShovel)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					if(pInfo[playerid][pMoney] < 1000)
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+					}
+					if(!AddPlayerInventory(playerid, ItemShovel))
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					}
 
 					GivePlayerMoneyEx(playerid, -1000);
 					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 1000);
@@ -14362,8 +14445,16 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				case 6:
 				{
-					if(pInfo[playerid][pMoney] < 1000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
-					if(!AddPlayerInventory(playerid, ItemCue)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					if(pInfo[playerid][pMoney] < 1000)
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+					}
+					if(!AddPlayerInventory(playerid, ItemCue))
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					}
 
 					GivePlayerMoneyEx(playerid, -1000);
 					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 1000);
@@ -14377,8 +14468,16 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				case 7:
 				{
-					if(pInfo[playerid][pMoney] < 800) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
-					if(!AddPlayerInventory(playerid, ItemWalkingStick)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					if(pInfo[playerid][pMoney] < 800)
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+					}
+					if(!AddPlayerInventory(playerid, ItemWalkingStick))
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					}
 
 					GivePlayerMoneyEx(playerid, -800);
 					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 800);
@@ -14392,8 +14491,16 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				case 8:
 				{
-					if(pInfo[playerid][pMoney] < 3000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
-					if(!AddPlayerInventory(playerid, ItemRoller)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					if(pInfo[playerid][pMoney] < 3000)
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+					}
+					if(!AddPlayerInventory(playerid, ItemRoller))
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					}
 
 					GivePlayerMoneyEx(playerid, -3000);
 					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 3000);
@@ -14407,8 +14514,16 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				case 9:
 				{
-					if(pInfo[playerid][pMoney] < 3000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
-					if(!AddPlayerInventory(playerid, ItemChainsaw)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					if(pInfo[playerid][pMoney] < 3000)
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+					}
+					if(!AddPlayerInventory(playerid, ItemChainsaw))
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					}
 
 					GivePlayerMoneyEx(playerid, -3000);
 					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 3000);
@@ -14422,8 +14537,16 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				case 10:
 				{
-					if(pInfo[playerid][pMoney] < 3000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
-					if(!AddPlayerInventory(playerid, ItemKatana)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					if(pInfo[playerid][pMoney] < 3000)
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+					}
+					if(!AddPlayerInventory(playerid, ItemKatana))
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					}
 
 					GivePlayerMoneyEx(playerid, -3000);
 					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 3000);
@@ -14437,8 +14560,16 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				case 11:
 				{
-					if(pInfo[playerid][pMoney] < 800) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
-					if(!AddPlayerInventory(playerid, ItemParchament)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					if(pInfo[playerid][pMoney] < 800)
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+					}
+					if(!AddPlayerInventory(playerid, ItemParchament))
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					}
 
 					GivePlayerMoneyEx(playerid, -800);
 					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 800);
@@ -14452,8 +14583,16 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 				}
 				case 12:
 				{
-					if(pInfo[playerid][pMoney] < 1000) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
-					if(!AddPlayerInventory(playerid, ItemEmptyBarrel)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					if(pInfo[playerid][pMoney] < 1000)
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно средств для покупки этого товара");
+					}
+					if(!AddPlayerInventory(playerid, ItemEmptyBarrel))
+					{
+						ShowGeneralStoreSellMenu(playerid);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно места в инвентаре");
+					}
 
 					GivePlayerMoneyEx(playerid, -1000);
 					GiveCompanyMoney(playerid, BusinessGeneralStoreCompany, 1000);
@@ -14466,6 +14605,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					ActivateBusinessActors(playerid, BusinessID);
 				}
 			}
+			ShowGeneralStoreSellMenu(playerid);
 			return 1;
 		}
 		case D_AHelp:
@@ -16568,7 +16708,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 
 				if(!RemovePlayerInventory(playerid, ItemMaterial, count)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно материалов");
 
-				if(!AddPlayerInventory(id, GunInfo[indx][ItemID], strval(inputtext)))
+				/*if(!AddPlayerInventory(id, GunInfo[indx][ItemID], strval(inputtext)))
 				{
 					AddPlayerInventory(playerid, ItemMaterial, count);
 					if(id != playerid)
@@ -16578,7 +16718,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					}
 					else SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно места в инвентаре чтобы сделать оружие");
 					return 1;
-				}
+				}*/
 
 				if(id != playerid)
 				{
@@ -16588,8 +16728,14 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					format(str, sizeof(str), "собрал(а) %s и передал(а) %s", Items[GunInfo[indx][ItemID]][ItemName], pInfo[id][pName]);
 					ProxDetector(playerid, MESSAGE_DIST, BitColor_Me, str);
 
-					format(str, sizeof(str), Color_White"%s помещен в ваш инвентарь", Items[GunInfo[indx][ItemID]][ItemName]);
-					SendClientMessage(id, -1, str);
+					//format(str, sizeof(str), Color_White"%s помещен в ваш инвентарь", Items[GunInfo[indx][ItemID]][ItemName]);
+					//SendClientMessage(id, -1, str);
+
+					if(GivePlayerGun(id, Items[GunInfo[indx][ItemID]][WeaponsID], Items[GunInfo[indx][ItemID]][AmmoCount]) == -1)
+					{
+						AddPlayerInventory(playerid, ItemMaterial, count);
+						return SendClientMessage(id, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете сейчас достать оружие");
+					}
 				}
 				else
 				{
@@ -16597,8 +16743,14 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 					format(str, sizeof(str), "собрал(а) %s", Items[GunInfo[indx][ItemID]][ItemName]);
 					ProxDetector(playerid, MESSAGE_DIST, BitColor_Me, str);
 
-					format(str, sizeof(str), Color_White"%s помещен в ваш инвентарь", Items[GunInfo[indx][ItemID]][ItemName]);
-					SendClientMessage(playerid, -1, str);
+					if(GivePlayerGun(playerid, Items[GunInfo[indx][ItemID]][WeaponsID], Items[GunInfo[indx][ItemID]][AmmoCount]) == -1)
+					{
+						AddPlayerInventory(playerid, ItemMaterial, count);
+						return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете сейчас достать оружие");
+					}
+
+					//format(str, sizeof(str), Color_White"%s помещен в ваш инвентарь", Items[GunInfo[indx][ItemID]][ItemName]);
+					//SendClientMessage(playerid, -1, str);
 				}
 			}
 			return 1;
@@ -18317,6 +18469,7 @@ public OnPlayerClickMap(playerid, Float:fX, Float:fY, Float:fZ)
 /////////////////////////////CMD///////////////////////////////////////////////
 CMD:main(playerid)
 {
+	ProxDetector(playerid, MESSAGE_DIST, BitColor_Me, "открыл(а) информацию о своём персонаже");
 	ShowPlayerMainMenu(playerid);
 	return 1;
 }
@@ -21539,6 +21692,9 @@ stock PlayerAccept(playerid)
 
 				pInfo[ProposePlayer][pHouseID] = 0;
 
+				UpdateMapIconHouse(playerid);
+				UpdateMapIconHouse(ProposePlayer);
+
 				if(pInfo[ProposePlayer][pSpawnChange] == SpawnChange_House)
 				{
 					pInfo[ProposePlayer][pSpawnChange] = SpawnChange_Standart;
@@ -21593,6 +21749,9 @@ stock PlayerAccept(playerid)
 				pInfo[ProposePlayer][pHouseID] = pInfo[playerid][pHouseID];
 				pInfo[playerid][pHouseID] = TransferHouse;
 
+				UpdateMapIconHouse(playerid);
+				UpdateMapIconHouse(ProposePlayer);
+
 				SaveHouseInt(pInfo[playerid][pHouseID], "OwnerID", hInfo[pInfo[playerid][pHouseID]][hOwnerID]);
 				SaveHouseInt(pInfo[ProposePlayer][pHouseID], "OwnerID", hInfo[pInfo[ProposePlayer][pHouseID]][hOwnerID]);
 
@@ -21629,12 +21788,21 @@ stock PlayerAccept(playerid)
 					return SendClientMessage(ProposePlayer, -1, Color_Red"[Ошибка] "Color_Grey"Недостаточно материалов");
 				}
 
-				if(!AddPlayerInventory(playerid, GunInfo[ItemsID][ItemID], count))
+				/*if(!AddPlayerInventory(playerid, GunInfo[ItemsID][ItemID], count))
 				{
 					AddPlayerInventory(ProposePlayer, ItemMaterial, counts);
 
 					SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"У вас недостаточно места в инвентаре чтобы купить оружие");
 					SendClientMessage(ProposePlayer, -1, Color_Red"[Ошибка] "Color_Grey"У игрока, которому вы хотите продать оружие недостаточно места в инвентаре");
+					return 1;
+				}*/
+
+				if(GivePlayerGun(playerid, Items[ItemsID][WeaponsID], Items[ItemsID][AmmoCount]) == -1)
+				{
+					AddPlayerInventory(ProposePlayer, ItemMaterial, count);
+
+					SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете сейчас достать оружие");
+					SendClientMessage(ProposePlayer, -1, Color_Red"[Ошибка] "Color_Grey"Этот игрок не может сейчасть взять оружие");
 					return 1;
 				}
 
@@ -22895,8 +23063,23 @@ CMD:ad(playerid, params[])
 
 CMD:id(playerid, params[])
 {
-	new id;
-	if(sscanf(params, "d", id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/id [ID]");
+	new Name[MAX_PLAYER_NAME+1];
+	if(sscanf(params, "s[*]", MAX_PLAYER_NAME+1, Name)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/id [ID/Ник игрока]");
+	new id = -1;
+	if(IsNum(Name)) id = strval(Name);
+	else
+	{
+		foreach(new i: Player)
+		{
+			if(!strcmp(Name, pInfo[i][pName]))
+			{
+				id = i;
+				break;
+			}
+		}
+		if(id == -1) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с таким ником не найден");
+	}
+
 	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
 	if(!IsPlayerConnected(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не подключен");
 	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
@@ -23215,7 +23398,7 @@ CMD:leaders(playerid)
 	{
 		foreach(new j:FractionMembers[i])
 		{
-			if(pInfo[j][pAuth] && pInfo[j][pRank] >= FractionMaxRank) format(str, sizeof(str), "%s"Color_White"%s[%d] ["Main_Color"%s"Color_White"]\n", str, pInfo[j][pName], i, FractionName[pInfo[j][pMembers]]);
+			if(pInfo[j][pAuth] && pInfo[j][pRank] >= FractionMaxRank) format(str, sizeof(str), "%s"Color_White"%s[%d] ["Main_Color"%s"Color_White"]\n", str, pInfo[j][pName], j, FractionName[pInfo[j][pMembers]]);
 		}
 	}
 	format(str, sizeof(str), "%s==========================================================", str);
@@ -23230,7 +23413,7 @@ CMD:admins(playerid)
 	format(str, sizeof(str), Color_White"==========================================================\n");
 	foreach(new i: Admins)
 	{
-		if(pInfo[i][pAuth] && pInfo[i][pAdmin]) format(str, sizeof(str), "%s"Color_White"%s ["Main_Color"%s"Color_White"]\n", str, pInfo[i][pName], AdminNames[pInfo[i][pAdmin]]);
+		if(pInfo[i][pAuth] && pInfo[i][pAdmin]) format(str, sizeof(str), "%s"Color_White"%s[%d] ["Main_Color"%s"Color_White"]\n", str, pInfo[i][pName], i, AdminNames[pInfo[i][pAdmin]]);
 	}
 	format(str, sizeof(str), "%s==========================================================", str);
 
@@ -23399,6 +23582,8 @@ CMD:mute(playerid, params[])
 
 	pInfo[id][pMute] = time*60;
 	SavePlayerInt(id, "Mute", pInfo[id][pMute]);
+	UpdateMuteText(id);
+
 	new str[400];
 	format(str, sizeof(str), Color_Red"%s %s выдал мут игроку %s на %d минут, по причине: %s", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], pInfo[id][pName], time, message);
 	SendAllMessage(str);
@@ -23428,6 +23613,8 @@ CMD:unmute(playerid, params[])
 
 	pInfo[id][pMute] = 0;
 	SavePlayerInt(id, "Mute", pInfo[id][pMute]);
+	UpdateMuteText(id);
+
 	new str[400];
 	format(str, sizeof(str), Color_Red"%s %s снял мут с игрока %s, по причине: %s", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], pInfo[id][pName], message);
 	SendAllMessage(str);
@@ -27510,13 +27697,17 @@ public Drink(playerid, Float:Heal, const ItemsName[], DrunkGive)
 	return 1;
 }
 
-stock Eat(playerid, Float:Heal, const ItemsName[], bool:Anim = false)
+stock Eat(playerid, Float:Heal, const ItemsName[], Float:Hungry, bool:Anim = false)
 {
 	if(Anim)
 	{
 		ApplyAnimation(playerid, "VENDING", "VEND_EAT1_P", 4.1, false, false, false, false, 0, true);
 		SetTimerEx("ClearAnim", 1400, false, "d", playerid);
 	}
+
+	pInfo[playerid][pHungry] += Hungry;
+	if(pInfo[playerid][pHungry] > 100.0) pInfo[playerid][pHungry] = 100.0;
+	SavePlayerFloat(playerid, "Hungry", pInfo[playerid][pHungry]);
 
 	AntiCheatGetHealth(playerid, pInfo[playerid][pHealth]);
 	pInfo[playerid][pHealth] += Heal;
@@ -27752,6 +27943,7 @@ public LoadAccount(playerid)
 	cache_get_value_name_int(0, "RegDate", pInfo[playerid][pRegDate]);
 	cache_get_value_name_int(0, "Admin", pInfo[playerid][pAdmin]);
 	cache_get_value_name_int(0, "Mute", pInfo[playerid][pMute]);
+	UpdateMuteText(playerid);
 	cache_get_value_name_int(0, "Demorgan", pInfo[playerid][pDemorgan]);
 	cache_get_value_name_int(0, "Jail", pInfo[playerid][pJail]);
 	cache_get_value_name_int(0, "JailedFraction", pInfo[playerid][pJailedFraction]);
@@ -27873,6 +28065,7 @@ public LoadAccount(playerid)
 
 	cache_get_value_name_float(0, "Health", pInfo[playerid][pHealth]);
 	cache_get_value_name_float(0, "Armor", pInfo[playerid][pArmor]);
+	cache_get_value_name_float(0, "Hungry", pInfo[playerid][pHungry]);
 
 	if(!pInfo[playerid][pJail])
 	{
@@ -28019,6 +28212,12 @@ public CheckAccountUpdateDonate(playerid)
 		SendClientMessage(playerid, BitColor_Main, str);
 
 		PlayerPlaySound(playerid, 4201, 0.0, 0.0, 0.0);
+
+		str[0] = EOS;
+		mysql_format(DB, str, sizeof(str), "UPDATE `account` SET `MaxDonation` = '%d' WHERE `ID` = '%d' AND `MaxDonation` < '%d'", DonateUpdate, pInfo[playerid][pID], DonateUpdate);
+		mysql_tquery(DB, str);
+
+		mysql_tquery(DB, "SELECT * FROM `account` WHERE `MaxDonation` > 0 ORDER BY `MaxDonation` DESC LIMIT 5", "FillDonateBoard");
 	}
 
 	DeletePVar(playerid, "CheckDonate");
@@ -28041,6 +28240,7 @@ public CheckAccountHouse(playerid)
 	if(row)
 	{
 		cache_get_value_name_int(0, "ID", pInfo[playerid][pHouseID]);
+		UpdateMapIconHouse(playerid);
 
 		new query[150];
 		mysql_format(DB, query, sizeof(query), "SELECT * FROM `vehicle` WHERE `Type` = '%d' AND `Owner` = '%d' AND `Selected` = '1'", VehicleTypePlayer, pInfo[playerid][pID]);
@@ -28049,6 +28249,7 @@ public CheckAccountHouse(playerid)
 	else
 	{
 		pInfo[playerid][pHouseID] = 0;
+		UpdateMapIconHouse(playerid);
 		ClearHouseVehicle(pInfo[playerid][pID], playerid);
 		if(pInfo[playerid][pSpawnChange] == SpawnChange_House)
 		{
@@ -28056,6 +28257,15 @@ public CheckAccountHouse(playerid)
 			SavePlayerInt(playerid, "SpawnChange", pInfo[playerid][pSpawnChange]);
 		}
 	}
+	return 1;
+}
+
+stock UpdateMapIconHouse(playerid)
+{
+	if(pInfo[playerid][pHouseMapIcon] && IsValidDynamicMapIcon(pInfo[playerid][pHouseMapIcon])) DestroyDynamicMapIcon(pInfo[playerid][pHouseMapIcon]);
+
+	if(pInfo[playerid][pHouseID]) pInfo[playerid][pHouseMapIcon] = CreateDynamicMapIcon(hInfo[pInfo[playerid][pHouseID]][hX], hInfo[pInfo[playerid][pHouseID]][hY], hInfo[pInfo[playerid][pHouseID]][hZ], 35, 0xFFFFFFFF, -1, -1, playerid, 4000, MAPICON_GLOBAL);
+	else pInfo[playerid][pHouseMapIcon] = 0;
 	return 1;
 }
 
@@ -28478,6 +28688,7 @@ stock SellHouseGov(HouseID, playerid = -1)
 		SendClientMessage(playerid, -1, Color_White"Ваш "Main_Color"дом "Color_White"был продан государству из-за неуплаты налогов");
 
 		pInfo[playerid][pHouseID] = 0;
+		UpdateMapIconHouse(playerid);
 		if(pInfo[playerid][pSpawnChange] == SpawnChange_House)
 		{
 			pInfo[playerid][pSpawnChange] = SpawnChange_Standart;
@@ -28766,6 +28977,7 @@ public SecondTimer()
 		}
 
 		mysql_tquery(DB, "SELECT * FROM `account` ORDER BY `Money` DESC, `Level` DESC LIMIT 5", "FillPlayerBoard");
+		mysql_tquery(DB, "SELECT * FROM `account` WHERE `MaxDonation` > 0 ORDER BY `MaxDonation` DESC LIMIT 5", "FillDonateBoard");
 	}
 	else if(minute && PayDayCalled) PayDayCalled = false;
 
@@ -29179,6 +29391,28 @@ public SecondTimer()
 				pInfo[i][pRobCount] = 0;
 				SavePlayerInt(i, "RobCount", pInfo[i][pRobCount]);
 			}
+		}
+
+		if(pInfo[i][pPlayedTime] && pInfo[i][pPlayedTime]%25 == 0)
+		{
+			if(pInfo[i][pHungry] > 0.0)
+			{
+				pInfo[i][pHungry] -= 0.5;
+				if(pInfo[i][pHungry] < 0.0) pInfo[i][pHungry] = 0.0;
+			}
+
+			if(pInfo[i][pHungry] <= 20.0 && GetPVarInt(i, "HungryTextCD") < gettime())
+			{
+				SetPVarInt(i, "HungryTextCD", gettime()+300);
+				SendClientMessage(i, -1, Main_Color"Вы проголодались, подкрепитесь иначе вы начнете терять здоровье");
+			}
+		}
+
+		if(pInfo[i][pHungry] <= 0.0 && pInfo[i][pPlayedTime] && pInfo[i][pPlayedTime]%60 == 0)
+		{
+			AntiCheatGetHealth(i, pInfo[i][pHealth]);
+			pInfo[i][pHealth] -= 3.0;
+			SetPlayerHealth(i, pInfo[i][pHealth]);
 		}
 
 		if(!GetPVarInt(i, "CheckDonate"))
@@ -29976,6 +30210,8 @@ public SecondTimer()
 				pInfo[i][pMute] = 0;
 				SavePlayerInt(i, "Mute", pInfo[i][pMute]);
 				SendClientMessage(i, -1, Color_Yellow"Ваш мут закончился, вы снова можете пользоваться чатом. Впредь не нарушайте правила!");
+				UpdateMuteText(i);
+				
 			}
 		}
 		if(pInfo[i][pDemorgan])
@@ -31231,6 +31467,36 @@ stock GiveBusinessMoney(BusinessID, money)
 		bInfo[BusinessID][bMoney] += money;
 		SaveBusinessInt(bInfo[BusinessID][bID], "Money", bInfo[BusinessID][bMoney]);
 	}
+	return 1;
+}
+
+stock ShowGeneralStoreSellMenu(playerid)
+{
+	ShowDialog(playerid, D_GeneralStore_Sell_Menu, DIALOG_STYLE_TABLIST_HEADERS, Main_Color"General Store", Main_Color"Название\t"Main_Color"Цена\n\
+	"Main_Color"Часы\t"Color_Green"1500$\n\
+	"Main_Color"Фотоаппарат\t"Color_Green"1200$\n\
+	"Main_Color"Цветы\t"Color_Green"1000$\n\
+	"Main_Color"Клюшка для гольфа\t"Color_Green"1000$\n\
+	"Main_Color"Бейсбольная бита\t"Color_Green"1500$\n\
+	"Main_Color"Лопата\t"Color_Green"1000$\n\
+	"Main_Color"Кий\t"Color_Green"1000$\n\
+	"Main_Color"Трость\t"Color_Green"800$\n\
+	"Main_Color"Ролики\t"Color_Green"3000$\n\
+	"Main_Color"Бензопила\t"Color_Green"3000$\n\
+	"Main_Color"Катана\t"Color_Green"3000$\n\
+	"Main_Color"Закрутка\t"Color_Green"800$\n\
+	"Main_Color"Пустая бочка\t"Color_Green"1000$", Color_White"Купить", Color_White"Закрыть");
+	return 1;
+}
+
+stock ShowAmmoSellMenu(playerid)
+{
+	ShowDialog(playerid, D_Ammo_Sell_Menu, DIALOG_STYLE_TABLIST_HEADERS, Main_Color"Амуниция", Main_Color"Название\t"Main_Color"Цена\n\
+	"Main_Color"Desert Eagle(50пт.)\t"Color_Green"2300$\n\
+	"Main_Color"MP5(150пт.)\t"Color_Green"3500$\n\
+	"Main_Color"Shotgun(100пт.)\t"Color_Green"3100$\n\
+	"Main_Color"AK-47(100пт.)\t"Color_Green"5100$\n\
+	"Main_Color"M4(100пт.)\t"Color_Green"5600$", Color_White"Купить", Color_White"Закрыть");
 	return 1;
 }
 
@@ -35111,9 +35377,9 @@ stock CreatePickups()
 
 	Pickups[TowerExit][PickJob] = Job_None;
 	Pickups[TowerExit][PickFraction] = Fraction_None;
-	Pickups[TowerExit][PickID] = CreateDynamicPickup(19198, 1, 1548.6854,-1363.8055,326.2183, 0, 0);
-	Pickups[TowerExit][PickAreaID] = CreateDynamicSphere(1548.6854,-1363.8055,326.2183, 2.0, 0, 0);
-	Pickups[TowerExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 1548.6854,-1363.8055,326.2183+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[TowerExit][PickID] = CreateDynamicPickup(19198, 1, 1548.6854,-1363.8055,326.7183, 0, 0);
+	Pickups[TowerExit][PickAreaID] = CreateDynamicSphere(1548.6854,-1363.8055,326.7183, 2.0, 0, 0);
+	Pickups[TowerExit][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы выйти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 1548.6854,-1363.8055,326.7183+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[TowerExit][PickAngle] = 174.2014;
 	Pickups[TowerExit][IsPickTP] = true;
 	Pickups[TowerExit][PickTpPickID] = TowerEnter;
@@ -35122,9 +35388,9 @@ stock CreatePickups()
 
 	Pickups[TowerEnter][PickJob] = Job_None;
 	Pickups[TowerEnter][PickFraction] = Fraction_None;
-	Pickups[TowerEnter][PickID] = CreateDynamicPickup(19198, 1, 1572.1282,-1338.0529,16.4844, 0, 0);
-	Pickups[TowerEnter][PickAreaID] = CreateDynamicSphere(1572.1282,-1338.0529,16.4844, 2.0, 0, 0);
-	Pickups[TowerEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 1572.1282,-1338.0529,16.4844+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+	Pickups[TowerEnter][PickID] = CreateDynamicPickup(19198, 1, 1572.1282,-1338.0529,16.9844, 0, 0);
+	Pickups[TowerEnter][PickAreaID] = CreateDynamicSphere(1572.1282,-1338.0529,16.9844, 2.0, 0, 0);
+	Pickups[TowerEnter][PickTextID] = CreateDynamic3DTextLabel(Color_White"Чтобы войти нажмите "Main_Color"["Color_White KEY_WALK_NAME Main_Color"]", -1, 1572.1282,-1338.0529,16.9844+1.0, 5.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
 	Pickups[TowerEnter][PickAngle] = 333.3762;
 	Pickups[TowerEnter][IsPickTP] = true;
 	Pickups[TowerEnter][PickTpPickID] = TowerExit;
@@ -35169,7 +35435,7 @@ stock FillLeaderBoard()
 	{
 		foreach(new j: FractionMembers[i])
 		{
-			if(pInfo[j][pAuth] && pInfo[j][pRank] >= FractionMaxRank) format(str, sizeof(str), "%s%s[%d] - %s\n", str, pInfo[j][pName], i, FractionName[pInfo[j][pMembers]]);
+			if(pInfo[j][pAuth] && pInfo[j][pRank] >= FractionMaxRank) format(str, sizeof(str), "%s%s[%d] - %s\n", str, pInfo[j][pName], j, FractionName[pInfo[j][pMembers]]);
 		}
 	}
 	SetDynamicObjectMaterialText(LeaderBoard, 0, str, 140, "Calibri", 26, 1, 0xFFFFFFFF, 0, 1);
@@ -35215,6 +35481,25 @@ public FillPlayerBoard()
 		SetDynamicObjectMaterialText(PlayerBoard, 0, str, 140, "Calibri", 26, 1, 0xFFFFFFFF, 0, 1);
 	}
 	return 1;
+}
+
+forward FillDonateBoard();
+public FillDonateBoard()
+{
+	new row = cache_num_rows();
+	new str[500];
+	strcat(str, Main_Color"Топ донатов\n");
+	if(row)
+	{
+		for(new i = 0; i < row; i++)
+		{
+			new Name[MAX_PLAYER_NAME+1], MaxDonation;
+			cache_get_value_name(i, "Name", Name);
+			cache_get_value_name_int(i, "MaxDonation", MaxDonation);
+			format(str, sizeof(str), "%s"Color_White"%d. %s "Color_Green"%d руб.\n", str, i+1, Name, MaxDonation);
+		}
+		SetDynamicObjectMaterialText(DonateBoard, 0, str, 140, "Calibri", 26, 1, 0xFFFFFFFF, 0, 1);
+	}
 }
 
 stock PreloadAnimLib(playerid, const animlib[])
