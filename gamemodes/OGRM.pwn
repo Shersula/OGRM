@@ -2491,7 +2491,6 @@ stock Knockout_SetPlayerHealth(playerid, Float:health)
 		TogglePlayerControllable(playerid, true);
 		KnockoutPlayer(playerid);
 	}
-
 	return SetPlayerHealth(playerid, health);
 }
 
@@ -3084,6 +3083,7 @@ public OnPlayerConnect(playerid)
 
 	SetPlayerColor(playerid, PlayerColors[0]);
 	SetSpawnInfo(playerid, NO_TEAM, 0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0, 0, 0);
+
 	TogglePlayerSpectating(playerid, true);
 
 	GetPlayerIp(playerid, pInfo[playerid][pIP], 16);
@@ -3570,6 +3570,13 @@ stock NockPlayer(playerid)
 	return 1;
 }
 
+stock FirstSpawnPlayer(playerid)
+{
+	SetPVarInt(playerid, "FirstSpawn", gettime()+10);
+	TogglePlayerSpectating(playerid, false);
+	return 1;
+}
+
 public OnPlayerSpawn(playerid)
 {
 	if(!pInfo[playerid][pAnimLoad]) PreloadAllAnimLibs(playerid);
@@ -3828,6 +3835,7 @@ public OnPlayerSpawn(playerid)
 	SetPlayerScore(playerid, pInfo[playerid][pLevel]);
 	SetPlayerHealth(playerid, pInfo[playerid][pHealth]);
 	SetPlayerArmour(playerid, pInfo[playerid][pArmor]);
+	TextDrawHideForPlayer(playerid, Background);
 
     if((IsABand(pInfo[playerid][pMembers]) || IsAMafia(pInfo[playerid][pMembers])) && GetPVarInt(playerid, "OnWar")) RemoveFromWar(playerid);
 
@@ -3931,7 +3939,6 @@ forward SpawnTime(playerid);
 public SpawnTime(playerid)
 {
 	TogglePlayerSpectating(playerid, false);
-	TextDrawHideForPlayer(playerid, Background);
 	return 1;
 }
 
@@ -6646,7 +6653,7 @@ public ReloadHouse()
 	{
 		query[0] = EOS;
 		mysql_format(DB, query, sizeof(query), "SELECT * FROM `house` WHERE `OwnerID` = '%d'", pInfo[i][pID]);
-		mysql_tquery(DB, query, "CheckAccountHouse", "d", i);
+		mysql_tquery(DB, query, "CheckAccountHouse", "dd", i, false);
 	}
 
 	return 1;
@@ -10631,8 +10638,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			}
 			if(GetPVarInt(playerid, "LoginCamera")) DeletePVar(playerid, "LoginCamera");
 
-			SetPVarInt(playerid, "FirstSpawn", gettime()+10);
-			TogglePlayerSpectating(playerid, false);
+			TextDrawShowForPlayer(playerid, Background);
 
 			mysql_tquery(DB, query, "GetRegID", "d", playerid);
 			return 1;
@@ -10649,6 +10655,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			if(!strlen(inputtext)) return ShowDialog(playerid, D_Auth, DIALOG_STYLE_PASSWORD, Main_Color Project_Name " ||"Color_White" Авторизация", Color_White"Ваш аккаунт уже зарегестрирован в базе данных сервера\nДля продолжения введите пароль от вашего аккаунта\n"Color_Red"Вы ничего не ввели", Color_White"Далее", Color_White"Отмена");
 
 			strmid(pInfo[playerid][pPassword], inputtext, 0, strlen(inputtext));
+
+			TextDrawShowForPlayer(playerid, Background);
 			new query[200];
 			mysql_format(DB, query, sizeof(query), "SELECT * FROM `account` WHERE `Name`='%s' AND `Password` = md5('%s')", pInfo[playerid][pName], inputtext);
 			mysql_tquery(DB, query, "LoadAccount", "d", playerid);
@@ -10665,6 +10673,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, const inputtext[
 			if(strval(inputtext) == pInfo[playerid][pPinCode])
 			{
 				DeletePVar(playerid, "PinCodeTry");
+
+				TextDrawShowForPlayer(playerid, Background);
 				new query[200];
 				mysql_format(DB, query, sizeof(query), "SELECT * FROM `account` WHERE `Name`='%s' AND `Password` = md5('%s') AND `PinCode` = '%d'", pInfo[playerid][pName], pInfo[playerid][pPassword], strval(inputtext));
 				mysql_tquery(DB, query, "LoadAccount", "d", playerid);
@@ -27894,6 +27904,8 @@ public GetRegID(playerid)
 	SendAdminMessage(str);
 
 	SavePlayerInt(playerid, "LastOnline", gettime());
+
+	FirstSpawnPlayer(playerid);
 }
 
 forward LoadAccount(playerid);
@@ -28089,7 +28101,7 @@ public LoadAccount(playerid)
 
 	str[0] = EOS;
 	mysql_format(DB, str, sizeof(str), "SELECT * FROM `house` WHERE `OwnerID` = '%d'", pInfo[playerid][pID]);
-	mysql_tquery(DB, str, "CheckAccountHouse", "d", playerid);
+	mysql_tquery(DB, str, "CheckAccountHouse", "dd", playerid, true);
 
 	str[0] = EOS;
 	mysql_format(DB, str, sizeof(str), "SELECT * FROM `business` WHERE `OwnerID` = '%d'", pInfo[playerid][pID]);
@@ -28127,9 +28139,6 @@ public LoadAccount(playerid)
 		DeletePVar(playerid, "LoginCameraTimer");
 	}
 	if(GetPVarInt(playerid, "LoginCamera")) DeletePVar(playerid, "LoginCamera");
-
-	SetPVarInt(playerid, "FirstSpawn", gettime()+10);
-	TogglePlayerSpectating(playerid, false);
 
 	format(str, sizeof(str), Color_Grey"%s[%d] подключился к серверу (IP: %s | RegIP: %s)", pInfo[playerid][pName], playerid, pInfo[playerid][pIP], pInfo[playerid][pRegIp]);
 	SendAdminMessage(str);
@@ -28233,8 +28242,8 @@ public CheckAccountBusiness(playerid)
 	return 1;
 }
 
-forward CheckAccountHouse(playerid);
-public CheckAccountHouse(playerid)
+forward CheckAccountHouse(playerid, bool:OnSpawn);
+public CheckAccountHouse(playerid, bool:OnSpawn)
 {
 	new row = cache_num_rows();
 	if(row)
@@ -28257,6 +28266,8 @@ public CheckAccountHouse(playerid)
 			SavePlayerInt(playerid, "SpawnChange", pInfo[playerid][pSpawnChange]);
 		}
 	}
+
+	if(OnSpawn) FirstSpawnPlayer(playerid);
 	return 1;
 }
 
