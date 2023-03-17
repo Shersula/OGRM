@@ -2568,7 +2568,7 @@ stock UpdateMuteText(playerid)
 {
 	if(IsMuted(playerid, false) && (!pInfo[playerid][pMuteText] || !IsValidDynamic3DTextLabel(pInfo[playerid][pMuteText])))
 	{
-		pInfo[playerid][pMuteText] = CreateDynamic3DTextLabel(Color_Red"Мут", -1, 0.0, 0.0, 0.3, 10.0, playerid);
+		pInfo[playerid][pMuteText] = CreateDynamic3DTextLabel(Color_Red"Мут", -1, 0.0, 0.0, 0.15, 10.0, playerid);
 	}
 	else if(!IsMuted(playerid, false))
 	{
@@ -23718,7 +23718,7 @@ CMD:warn(playerid, params[])
 	if(playerid == id) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы не можете выдать предупреждение самому себе");
 
 	pInfo[id][pWarn] += 1;
-	SavePlayerInt(id, "Warn", pInfo[id][pWarn]);
+	
 	new str[400];
 	format(str, sizeof(str), Color_Red"%s %s выдал предупреждение игроку %s [%d/3], по причине: %s", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], pInfo[id][pName], pInfo[id][pWarn], message);
 	SendAllMessage(str);
@@ -23736,13 +23736,12 @@ CMD:warn(playerid, params[])
 	if(pInfo[id][pWarn] >= 3)
 	{
 		new reason[200];
-		new time = 30;
+		new time = 3;
 		format(reason, sizeof(reason), "Warn 3/3 (%s)", message);
 		format(str, sizeof(str), Color_Red"%s %s забанил игрока %s, на %d дней по причине: %s", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], pInfo[id][pName], time, reason);
 		SendAllMessage(str);
 
 		pInfo[id][pWarn] = 0;
-		SavePlayerInt(id, "Warn", pInfo[id][pWarn]);
 
 		format(str, sizeof(str), Color_Red"%s %s "Color_White"забанил вас на %d дней, по причине:\n\
 		"Color_Red"%s\n\n\
@@ -23756,6 +23755,7 @@ CMD:warn(playerid, params[])
 
 		AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
 	}
+	SavePlayerInt(id, "Warn", pInfo[id][pWarn]);
 	return 1;
 }
 
@@ -25378,14 +25378,38 @@ CMD:payday(playerid)
 CMD:makeadmin(playerid, params[])
 {
 	if(pInfo[playerid][pAdmin] < 4 || !Iter_Contains(Admins, playerid)) return 1;
-	new id, AdmLevel;
-	if(sscanf(params, "dd", id, AdmLevel)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/makeadmin [ID] [Уровень(0 - Чтобы снять)]");
+
+	new Name[MAX_PLAYER_NAME+1], AdmLevel;
+	if(sscanf(params, "s[*]d", MAX_PLAYER_NAME+1, Name, AdmLevel)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/makeadmin [ID/Ник] [Уровень(0 - Чтобы снять)]");
+
+	if(AdmLevel < 0 || AdmLevel > sizeof(AdminNames)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Уровень от 1 до 4");
+
+	new id = -1;
+	if(IsNum(Name)) id = strval(Name);
+	else
+	{
+		foreach(new i: Player)
+		{
+			if(!strcmp(Name, pInfo[i][pName]))
+			{
+				id = i;
+				break;
+			}
+		}
+
+		if(id == -1)
+		{
+			new query[100];
+			mysql_format(DB, query, sizeof(query), "SELECT * FROM `account` WHERE `Name` = '%s'", Name);
+			mysql_tquery(DB, query, "MakeadminOffline", "dd", playerid, AdmLevel);
+			return 1;
+		}
+	}
+
 	if(id < 0 || id > MAX_PLAYERS) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Неверный ID игрока");
 	if(!IsPlayerConnected(id)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не подключен");
 	if(!pInfo[id][pAuth]) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок с данным ID не авторизировался");
 	if(playerid == id) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Вы ввели свой ID");
-
-	if(AdmLevel < 0 || AdmLevel > sizeof(AdminNames)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Уровень от 1 до 4");
 
 	if(!AdmLevel)
 	{
@@ -25433,6 +25457,76 @@ CMD:makeadmin(playerid, params[])
 
 	pInfo[id][pAdmin] = AdmLevel;
 	SavePlayerInt(id, "Admin", pInfo[id][pAdmin]);
+	mysql_tquery(DB, "SELECT * FROM `account` WHERE `Admin` > 0 ORDER BY `Admin` DESC", "FillAdminBoard");
+	return 1;
+}
+
+forward MakeadminOffline(playerid, AdmLevel);
+public MakeadminOffline(playerid, AdmLevel)
+{
+	if(!cache_num_rows()) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрока с таким ником не существует");
+
+	new Admin;
+	cache_get_value_name_int(0, "Admin", Admin);
+
+	new Name[MAX_PLAYER_NAME+1];
+	cache_get_value_name(0, "Name", Name);
+
+	new ID;
+	cache_get_value_name_int(0, "ID", ID);
+
+	new RegIP[17];
+	cache_get_value_name(0, "RegIP", RegIP);
+	
+	new str[400];
+
+	if(!AdmLevel)
+	{
+		if(!Admin) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Игрок не является администратором, вы не можете снять его!");
+		str[0] = EOS;
+		format(str, sizeof(str), Color_Yellow"%s %s снял вас с должности %s", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], AdminNames[Admin]);
+		AddOfflineMessage(ID, str);
+
+		str[0] = EOS;
+		format(str, sizeof(str), Color_Yellow"%s %s снял с должности %s игрока %s", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], AdminNames[Admin], Name);
+		SendAdminMessage(str);
+
+		str[0] = EOS;
+		mysql_format(DB, str, sizeof(str), "DELETE FROM `admin_info` WHERE `ID` = '%d'", ID);
+		mysql_tquery(DB, str);
+
+		str[0] = EOS;
+		format(str, sizeof(str), "(IP: %s | RegIP: %s) снял игрока %s (IP: OFFLINE | RegIP: %s) с должности %s", pInfo[playerid][pIP], pInfo[playerid][pRegIp], Name, RegIP, AdminNames[Admin]);
+
+		AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
+	}
+	else
+	{
+		str[0] = EOS;
+		format(str, sizeof(str), Color_Yellow"%s %s назначил вас на должность %s", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], AdminNames[AdmLevel]);
+		AddOfflineMessage(ID, str);
+
+		str[0] = EOS;
+		format(str, sizeof(str), Color_Yellow"%s %s назначил на должность %s игрока %s", AdminNames[pInfo[playerid][pAdmin]], pInfo[playerid][pName], AdminNames[AdmLevel], Name);
+		SendAdminMessage(str);
+
+		if(!Admin)
+		{
+			str[0] = EOS;
+			mysql_format(DB, str, sizeof(str), "INSERT INTO `admin_info` (`ID`) VALUES ('%d')", ID);
+			mysql_tquery(DB, str);
+		}
+
+		str[0] = EOS;
+		format(str, sizeof(str), "(IP: %s | RegIP: %s) назначил игрока %s (IP: OFFLINE | RegIP: %s) на должность %s", pInfo[playerid][pIP], pInfo[playerid][pRegIp], Name, RegIP, AdminNames[AdmLevel]);
+
+		AddLog(LogTypeAdmin, pInfo[playerid][pID], str);
+	}
+
+	str[0] = EOS;
+	mysql_format(DB, str, sizeof(str), "UPDATE `account` SET `Admin` = '%d' WHERE `ID` = '%d'", AdmLevel, ID);
+	mysql_tquery(DB, str);
+
 	mysql_tquery(DB, "SELECT * FROM `account` WHERE `Admin` > 0 ORDER BY `Admin` DESC", "FillAdminBoard");
 	return 1;
 }

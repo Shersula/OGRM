@@ -3626,7 +3626,7 @@ public OnPlayerConnect(playerid)
 			{
 				static ac_ver[24];
 				GetPlayerVersion(playerid, ac_ver, sizeof ac_ver);
-				if(strfind(ac_ver, AC_CLIENT_VERSION) == -1 && strcmp(ACInfo[playerid][acIp], "176.32.39.2"))
+				if(strfind(ac_ver, AC_CLIENT_VERSION) == -1 && strcmp(ACInfo[playerid][acIp], "176.32.39.2") != 0)
 				{
 					#if defined DEBUG
 						//printf(DEBUG_CODE_2, playerid, ac_ver);
@@ -3658,7 +3658,7 @@ public OnPlayerConnect(playerid)
 						if(ac_j == playerid || !IsPlayerConnected(ac_j)) continue;
 					#endif
 			#endif
-				if(!strcmp(ACInfo[playerid][acIp], ACInfo[ac_j][acIp], false) && strcmp(ACInfo[playerid][acIp], "176.32.39.2"))
+				if(!strcmp(ACInfo[playerid][acIp], ACInfo[ac_j][acIp], false) && strcmp(ACInfo[playerid][acIp], "176.32.39.2") != 0)
 				{
 					ac_i--;
 					if(ac_i < 1)
