@@ -2869,8 +2869,8 @@ public OnGameModeInit()
 	SetGameModeText(Short_Project_Name);
 	AddPlayerClass(0, 1958.3783, 1343.1572, 15.3746, 269.1425, 0, 0, 0, 0, 0, 0);
 
-	//DB = mysql_connect("localhost", "mysql", "mysql", "ogrm");
-	DB = mysql_connect("51.89.28.163", "hcr", "3w9bW65Rfx", "hcr");
+	DB = mysql_connect("26.139.88.129", "mysql", "mysql", "ogrm");
+	//DB = mysql_connect("51.89.28.163", "hcr", "3w9bW65Rfx", "hcr");
 
 	new error = mysql_errno();
 	switch(error)
@@ -4351,7 +4351,7 @@ public LoadBotSettings()
 	return 1;
 }
 
-native PB_RegisterBot(name[]);
+//native PB_RegisterBot(name[]);
 
 forward ConnectBots();
 public ConnectBots()
@@ -4377,7 +4377,7 @@ public ConnectBots()
 			if(NickBusy) continue;
 			else
 			{
-				PB_RegisterBot(Name);
+				//PB_RegisterBot(Name);
 				ConnectNPC(Name, "pawnbots");
 				break;
 			}
@@ -25382,7 +25382,7 @@ CMD:makeadmin(playerid, params[])
 	new Name[MAX_PLAYER_NAME+1], AdmLevel;
 	if(sscanf(params, "s[*]d", MAX_PLAYER_NAME+1, Name, AdmLevel)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"/makeadmin [ID/Ник] [Уровень(0 - Чтобы снять)]");
 
-	if(AdmLevel < 0 || AdmLevel > sizeof(AdminNames)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Уровень от 1 до 4");
+	if(AdmLevel < 0 || AdmLevel >= sizeof(AdminNames)) return SendClientMessage(playerid, -1, Color_Red"[Ошибка] "Color_Grey"Уровень от 1 до 4");
 
 	new id = -1;
 	if(IsNum(Name)) id = strval(Name);

@@ -1,0 +1,478 @@
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[15:16:31] filterscripts = ""  (string)
+[15:16:31] 
+[15:16:31] Server Plugins
+[15:16:31] --------------
+[15:16:31]  Loading plugin: crashdetect
+[15:16:31]   CrashDetect plugin 4.20
+[15:16:31]   Loaded.
+[15:16:31]  Loading plugin: mysql
+[15:16:31]  >> plugin.mysql: R41-4 successfully loaded.
+[15:16:31]   Loaded.
+[15:16:31]  Loading plugin: streamer
+[15:16:31] 
+
+*** Streamer Plugin v2.9.5 by Incognito loaded ***
+
+[15:16:31]   Loaded.
+[15:16:31]  Loading plugin: sscanf
+[15:16:31] 
+[15:16:31]  ===============================
+[15:16:31] 
+[15:16:31]       sscanf plugin loaded.     
+[15:16:31] 
+[15:16:31]          Version: 2.13.1
+[15:16:31] 
+[15:16:31]    (c) 2022 Alex "Y_Less" Cole  
+[15:16:31] 
+[15:16:31]  ===============================
+[15:16:31] 
+[15:16:31]   Loaded.
+[15:16:31]  Loading plugin: pawnregex
+[15:16:31] [Pawn.Regex] plugin v1.2.3 loading...
+[15:16:31] [Pawn.Regex] 
+
+    | Pawn.Regex 1.2.3 | 2016 - 2021
+    |--------------------------------
+    | Author and maintainer: katursis
+
+
+    | Compiled: Sep 26 2021 at 11:59:38
+    |--------------------------------------------------------------
+    | Repository: https://github.com/katursis/Pawn.Regex
+
+[15:16:31]   Loaded.
+[15:16:31]  Loading plugin: pawncmd
+[15:16:31] [Pawn.CMD] plugin v3.3.6 loading...
+[15:16:31] [Pawn.CMD] 
+
+    | Pawn.CMD 3.3.6 | 2016 - 2021
+    |--------------------------------
+    | Author and maintainer: katursis
+
+
+    | Compiled: Sep 26 2021 at 11:55:10
+    |--------------------------------------------------------------
+    | Repository: https://github.com/katursis/Pawn.CMD
+
+[15:16:31]   Loaded.
+[15:16:31]  Loading plugin: mapandreas
+[15:16:31]   Loaded.
+[15:16:31]  Loading plugin: timerfix
+[15:16:31]   >> TimerFix v1.5 successfully loaded.
+[15:16:31]   Loaded.
+[15:16:31]  Loading plugin: pawnraknet
+[15:16:31] [Pawn.RakNet] plugin v1.5.1 loading...
+[15:16:31] [Pawn.RakNet] 
+
+    | Pawn.RakNet 1.5.1 | 2016 - 2021
+    |--------------------------------
+    | Author and maintainer: katursis
+
+
+    | Compiled: Sep 26 2021 at 12:04:10
+    |--------------------------------------------------------------
+    | Repository: https://github.com/katursis/Pawn.RakNet
+    |--------------------------------------------------------------
+    | Wiki: https://github.com/katursis/Pawn.RakNet/wiki
+
+[15:16:31]   Loaded.
+[15:16:31]  Loading plugin: pawnbots
+[15:16:31]   Failed.
+[15:16:31]  Loaded 9 plugins.
+
+[15:16:31] 
+[15:16:31] Filterscripts
+[15:16:31] ---------------
+[15:16:31]   Loaded 0 filterscripts.
+
+[15:16:31] [debug] Run time error 19: "File or function is not found"
+[15:16:31] [debug]  PB_RegisterBot
+[15:16:31] [debug] Run time error 19: "File or function is not found"
+[15:16:31] [debug]  PB_RegisterBot
+[15:16:31] Script[gamemodes/OGRM.amx]: Run time error 19: "File or function is not found"
+[15:16:31] Number of vehicle models: 0
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[15:17:11] filterscripts = ""  (string)
+[15:17:11] 
+[15:17:11] Server Plugins
+[15:17:11] --------------
+[15:17:11]  Loading plugin: crashdetect
+[15:17:11]   CrashDetect plugin 4.20
+[15:17:11]   Loaded.
+[15:17:11]  Loading plugin: mysql
+[15:17:11]  >> plugin.mysql: R41-4 successfully loaded.
+[15:17:11]   Loaded.
+[15:17:11]  Loading plugin: streamer
+[15:17:11] 
+
+*** Streamer Plugin v2.9.5 by Incognito loaded ***
+
+[15:17:11]   Loaded.
+[15:17:11]  Loading plugin: sscanf
+[15:17:11] 
+[15:17:11]  ===============================
+[15:17:11] 
+[15:17:11]       sscanf plugin loaded.     
+[15:17:11] 
+[15:17:11]          Version: 2.13.1
+[15:17:11] 
+[15:17:11]    (c) 2022 Alex "Y_Less" Cole  
+[15:17:11] 
+[15:17:11]  ===============================
+[15:17:11] 
+[15:17:11]   Loaded.
+[15:17:11]  Loading plugin: pawnregex
+[15:17:11] [Pawn.Regex] plugin v1.2.3 loading...
+[15:17:11] [Pawn.Regex] 
+
+    | Pawn.Regex 1.2.3 | 2016 - 2021
+    |--------------------------------
+    | Author and maintainer: katursis
+
+
+    | Compiled: Sep 26 2021 at 11:59:38
+    |--------------------------------------------------------------
+    | Repository: https://github.com/katursis/Pawn.Regex
+
+[15:17:11]   Loaded.
+[15:17:11]  Loading plugin: pawncmd
+[15:17:11] [Pawn.CMD] plugin v3.3.6 loading...
+[15:17:11] [Pawn.CMD] 
+
+    | Pawn.CMD 3.3.6 | 2016 - 2021
+    |--------------------------------
+    | Author and maintainer: katursis
+
+
+    | Compiled: Sep 26 2021 at 11:55:10
+    |--------------------------------------------------------------
+    | Repository: https://github.com/katursis/Pawn.CMD
+
+[15:17:11]   Loaded.
+[15:17:11]  Loading plugin: mapandreas
+[15:17:11]   Loaded.
+[15:17:11]  Loading plugin: timerfix
+[15:17:11]   >> TimerFix v1.5 successfully loaded.
+[15:17:11]   Loaded.
+[15:17:11]  Loading plugin: pawnraknet
+[15:17:11] [Pawn.RakNet] plugin v1.5.1 loading...
+[15:17:11] [Pawn.RakNet] 
+
+    | Pawn.RakNet 1.5.1 | 2016 - 2021
+    |--------------------------------
+    | Author and maintainer: katursis
+
+
+    | Compiled: Sep 26 2021 at 12:04:10
+    |--------------------------------------------------------------
+    | Repository: https://github.com/katursis/Pawn.RakNet
+    |--------------------------------------------------------------
+    | Wiki: https://github.com/katursis/Pawn.RakNet/wiki
+
+[15:17:11]   Loaded.
+[15:17:11]  Loading plugin: pawnbots
+[15:17:11]   Failed.
+[15:17:11]  Loaded 9 plugins.
+
+[15:17:11] 
+[15:17:11] Filterscripts
+[15:17:11] ---------------
+[15:17:11]   Loaded 0 filterscripts.
+
+[15:17:11]  
+[15:17:11] --------------------------------------
+[15:17:11]  Античит Nex-AC загружен!
+[15:17:11]  Версия античита: 1.9.59
+[15:17:11]  Автор: Nexius
+[15:17:11] --------------------------------------
+
+[15:17:11] MapFix by Nexius v4.3.3 loaded (include version).
+[15:17:11] MySQL успешно подключён.
+[15:17:11] 
+----------------------------------
+[15:17:11] ------------OGRM v1.0-------------
+
+[15:17:11] ----------------------------------
+
+[15:17:11] Number of vehicle models: 0
+[15:17:11] 
+Началась загрузка настроек античита....
+[15:17:11] Загружено 53 настроек за 1мс.
+
+[15:17:11] Началась загрузка настроек античита(NOP)....
+[15:17:11] Загружено 12 настроек за 1мс.
+
+[15:17:11] Началась загрузка транспорта....
+[15:17:11] Загружено 651 транспорта за 165мс.
+
+[15:17:11] Началась загрузка оглавления GPS....
+[15:17:11] Загружено 8 оглавлений GPS за 1мс.
+
+[15:17:11] Началась загрузка GPS меток....
+[15:17:11] Загружено 62 GPS меток за 2мс.
+
+[15:17:11] Началась загрузка бизнесов....
+[15:17:11] Загружено 111 бизнесов за 17мс.
+
+[15:17:11] Началась загрузка домов....
+[15:17:11] Загружено 255 домов за 43мс.
+
+[15:17:11] Началась загрузка автоматов Sprunk....
+[15:17:11] Загружено 12 автоматов Sprunk за 1мс.
+
+[15:17:11] Началась загрузка столов для казино....
+[15:17:11] Загружено 55 столов для казино за 4мс.
+
+[15:17:11] Началась загрузка палаток для торговли....
+[15:17:11] Загружено 29 палаток для торговли за 3мс.
+
+[15:17:11] Началась загрузка информации о фракциях....
+[15:17:11] Загружено 17 фракций за 2мс.
+
+[15:17:11] Началась загрузка иконок....
+[15:17:11] Загружено 55 иконок за 3мс.
+
+[15:17:11] Настройки ботов загружены за 0мс.
+
+[15:17:11] Настройки сервера загружены за 0мс.
+
+[15:17:12] [connection] 127.0.0.1:52749 requests connection cookie.
+[15:17:13] [connection] 127.0.0.1:54389 requests connection cookie.
+[15:17:13] [connection] incoming connection: 127.0.0.1:52749 id: 0
+[15:17:13] [npc:join] big_mamka has joined the server (0:127.0.0.1)
+[15:17:14] [connection] incoming connection: 127.0.0.1:54389 id: 1
+[15:17:14] [connection] 127.0.0.1:54390 requests connection cookie.
+[15:17:15] [connection] 127.0.0.1:65472 requests connection cookie.
+[15:17:15] [connection] incoming connection: 127.0.0.1:54390 id: 1
+[15:17:16] [connection] incoming connection: 127.0.0.1:65472 id: 1
+[15:17:16] [connection] 127.0.0.1:55920 requests connection cookie.
+[15:17:17] [connection] incoming connection: 127.0.0.1:55920 id: 1
+[15:17:17] [connection] 127.0.0.1:55921 requests connection cookie.
+[15:17:18] [connection] 127.0.0.1:55922 requests connection cookie.
+[15:17:18] [connection] incoming connection: 127.0.0.1:55921 id: 1
+[15:17:19] [connection] 127.0.0.1:55923 requests connection cookie.
+[15:17:19] [connection] incoming connection: 127.0.0.1:55922 id: 1
+[15:17:20] [connection] incoming connection: 127.0.0.1:55923 id: 1
+[15:17:20] [connection] 127.0.0.1:55924 requests connection cookie.
+[15:17:21] [connection] 127.0.0.1:55925 requests connection cookie.
+[15:17:21] [connection] incoming connection: 127.0.0.1:55924 id: 1
+[15:17:22] [connection] 127.0.0.1:55929 requests connection cookie.
+[15:17:22] [connection] incoming connection: 127.0.0.1:55925 id: 1
+[15:17:23] [connection] incoming connection: 127.0.0.1:55929 id: 1
+[15:17:23] [connection] 127.0.0.1:55931 requests connection cookie.
+[15:17:24] [connection] 127.0.0.1:49282 requests connection cookie.
+[15:17:24] [connection] incoming connection: 127.0.0.1:55931 id: 1
+[15:17:25] [connection] 127.0.0.1:60522 requests connection cookie.
+[15:17:25] [connection] incoming connection: 127.0.0.1:49282 id: 1
+[15:17:26] [connection] 127.0.0.1:52845 requests connection cookie.
+[15:17:26] [connection] incoming connection: 127.0.0.1:60522 id: 1
+[15:17:27] [connection] 127.0.0.1:52846 requests connection cookie.
+[15:17:27] [connection] incoming connection: 127.0.0.1:52845 id: 1
+[15:17:28] [connection] incoming connection: 127.0.0.1:52846 id: 1
+[15:17:28] [connection] 127.0.0.1:53839 requests connection cookie.
+[15:17:29] [connection] 127.0.0.1:55765 requests connection cookie.
+[15:17:29] [connection] incoming connection: 127.0.0.1:53839 id: 1
+[15:17:30] [connection] incoming connection: 127.0.0.1:55765 id: 1
+[15:17:30] [connection] 127.0.0.1:55766 requests connection cookie.
+[15:17:31] [connection] 127.0.0.1:55767 requests connection cookie.
+[15:17:31] [connection] incoming connection: 127.0.0.1:55766 id: 1
+[15:17:32] [connection] 127.0.0.1:61259 requests connection cookie.
+[15:17:32] [connection] incoming connection: 127.0.0.1:55767 id: 1
+[15:17:33] [connection] incoming connection: 127.0.0.1:61259 id: 1
+[15:17:33] [connection] 127.0.0.1:61260 requests connection cookie.
+[15:17:34] [connection] 127.0.0.1:61261 requests connection cookie.
+[15:17:34] [connection] incoming connection: 127.0.0.1:61260 id: 1
+[15:17:35] [connection] 127.0.0.1:50218 requests connection cookie.
+[15:17:35] [connection] incoming connection: 127.0.0.1:61261 id: 1
+[15:17:36] [connection] 127.0.0.1:50219 requests connection cookie.
+[15:17:36] [connection] incoming connection: 127.0.0.1:50218 id: 1
+[15:17:37] [connection] incoming connection: 127.0.0.1:50219 id: 1
+[15:17:37] [connection] 127.0.0.1:50220 requests connection cookie.
+[15:17:38] [connection] 127.0.0.1:50221 requests connection cookie.
+[15:17:38] [connection] incoming connection: 127.0.0.1:50220 id: 1
+[15:17:39] [connection] 127.0.0.1:50222 requests connection cookie.
+[15:17:39] [connection] incoming connection: 127.0.0.1:50221 id: 1
+[15:17:40] [connection] 127.0.0.1:50223 requests connection cookie.
+[15:17:40] [connection] incoming connection: 127.0.0.1:50222 id: 1
+[15:17:41] [connection] 127.0.0.1:50224 requests connection cookie.
+[15:17:41] [connection] incoming connection: 127.0.0.1:50223 id: 1
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[15:18:06] filterscripts = ""  (string)
+[15:18:06] 
+[15:18:06] Server Plugins
+[15:18:06] --------------
+[15:18:06]  Loading plugin: crashdetect
+[15:18:06]   CrashDetect plugin 4.20
+[15:18:06]   Loaded.
+[15:18:06]  Loading plugin: mysql
+[15:18:06]  >> plugin.mysql: R41-4 successfully loaded.
+[15:18:06]   Loaded.
+[15:18:06]  Loading plugin: streamer
+[15:18:06] 
+
+*** Streamer Plugin v2.9.5 by Incognito loaded ***
+
+[15:18:06]   Loaded.
+[15:18:06]  Loading plugin: sscanf
+[15:18:06] 
+[15:18:06]  ===============================
+[15:18:06] 
+[15:18:06]       sscanf plugin loaded.     
+[15:18:06] 
+[15:18:06]          Version: 2.13.1
+[15:18:06] 
+[15:18:06]    (c) 2022 Alex "Y_Less" Cole  
+[15:18:06] 
+[15:18:06]  ===============================
+[15:18:06] 
+[15:18:06]   Loaded.
+[15:18:06]  Loading plugin: pawnregex
+[15:18:06] [Pawn.Regex] plugin v1.2.3 loading...
+[15:18:06] [Pawn.Regex] 
+
+    | Pawn.Regex 1.2.3 | 2016 - 2021
+    |--------------------------------
+    | Author and maintainer: katursis
+
+
+    | Compiled: Sep 26 2021 at 11:59:38
+    |--------------------------------------------------------------
+    | Repository: https://github.com/katursis/Pawn.Regex
+
+[15:18:06]   Loaded.
+[15:18:06]  Loading plugin: pawncmd
+[15:18:06] [Pawn.CMD] plugin v3.3.6 loading...
+[15:18:06] [Pawn.CMD] 
+
+    | Pawn.CMD 3.3.6 | 2016 - 2021
+    |--------------------------------
+    | Author and maintainer: katursis
+
+
+    | Compiled: Sep 26 2021 at 11:55:10
+    |--------------------------------------------------------------
+    | Repository: https://github.com/katursis/Pawn.CMD
+
+[15:18:06]   Loaded.
+[15:18:06]  Loading plugin: mapandreas
+[15:18:06]   Loaded.
+[15:18:06]  Loading plugin: timerfix
+[15:18:06]   >> TimerFix v1.5 successfully loaded.
+[15:18:06]   Loaded.
+[15:18:06]  Loading plugin: pawnraknet
+[15:18:06] [Pawn.RakNet] plugin v1.5.1 loading...
+[15:18:06] [Pawn.RakNet] 
+
+    | Pawn.RakNet 1.5.1 | 2016 - 2021
+    |--------------------------------
+    | Author and maintainer: katursis
+
+
+    | Compiled: Sep 26 2021 at 12:04:10
+    |--------------------------------------------------------------
+    | Repository: https://github.com/katursis/Pawn.RakNet
+    |--------------------------------------------------------------
+    | Wiki: https://github.com/katursis/Pawn.RakNet/wiki
+
+[15:18:06]   Loaded.
+[15:18:06]  Loading plugin: pawnbots
+[15:18:06]   Failed.
+[15:18:06]  Loaded 9 plugins.
+
+[15:18:06] 
+[15:18:06] Filterscripts
+[15:18:06] ---------------
+[15:18:06]   Loaded 0 filterscripts.
+
+[15:18:06]  
+[15:18:06] --------------------------------------
+[15:18:06]  Античит Nex-AC загружен!
+[15:18:06]  Версия античита: 1.9.59
+[15:18:06]  Автор: Nexius
+[15:18:06] --------------------------------------
+
+[15:18:06] MapFix by Nexius v4.3.3 loaded (include version).
+[15:18:06] MySQL успешно подключён.
+[15:18:06] 
+----------------------------------
+[15:18:06] ------------OGRM v1.0-------------
+
+[15:18:06] ----------------------------------
+
+[15:18:06] Number of vehicle models: 0
+[15:18:06] 
+Началась загрузка настроек античита....
+[15:18:06] Загружено 53 настроек за 0мс.
+
+[15:18:06] Началась загрузка настроек античита(NOP)....
+[15:18:06] Загружено 12 настроек за 1мс.
+
+[15:18:06] Началась загрузка транспорта....
+[15:18:06] Загружено 651 транспорта за 175мс.
+
+[15:18:06] Началась загрузка оглавления GPS....
+[15:18:06] Загружено 8 оглавлений GPS за 1мс.
+
+[15:18:06] Началась загрузка GPS меток....
+[15:18:06] Загружено 62 GPS меток за 2мс.
+
+[15:18:06] Началась загрузка бизнесов....
+[15:18:06] Загружено 111 бизнесов за 18мс.
+
+[15:18:06] Началась загрузка домов....
+[15:18:06] Загружено 255 домов за 48мс.
+
+[15:18:06] Началась загрузка автоматов Sprunk....
+[15:18:06] Загружено 12 автоматов Sprunk за 2мс.
+
+[15:18:06] Началась загрузка столов для казино....
+[15:18:06] Загружено 55 столов для казино за 5мс.
+
+[15:18:06] Началась загрузка палаток для торговли....
+[15:18:06] Загружено 29 палаток для торговли за 3мс.
+
+[15:18:06] Началась загрузка информации о фракциях....
+[15:18:06] Загружено 17 фракций за 2мс.
+
+[15:18:06] Началась загрузка иконок....
+[15:18:06] Загружено 55 иконок за 3мс.
+
+[15:18:06] Настройки ботов загружены за 0мс.
+
+[15:18:06] Настройки сервера загружены за 0мс.
+
+[15:18:41] [connection] 127.0.0.1:57093 requests connection cookie.
+[15:18:42] [connection] incoming connection: 127.0.0.1:57093 id: 0
+[15:18:42] [join] Test_Root has joined the server (0:127.0.0.1)
+[15:18:47] Началась загрузка транспорта....
+[15:18:47] Загружено 1 транспорта за 1мс.
+
+[15:22:14] Началась загрузка домов....
+[15:22:14] Загружено 255 домов за 47мс.
+
+[15:22:28] [part] Test_Root has left the server (0:1)
